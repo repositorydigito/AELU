@@ -17,6 +17,11 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use SolutionForest\FilamentSimpleLightBox\SimpleLightBoxPlugin;
+use Solutionforest\FilamentLoginScreen\Filament\Pages\Auth\Themes\Theme1\LoginScreenPage;
+use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
+use TomatoPHP\FilamentUsers\FilamentUsersPlugin;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -26,9 +31,12 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(LoginScreenPage::class)
+            ->darkMode(false)
+            ->sidebarFullyCollapsibleOnDesktop()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => '#017D47',
+                'secondary' => '#073568',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -38,6 +46,15 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
+            ])
+            ->plugins([
+                FilamentUsersPlugin::make(),
+                FilamentShieldPlugin::make(),
+                FilamentEditProfilePlugin::make()
+                    ->setTitle('Editar Perfil')        
+                    ->setNavigationLabel('Perfil')    
+                    ->setIcon('heroicon-o-user-circle')
+                    ->shouldRegisterNavigation() 
             ])
             ->middleware([
                 EncryptCookies::class,
