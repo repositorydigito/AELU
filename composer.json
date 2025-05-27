@@ -12,6 +12,7 @@
         "joaopaulolndev/filament-edit-profile": "^1.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "leandrocfe/filament-apex-charts": "^3.2",
         "solution-forest/filament-simplelightbox": "^0.0.11",
         "solutionforest/filamentloginscreen": "^0.0.1",
         "spatie/laravel-permission": "^6.18",
