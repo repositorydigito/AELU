@@ -27,10 +27,11 @@ class InstructorResource extends Resource
 {
     protected static ?string $model = Instructor::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-briefcase';
     protected static ?string $navigationLabel = 'Profesores';
     protected static ?string $pluralModelLabel = 'Profesores';
     protected static ?string $modelLabel = 'Profesor';
+    protected static ?int $navigationSort = 2; 
 
     public static function form(Form $form): Form
     {
@@ -272,10 +273,8 @@ class InstructorResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ])
-            ->headerActions([
-                Tables\Actions\CreateAction::make(),
-            ]);
+            ]);          
+            
     }
 
     public static function getRelations(): array
