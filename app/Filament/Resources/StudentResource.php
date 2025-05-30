@@ -24,11 +24,13 @@ class StudentResource extends Resource
 {
     protected static ?string $model = Student::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?string $navigationLabel = 'Alumnos';
-    protected static ?string $pluralModelLabel = 'Alumnos';
-    protected static ?string $modelLabel = 'Alumno';
-    protected static ?int $navigationSort = 1;
+    // protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static ?string $navigationLabel = 'Listado de Alumnos';
+    // protected static ?string $pluralModelLabel = 'Alumnos';
+    // protected static ?string $modelLabel = 'Alumno';
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $navigationGroup = 'Alumnos';    
 
     public static function form(Form $form): Form
     {
@@ -230,7 +232,8 @@ class StudentResource extends Resource
         return [
             'index' => Pages\ListStudents::route('/'),
             'create' => Pages\CreateStudent::route('/create'),
-            'edit' => Pages\EditStudent::route('/{record}/edit'),
+            'edit' => Pages\EditStudent::route('/{record}/edit'),            
         ];
     }
+    
 }

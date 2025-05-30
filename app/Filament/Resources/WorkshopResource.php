@@ -20,10 +20,11 @@ class WorkshopResource extends Resource
     protected static ?string $model = Workshop::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
-    protected static ?string $navigationLabel = 'Talleres'; // Etiqueta en la navegación
-    protected static ?string $pluralModelLabel = 'Talleres'; // Etiqueta plural para el título
-    protected static ?string $modelLabel = 'Taller'; // Etiqueta singular
-    protected static ?int $navigationSort = 3; // Opcional: Para controlar el orden en la navegación (ej. después de Instructores)
+    protected static ?string $navigationLabel = 'Talleres'; 
+    protected static ?string $pluralModelLabel = 'Talleres'; 
+    protected static ?string $modelLabel = 'Taller';    
+    protected static ?int $navigationSort = 6; 
+    protected static ?string $navigationGroup = 'Talleres';
     
     public static function form(Form $form): Form
     {

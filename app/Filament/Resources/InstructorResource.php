@@ -25,13 +25,12 @@ use Filament\Forms\Components\TimePicker; // Para la hora
 
 class InstructorResource extends Resource
 {
-    protected static ?string $model = Instructor::class;
-
-    protected static ?string $navigationIcon = 'heroicon-o-briefcase';
-    protected static ?string $navigationLabel = 'Profesores';
+    protected static ?string $model = Instructor::class;    
+    protected static ?string $navigationLabel = 'Listado de Profesores';
     protected static ?string $pluralModelLabel = 'Profesores';
     protected static ?string $modelLabel = 'Profesor';
-    protected static ?int $navigationSort = 2; 
+    protected static ?int $navigationSort = 4; 
+    protected static ?string $navigationGroup = 'Profesores';
 
     public static function form(Form $form): Form
     {

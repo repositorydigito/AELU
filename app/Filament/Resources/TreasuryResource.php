@@ -28,7 +28,8 @@ class TreasuryResource extends Resource
     protected static ?string $navigationLabel = 'Tesorería';
     // protected static ?string $pluralModelLabel = 'Tesorería';
     protected static ?string $modelLabel = 'Tesorería';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 8; 
+    protected static ?string $navigationGroup = 'Tesorería';
 
     public static function form(Form $form): Form
     {

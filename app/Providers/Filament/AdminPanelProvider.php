@@ -24,6 +24,8 @@ use TomatoPHP\FilamentUsers\FilamentUsersPlugin;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Support\Enums\MaxWidth;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
+use Filament\Navigation\MenuItem;
+use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage; 
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -61,24 +63,32 @@ class AdminPanelProvider extends PanelProvider
                 FilamentUsersPlugin::make(),
                 FilamentShieldPlugin::make(),
                 FilamentApexChartsPlugin::make(),
-                FilamentEditProfilePlugin::make()
-                    ->setTitle('Editar Perfil')        
-                    ->setNavigationLabel('Perfil')    
-                    ->setIcon('heroicon-o-user-circle')
-                    ->shouldRegisterNavigation() 
+                FilamentEditProfilePlugin::make()                    
+                    ->shouldRegisterNavigation(false) 
+            ])
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label('Perfil') 
+                    ->url(fn (): string => EditProfilePage::getUrl())
+                    ->icon('heroicon-o-user') 
             ])
             ->sidebarWidth('18rem')
             ->sidebarCollapsibleOnDesktop()
             ->collapsibleNavigationGroups()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->navigationGroups([
-                \Filament\Navigation\NavigationGroup::make()
+                'Alumnos',
+                'Profesores',
+                'Talleres',
+                'Tesorería',
+                /* \Filament\Navigation\NavigationGroup::make()
                     ->label('Gestión de Embarcaciones')
                     ->icon('heroicon-o-globe-alt'),
                 \Filament\Navigation\NavigationGroup::make()
                     ->label('Configuración')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->collapsed(),
+                */
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -133,6 +143,6 @@ class AdminPanelProvider extends PanelProvider
                         border-radius: 0.5rem;
                     }
                 </style>
-            ');
+            ');            
     }
 }
