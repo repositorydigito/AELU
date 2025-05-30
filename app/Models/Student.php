@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Instructor extends Model
+class Student extends Model
 {
     use HasFactory;
 
@@ -18,13 +18,15 @@ class Instructor extends Model
         'document_number',
         'birth_date',
         'nationality',
-        'instructor_code',
-        'instructor_type',
+        'student_code',
         'cell_phone',
         'home_phone',
         'district',
         'address',
         'photo',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'status',
     ];
 
     protected $casts = [
@@ -33,14 +35,19 @@ class Instructor extends Model
 
     public function workshops(): BelongsToMany
     {
-        return $this->belongsToMany(Workshop::class, 'instructor_workshop')
-                    ->withPivot('day', 'time', 'class_count', 'rate')
+        return $this->belongsToMany(Workshop::class, 'enrollments')
+                    ->withPivot('enrollment_date', 'status', 'payment_status')
                     ->withTimestamps();
     }
 
-    public function treasuryTransactions(): HasMany
+    public function enrollments(): HasMany
     {
-        return $this->hasMany(Treasury::class);
+        return $this->hasMany(Enrollment::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function getFullNameAttribute(): string
