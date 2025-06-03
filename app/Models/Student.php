@@ -14,24 +14,40 @@ class Student extends Model
     protected $fillable = [
         'last_names',
         'first_names',
+        'photo',
         'document_type',
         'document_number',
         'birth_date',
         'nationality',
         'student_code',
+        'category_partner',
         'cell_phone',
         'home_phone',
         'district',
         'address',
-        'photo',
         'emergency_contact_name',
+        'emergency_contact_relationship',
         'emergency_contact_phone',
-        'status',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
     ];
+
+    public function medicalRecord()
+    {
+        return $this->hasOne(MedicalRecord::class);
+    }
+
+    public function medications()
+    {
+        return $this->hasManyThrough(StudentMedication::class, MedicalRecord::class);
+    }
+
+    public function affidavit()
+    {
+        return $this->hasOne(Affidavit::class);
+    }
 
     public function workshops(): BelongsToMany
     {
