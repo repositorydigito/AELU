@@ -22,14 +22,21 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater; // Para la lista de talleres en el formulario
 use Filament\Forms\Components\Select; // Para el dropdown de talleres
 use Filament\Forms\Components\TimePicker; // Para la hora
+use Filament\Forms\Components\TextInput; // Importar TextInput para la tarifa
+use Filament\Forms\Components\Radio; // Para tipo de instructor
+use Filament\Forms\Components\Section; // Para organizar el formulario
+use Filament\Forms\Components\Grid; // Para organizar el formulario
+use Filament\Support\RawJs;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Forms\Components\Placeholder;
 
 class InstructorResource extends Resource
 {
-    protected static ?string $model = Instructor::class;    
+    protected static ?string $model = Instructor::class;
     protected static ?string $navigationLabel = 'Listado de Profesores';
     protected static ?string $pluralModelLabel = 'Profesores';
     protected static ?string $modelLabel = 'Profesor';
-    protected static ?int $navigationSort = 4; 
+    protected static ?int $navigationSort = 4;
     protected static ?string $navigationGroup = 'Profesores';
 
     public static function form(Form $form): Form
@@ -37,153 +44,185 @@ class InstructorResource extends Resource
         return $form
             ->schema([
                 Wizard::make([
-                    Step::make('Datos personales')
-                        ->icon('heroicon-o-user')
+                    Step::make('Datos Personales')
                         ->schema([
-                            Forms\Components\Grid::make(2)
+                            Section::make('Información Básica')
                                 ->schema([
-                                    Forms\Components\TextInput::make('last_names')
-                                        ->label('Apellidos')
-                                        ->required()
-                                        ->maxLength(255),
-                                    Forms\Components\TextInput::make('first_names')
-                                        ->label('Nombres')
-                                        ->required()
-                                        ->maxLength(255),
-                                ]),
-                            Forms\Components\Grid::make(2)
-                                ->schema([
-                                    Forms\Components\Select::make('document_type')
-                                        ->label('Tipo de documento')
-                                        ->options([
-                                            'DNI' => 'DNI',
-                                            'Pasaporte' => 'Pasaporte',
-                                            'Carnet de Extranjería' => 'Carnet de Extranjería',
-                                        ])
-                                        ->nullable(),
-                                    Forms\Components\TextInput::make('document_number')
-                                        ->label('Número de documento')
-                                        ->required()
-                                        ->unique(ignoreRecord: true)
-                                        ->maxLength(255),
-                                ]),
-                            Forms\Components\Grid::make(2)
-                                ->schema([
-                                    DatePicker::make('birth_date')
-                                        ->label('Fecha de Nacimiento')
-                                        ->nullable(),
-                                    Forms\Components\TextInput::make('nationality')
-                                        ->label('Nacionalidad')
-                                        ->maxLength(255)
-                                        ->nullable(),
-                                ]),
-                            Forms\Components\Grid::make(2)
-                                ->schema([
-                                    Forms\Components\TextInput::make('instructor_code')
-                                        ->label('Código de Profesor')
-                                        ->required()
-                                        ->unique(ignoreRecord: true)
-                                        ->maxLength(255),
-                                    Forms\Components\Select::make('instructor_type')
-                                        ->label('Tipo de Profesor')
-                                        ->options([
-                                            'Voluntario' => 'Voluntario',
-                                            'Por Horas' => 'Por Horas',
-                                        ])
-                                        ->required(),
-                                ]),
-                            Forms\Components\Grid::make(2)
-                                ->schema([
-                                    Forms\Components\TextInput::make('cell_phone')
-                                        ->label('Celular')
-                                        ->tel()
-                                        ->maxLength(255)
-                                        ->nullable(),
-                                    Forms\Components\TextInput::make('home_phone')
-                                        ->label('Teléfono de casa')
-                                        ->tel()
-                                        ->maxLength(255)
-                                        ->nullable(),
-                                ]),
-                            Forms\Components\Grid::make(2)
-                                ->schema([
-                                    Forms\Components\TextInput::make('district')
-                                        ->label('Distrito')
-                                        ->maxLength(255)
-                                        ->nullable(),
-                                    Forms\Components\TextInput::make('address')
-                                        ->label('Domicilio')
-                                        ->maxLength(255)
-                                        ->nullable(),
-                                ]),
-                            FileUpload::make('photo')
-                                ->label('Foto')
-                                ->image()
-                                ->directory('instructors-photos')
-                                ->nullable(),
-                        ]),
-
-                    Step::make('Talleres')
-                        ->icon('heroicon-o-calendar')
-                        ->schema([
-                            // El Repeater es clave para la lista de talleres que dicta el instructor
-                            Repeater::make('workshops_details') // Un nombre diferente para no confundir con la relación 'workshops'
-                                ->label('Talleres que dicta')
-                                ->relationship('workshops') // Vincula el Repeater a la relación 'workshops' del Instructor
-                                ->schema([
-                                    Select::make('workshop_id')
-                                        ->label('Taller')
-                                        ->options(Workshop::pluck('name', 'id')) // Obtiene nombres de talleres de la tabla Workshops
-                                        ->searchable()
-                                        ->required()
-                                        ->distinct() // Evita seleccionar el mismo taller varias veces en el mismo repetidor
-                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems(), // Evita seleccionar el mismo taller en items del mismo repeater
-                                    Select::make('day')
-                                        ->label('Día')
-                                        ->options([
-                                            'Lunes' => 'Lunes',
-                                            'Martes' => 'Martes',
-                                            'Miércoles' => 'Miércoles',
-                                            'Jueves' => 'Jueves',
-                                            'Viernes' => 'Viernes',
-                                            'Sábado' => 'Sábado',
-                                            'Domingo' => 'Domingo',
-                                        ])
-                                        ->required(),
-                                    TimePicker::make('time')
-                                        ->label('Hora')
-                                        ->required()
-                                        ->seconds(false), // Sin segundos
-                                    Forms\Components\TextInput::make('class_count')
-                                        ->label('Cantidad de clases')
-                                        ->numeric()
-                                        ->required()
-                                        ->default(1),
-                                    Forms\Components\TextInput::make('rate')
-                                        ->label('Tarifa (S/)')
-                                        ->numeric()
-                                        ->prefix('S/')
-                                        ->required(),
+                                    Grid::make(2)
+                                        ->schema([
+                                            TextInput::make('first_names')
+                                                ->label('Nombres')
+                                                ->required()
+                                                ->maxLength(255),
+                                            TextInput::make('last_names')
+                                                ->label('Apellidos')
+                                                ->required()
+                                                ->maxLength(255),
+                                            Select::make('document_type')
+                                                ->label('Tipo de Documento')
+                                                ->options([
+                                                    'DNI' => 'DNI',
+                                                    'Pasaporte' => 'Pasaporte',
+                                                    'Carné de Extranjería' => 'Carné de Extranjería',
+                                                ])
+                                                ->required(),
+                                            TextInput::make('document_number')
+                                                ->label('Número de Documento')
+                                                ->required()
+                                                ->maxLength(20),
+                                            DatePicker::make('birth_date')
+                                                ->label('Fecha de Nacimiento')
+                                                ->required()
+                                                ->maxDate(now()),
+                                            TextInput::make('nationality')
+                                                ->label('Nacionalidad')
+                                                ->required()
+                                                ->maxLength(255),
+                                            TextInput::make('email')
+                                                ->label('Correo Electrónico')
+                                                ->email()
+                                                ->maxLength(255)
+                                                ->nullable(),
+                                            TextInput::make('phone')
+                                                ->label('Teléfono')
+                                                ->tel()
+                                                ->maxLength(20)
+                                                ->nullable(),
+                                            TextInput::make('address')
+                                                ->label('Dirección')
+                                                ->maxLength(255)
+                                                ->columnSpanFull()
+                                                ->nullable(),
+                                            Radio::make('instructor_type')
+                                                ->label('Tipo de Instructor')
+                                                ->options([
+                                                    'Voluntario' => 'Voluntario',
+                                                    'Por Horas' => 'Por Horas',
+                                                ])
+                                                ->required()
+                                                ->inline(),
+                                        ]),
                                 ])
-                                ->columnSpanFull() // Para que el repeater ocupe todo el ancho
-                                ->defaultItems(0) // Inicia sin ítems por defecto
-                                ->minItems(0)
-                                ->columns(5) // Ajusta el número de columnas dentro del Repeater (Taller, Día, Hora, Cantidad, Tarifa)
-                                ->reorderable(true) // Permite reordenar los ítems
-                                ->addActionLabel('Registrar Taller') // Texto del botón para añadir ítem
-                                ->relationship('workshops') // Es importante para guardar la relación de muchos a muchos
                         ]),
 
-                    Step::make('Registro completo')
-                        ->icon('heroicon-o-check-circle')
-                        ->description('Revisa y confirma la información.')
+                    Step::make('Talleres Asignados')
                         ->schema([
-                            // Aquí podrías mostrar un resumen o simplemente dejarlo para el botón "Guardar" final.
-                            Forms\Components\Placeholder::make('summary_placeholder')
-                                ->content('Por favor, revisa todos los datos ingresados antes de guardar.')
-                                ->columnSpanFull(),
+                            Section::make('Talleres que Imparte el Profesor')
+                                ->description('Añade los talleres que este instructor dictará, especificando el horario y la tarifa.')
+                                ->schema([
+                                    Repeater::make('instructorWorkshops') // Nombre de la relación HasMany en el modelo Instructor
+                                        ->relationship('instructorWorkshops') // Usa la relación HasMany
+                                        ->label('Talleres')
+                                        ->schema([
+                                            Select::make('workshop_id')
+                                                ->label('Taller')
+                                                ->options(Workshop::all()->pluck('name', 'id'))
+                                                ->searchable()
+                                                ->required(),                                              
+                                            Select::make('day_of_week')
+                                                ->label('Día de la Semana')
+                                                ->options([
+                                                    'Lunes' => 'Lunes', 'Martes' => 'Martes', 'Miércoles' => 'Miércoles',
+                                                    'Jueves' => 'Jueves', 'Viernes' => 'Viernes', 'Sábado' => 'Sábado',
+                                                    'Domingo' => 'Domingo',
+                                                ])
+                                                ->required(),
+                                            TimePicker::make('start_time')
+                                                ->label('Hora de Inicio')
+                                                ->required()
+                                                ->seconds(false)
+                                                ->displayFormat('H:i'),
+                                            TimePicker::make('end_time')
+                                                ->label('Hora de Fin')
+                                                ->required()
+                                                ->seconds(false)
+                                                ->displayFormat('H:i'),
+                                            TextInput::make('class_count')
+                                                ->label('Número de Clases')
+                                                ->numeric()
+                                                ->minValue(1)
+                                                ->nullable(),
+                                            TextInput::make('class_rate')
+                                                ->label('Tarifa por Clase/Hora (S/.)')
+                                                ->numeric()
+                                                ->prefix('S/.')
+                                                ->mask(RawJs::make('$money($event.target.value)'))
+                                                ->stripCharacters(',')
+                                                ->nullable(),
+                                        ])
+                                        ->columns(3)
+                                        ->itemLabel(fn (array $state): ?string => empty($state['workshop_id']) ? null : Workshop::find($state['workshop_id'])?->name . ' (' . ($state['day_of_week'] ?? 'N/A') . ' - ' . (\Carbon\Carbon::parse($state['start_time'])->format('H:i') ?? 'N/A') . ')' )
+                                        ->defaultItems(1)
+                                        ->collapsible()
+                                        ->cloneable()
+                                        ->grid(2)
+                                        ->addActionLabel('Añadir Taller y Horario')
+                                ])
                         ]),
-                ])->columnSpanFull(),
+                    Step::make('Resumen')
+                        ->schema([
+                            Section::make('Ficha personal del Profesor')
+                                ->schema([
+                                    Grid::make(2)
+                                        ->schema([                                            
+                                            Placeholder::make('full_name_summary')
+                                                ->label('Nombre Completo')
+                                                ->content(fn ($get) => $get('first_names') . ' ' . $get('last_names')),
+                                            Placeholder::make('document_summary')
+                                                ->label('Documento')
+                                                ->content(fn ($get) => ($get('document_type') ?? 'N/A') . ': ' . ($get('document_number') ?? 'N/A')),
+                                            Placeholder::make('birth_date_summary')
+                                                ->label('Fecha de Nacimiento')
+                                                ->content(fn ($get) => \Carbon\Carbon::parse($get('birth_date'))->format('d/m/Y') ?? 'N/A'),
+                                            Placeholder::make('nationality_summary')
+                                                ->label('Nacionalidad')
+                                                ->content(fn ($get) => $get('nationality') ?? 'N/A'),
+                                            Placeholder::make('contact_summary')
+                                                ->label('Contacto')
+                                                ->content(fn ($get) => ($get('email') ?? 'Sin Email') . ' / Tel: ' . ($get('phone') ?? 'Sin Teléfono')),
+                                            Placeholder::make('address_summary')
+                                                ->label('Dirección')
+                                                ->content(fn ($get) => ($get('address') ?? 'N/A') . ', ' . ($get('district') ?? 'N/A')),
+                                            Placeholder::make('instructor_type_summary')
+                                                ->label('Tipo de Instructor')
+                                                ->content(fn ($get) => $get('instructor_type') ?? 'N/A'),
+                                        ]),
+                                ]),
+                            Section::make('Resumen de Talleres Asignados')
+                                ->schema([
+                                    Placeholder::make('workshops_list_summary')
+                                        ->label('Talleres y Horarios')
+                                        ->content(function ($get) {
+                                            $workshopsData = $get('instructorWorkshops'); // Obtener los datos del repeater de talleres
+                                            
+                                            if (empty($workshopsData)) {
+                                                return 'No se han asignado talleres.';
+                                            }
+
+                                            $summary = '<div class="space-y-2">'; // Contenedor para los elementos de la lista
+                                            foreach ($workshopsData as $workshopItem) {
+                                                $workshopName = Workshop::find($workshopItem['workshop_id'])?->name ?? 'Taller Desconocido';
+                                                $dayOfWeek = $workshopItem['day_of_week'] ?? 'N/A';
+                                                
+                                                $startTime = isset($workshopItem['start_time']) ? \Carbon\Carbon::parse($workshopItem['start_time'])->format('H:i') : 'N/A';
+                                                $endTime = isset($workshopItem['end_time']) ? \Carbon\Carbon::parse($workshopItem['end_time'])->format('H:i') : 'N/A';
+                                                
+                                                $classCount = $workshopItem['class_count'] ?? 'N/A';
+                                                $classRate = $workshopItem['class_rate'] ?? '0.00';
+
+                                                $summary .= '<div class="p-2 border rounded-md bg-gray-50 dark:bg-gray-800">';
+                                                $summary .= '<p><strong class="text-primary-600">Taller:</strong> ' . $workshopName . '</p>';
+                                                $summary .= '<p><strong class="text-primary-600">Horario:</strong> ' . $dayOfWeek . ' ' . $startTime . ' - ' . $endTime . '</p>';
+                                                $summary .= '<p><strong class="text-primary-600">Detalles:</strong> Clases: ' . $classCount . ' / Tarifa: S/. ' . number_format($classRate, 2) . '</p>';
+                                                $summary .= '</div>';
+                                            }
+                                            $summary .= '</div>';
+                                            return new \Illuminate\Support\HtmlString($summary); // Importante para renderizar HTML
+                                        }),
+                                ])
+                        ]),
+                ])
+                ->columnSpanFull(),
             ]);
     }
 
@@ -191,66 +230,30 @@ class InstructorResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('first_names')
-                    ->label('Nombres')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('last_names')
-                    ->label('Apellidos')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('instructor_code')
-                    ->label('Cód. del profesor')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('instructor_type')
-                    ->label('Modalidad')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Voluntario' => 'success',
-                        'Por Horas' => 'info',
-                        default => 'gray',
-                    })
-                    ->searchable(),
-                TextColumn::make('cell_phone')
-                    ->label('Teléfono')
-                    ->searchable(),
-                // Aquí, el "Tarifa" de la tabla principal es un poco engañoso si la tarifa es por taller.
-                // Podríamos mostrar un resumen o un valor promedio, o quitarlo si la tarifa es solo por taller.
-                // Para simplificar, si la tarifa es por instructor, la hubiéramos puesto en el modelo Instructor.
-                // Como las imágenes muestran "Tarifa" en la lista de profesores y "S/X" en cada taller,
-                // vamos a mantener "Tarifa" como una columna que resuma si es posible, o que muestre "Ver Talleres".
-                TextColumn::make('workshops.pivot.rate') // Esto no funcionará directamente para sumar, solo para mostrar el primero
-                    ->label('Tarifa (ej.)')
-                    ->formatStateUsing(function (string $state, Instructor $record) {
-                        if ($record->workshops->isNotEmpty()) {
-                            // Muestra la tarifa del primer taller como ejemplo
-                            return 'S/' . number_format($record->workshops->first()->pivot->rate, 2);
-                        }
-                        return '-';
-                    })
+                TextColumn::make('first_names')->label('Nombres')->searchable(),
+                TextColumn::make('last_names')->label('Apellidos')->searchable(),
+                TextColumn::make('document_number')->label('DNI')->searchable(),
+                TextColumn::make('cell_phone')->label('Teléfono'),
+                BadgeColumn::make('instructor_type')
+                    ->label('Tipo')
+                    ->colors([
+                        'success' => 'Voluntario',
+                        'info' => 'Por Horas',
+                    ]),
+                TextColumn::make('instructorWorkshops.workshop.name') // Accede a los nombres de los talleres a través de la relación
+                    ->label('Talleres que Imparte')
+                    ->listWithLineBreaks() // Muestra cada taller en una nueva línea
+                    ->limit(50)
                     ->tooltip(function (Instructor $record) {
-                        if ($record->workshops->isNotEmpty()) {
-                            $tooltip = 'Tarifas por Taller:';
-                            foreach ($record->workshops as $workshop) {
-                                $tooltip .= "\n- {$workshop->name}: S/" . number_format($workshop->pivot->rate, 2);
-                            }
-                            return $tooltip;
-                        }
-                        return 'Sin talleres asignados.';
+                        return $record->instructorWorkshops->map(function ($iw) {
+                            // Asegura que workshop y tiempos existen antes de intentar acceder a ellos
+                            $workshopName = $iw->workshop->name ?? 'Taller desconocido';
+                            $startTime = $iw->start_time ? \Carbon\Carbon::parse($iw->start_time)->format('H:i') : 'N/A';
+                            $endTime = $iw->end_time ? \Carbon\Carbon::parse($iw->end_time)->format('H:i') : 'N/A';
+                            $dayOfWeek = $iw->day_of_week ?? 'N/A';
+                            return $workshopName . ' (' . $dayOfWeek . ' ' . $startTime . '-' . $endTime . ')';
+                        })->implode("\n");
                     }),
-
-                TextColumn::make('workshops.name') // Para mostrar los nombres de los talleres
-                    ->label('Talleres')
-                    ->badge() // Muestra cada taller como un badge
-                    ->separator(',') // Separa los badges con una coma si hay muchos
-                    ->colors(['info']) // Color para los badges de talleres
-                    ->wrap() // Envuelve el texto si es muy largo
-                    ->limit(50) // Limita la cantidad de texto si es necesario
-                    ->tooltip(function (Instructor $record) { // Tooltip para mostrar todos los talleres
-                        return $record->workshops->pluck('name')->implode(', ');
-                    }),
-                
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('instructor_type')
@@ -259,9 +262,14 @@ class InstructorResource extends Resource
                         'Voluntario' => 'Voluntario',
                         'Por Horas' => 'Por Horas',
                     ]),
+                // Filtro para talleres, ahora basado en la relación a través de instructorWorkshops
                 Tables\Filters\SelectFilter::make('workshops')
                     ->label('Taller')
-                    ->relationship('workshops', 'name')
+                    // Utiliza la relación BelongsToMany que definimos en Workshop, o puedes usar 'instructorWorkshops.workshop'
+                    // Aquí usamos la relación `instructors` en el modelo `Workshop` (asumiendo que la has añadido para el filtro)
+                    // Si no, la relación directa a través de la tabla pivote es Tables\Filters\SelectFilter::make('instructorWorkshops.workshop_id')
+                    // Lo más robusto para un filtro de relación es:
+                    ->relationship('instructorWorkshops.workshop', 'name', fn (Builder $query) => $query->distinct())
                     ->searchable(),
             ])
             ->actions([
@@ -272,15 +280,12 @@ class InstructorResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);          
-            
+            ]);
     }
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array

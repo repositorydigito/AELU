@@ -22,13 +22,11 @@ class Workshop extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
-    ];
+    ];    
 
-    public function instructors(): BelongsToMany
+    public function instructorWorkshops(): HasMany
     {
-        return $this->belongsToMany(Instructor::class, 'instructor_workshop')
-                    ->withPivot('day', 'time', 'class_count', 'rate')
-                    ->withTimestamps();
+        return $this->hasMany(InstructorWorkshop::class);
     }
 
     public function students(): BelongsToMany

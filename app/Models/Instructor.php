@@ -30,13 +30,11 @@ class Instructor extends Model
     protected $casts = [
         'birth_date' => 'date',
     ];
-
-    public function workshops(): BelongsToMany
+    
+    public function instructorWorkshops(): HasMany
     {
-        return $this->belongsToMany(Workshop::class, 'instructor_workshop')
-                    ->withPivot('day', 'time', 'class_count', 'rate')
-                    ->withTimestamps();
-    }
+        return $this->hasMany(InstructorWorkshop::class);
+    }    
 
     public function treasuryTransactions(): HasMany
     {
