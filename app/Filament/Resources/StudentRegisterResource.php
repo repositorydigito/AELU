@@ -29,6 +29,8 @@ use Filament\Forms\Components\Placeholder; // Import Placeholder for displaying 
 use Filament\Forms\Components\Actions\Action; // Import Action for custom buttons
 use Filament\Notifications\Notification; // For showing notifications
 
+use Filament\Tables\Columns\TextColumn;
+
 class StudentRegisterResource extends Resource
 {
     protected static ?string $model = Student::class;
@@ -36,7 +38,7 @@ class StudentRegisterResource extends Resource
     // protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';    
     protected static ?string $navigationLabel = 'Registrar Alumnos';
     protected static ?string $pluralModelLabel = 'Alumnos';
-    // protected static ?string $modelLabel = 'Alumno';
+    protected static ?string $modelLabel = 'Alumno';
     protected static ?int $navigationSort = 3; 
     protected static ?string $navigationGroup = 'Alumnos';  
     
@@ -104,7 +106,7 @@ class StudentRegisterResource extends Resource
                                                 ->options([
                                                     'Dependiente' => 'Dependiente',
                                                     'Individual' => 'Individual',
-                                                    'Transitorio 75 años' => 'Transitorio 75 años',
+                                                    'Transitorio 65 años' => 'Transitorio 65 años',
                                                     'Hijo de Fundador' => 'Hijo de Fundador',
                                                     'Vitalicios' => 'Vitalicios',
                                                 ]),
@@ -272,8 +274,7 @@ class StudentRegisterResource extends Resource
                                         ->itemLabel(fn (array $state): ?string => $state['medicine'] ?? null),
                                 ]),
                         ]),
-
-                    // Nuevo paso para el resumen de la Ficha Personal y adjuntar firma/huella
+                    
                     Step::make('Declaración jurada y resumen')
                         ->description(fn (callable $get) => $get('firma_huella_adjuntada') ? 'Completado' : 'Pendiente de firma y huella')
                         ->schema([
@@ -317,8 +318,7 @@ class StudentRegisterResource extends Resource
                             Section::make('Ficha Médica Resumen')
                                 ->schema([
                                     Grid::make(2)
-                                        ->schema([
-                                            // **** CORRECCIONES EN LOS PLACEHOLDERS PARA LEER DE medicalRecord ****
+                                        ->schema([                                            
                                             Placeholder::make('weight_summary')
                                                 ->label('Peso')
                                                 ->content(fn (callable $get) => $get('medicalRecord.weight') ? $get('medicalRecord.weight') . ' kg' : 'N/A'),
@@ -340,7 +340,7 @@ class StudentRegisterResource extends Resource
                                             Placeholder::make('medical_conditions_summary')
                                                 ->label('Condiciones Médicas')
                                                 ->content(fn (callable $get) => implode(', ', (array) $get('medicalRecord.medical_conditions')) ?: 'Ninguna'),
-                                            Placeholder::make('allergies_summary') // Nombre del campo en el modelo es 'allergies'
+                                            Placeholder::make('allergies_summary') 
                                                 ->label('Alergias')
                                                 ->content(fn (callable $get) => implode(', ', (array) $get('medicalRecord.allergies')) ?: 'Ninguna'),
                                             Placeholder::make('allergy_details_summary')
@@ -354,33 +354,41 @@ class StudentRegisterResource extends Resource
                                                 ->label('Especificar Operación')
                                                 ->content(fn (callable $get) => in_array('Otros', $get('medicalRecord.surgical_operations') ?? []) ? ($get('medicalRecord.surgical_operation_details') ?? 'N/A') : 'No aplica')
                                                 ->hidden(fn (callable $get) => !in_array('Otros', $get('medicalRecord.surgical_operations') ?? [])),
-
-                                            // **** CORRECCIÓN EN EL REPEATER DE MEDICAMENTOS PARA LEER DE medicalRecord ****
-                                            Repeater::make('medications_summary') // Nombre del Repeater
+                                                                                        
+                                            Placeholder::make('medications_summary_text')
                                                 ->label('Medicamentos que toma')
-                                                ->disabled()
-                                                // ->relationship('medications')                                                 
-                                                ->schema([
-                                                    Placeholder::make('medicine')
-                                                        ->label('Medicina'),
-                                                    Placeholder::make('dose')
-                                                        ->label('Dosis'),
-                                                    Placeholder::make('schedule')
-                                                        ->label('Horario'),
-                                                ])
-                                                ->columns(3)
-                                                ->defaultItems(0)
-                                                // Corregir la condición hidden para el repeater
+                                                ->content(function (callable $get) {
+                                                    $medications = $get('medicalRecord.medications');
+                                                    if (empty($medications)) {
+                                                        return 'Ninguno';
+                                                    }
+                                                    
+                                                    $formattedMedications = collect($medications)->map(function ($med) {
+                                                        $details = [];
+                                                        if (!empty($med['medicine'])) {
+                                                            $details[] = $med['medicine'];
+                                                        }
+                                                        if (!empty($med['dose'])) {
+                                                            $details[] = '(' . $med['dose'] . ')';
+                                                        }
+                                                        if (!empty($med['schedule'])) {
+                                                            $details[] = ' - ' . $med['schedule'];
+                                                        }
+                                                        return implode(' ', $details);
+                                                    })->implode('<br>'); 
+
+                                                    return new \Illuminate\Support\HtmlString($formattedMedications);
+                                                })
+                                                ->columns(3)                                                                                                
                                                 ->hidden(fn (callable $get) => empty($get('medicalRecord.medications'))),
                                         ]),
                                 ]),
-                            Section::make('Firma y Huella Digital')
-                                // **** CORRECCIÓN CLAVE AQUÍ ****
-                                ->relationship('affidavit') // <-- ¡Agregado! Indica que este campo va a Affidavit
+                            Section::make('Firma y Huella Digital')                                
+                                ->relationship('affidavit') 
                                 ->schema([
-                                    FileUpload::make('digital_signature_and_fingerprint_path') // <-- Nombre de la columna en el modelo Affidavit
+                                    FileUpload::make('digital_signature_and_fingerprint_path') 
                                         ->label('Arrastra y suelta tus archivos o subelos de tu computadora')
-                                        ->image() // Mantén .image() si solo quieres imágenes, si no, usa acceptedFileTypes
+                                        ->image() 
                                         ->nullable()
                                         ->directory('firmas-huellas')
                                         ->columnSpanFull()
@@ -396,29 +404,100 @@ class StudentRegisterResource extends Resource
                                     Forms\Components\Hidden::make('firma_huella_adjuntada')
                                         ->default(false)
                                         ->dehydrated(false),
+                                    
+                                    Forms\Components\Actions::make([
+                                        Forms\Components\Actions\Action::make('generate_affidavit_pdf')
+                                            ->label('Generar Declaración Jurada')
+                                            ->color('success')
+                                            ->icon('heroicon-o-document-arrow-down')
+                                            ->disabled(fn (callable $get) => !$get('firma_huella_adjuntada'))                                            
+                                            ->action(function ($livewire, Forms\Get $get) {                                                
+                                                $student = $livewire->record;
+                                                
+                                                if ($student && $student->id) {                                                    
+                                                    $livewire->redirect(route('generate.affidavit.pdf', ['student' => $student->id]), navigate: false);
+                                                } else {                                                    
+                                                    Notification::make()
+                                                        ->danger()
+                                                        ->title('Error de Generación')
+                                                        ->body('Para generar la declaración jurada, el estudiante debe haber sido guardado previamente. Por favor, finalice el registro o acceda a la edición de un estudiante existente.')
+                                                        ->send();
+                                                }
+                                            })
+                                        ])                                    
                                 ]),
                         ]),
                 ])                
                 ->columnSpanFull(),                 
             ]);
     }
-    
+
     public static function table(Table $table): Table
     {
-        return $table            
+        return $table
+            ->columns([
+                TextColumn::make('first_names')
+                    ->label('Nombres')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('last_names')
+                    ->label('Apellidos')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('student_code')
+                    ->label('Código')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('document_number')
+                    ->label('Documento')
+                    ->searchable(),
+                TextColumn::make('cell_phone')
+                    ->label('Teléfono')
+                    ->searchable(),
+                TextColumn::make('status')
+                    ->label('Estado')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'gray',
+                        'suspended' => 'danger',
+                        default => 'gray',
+                    }),
+                TextColumn::make('workshops.name')
+                    ->label('Talleres')
+                    ->badge()
+                    ->separator(',')
+                    ->colors(['info'])
+                    ->wrap()
+                    ->limit(50)
+                    ->tooltip(function (Student $record) {
+                        return $record->workshops->pluck('name')->implode(', ');
+                    }),
+            ])
             ->filters([
-                // Puedes añadir filtros aquí si lo necesitas
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Estado')
+                    ->options([
+                        'active' => 'Activo',
+                        'inactive' => 'Inactivo',
+                        'suspended' => 'Suspendido',
+                    ]),
+                Tables\Filters\SelectFilter::make('workshops')
+                    ->label('Taller')
+                    ->relationship('workshops', 'name')
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
+    }  
+    
     public static function getRelations(): array
     {
         return [

@@ -15,7 +15,7 @@ class StudentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_student');
+        return $user->can('view_any_student::register');
     }
 
     /**
@@ -23,7 +23,7 @@ class StudentPolicy
      */
     public function view(User $user, Student $student): bool
     {
-        return $user->can('view_student');
+        return $user->can('view_student::register');
     }
 
     /**
@@ -31,7 +31,7 @@ class StudentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_student');
+        return $user->can('create_student::register');
     }
 
     /**
@@ -39,7 +39,7 @@ class StudentPolicy
      */
     public function update(User $user, Student $student): bool
     {
-        return $user->can('update_student');
+        return $user->can('update_student::register');
     }
 
     /**
@@ -47,7 +47,7 @@ class StudentPolicy
      */
     public function delete(User $user, Student $student): bool
     {
-        return $user->can('delete_student');
+        return $user->can('delete_student::register');
     }
 
     /**
@@ -55,7 +55,7 @@ class StudentPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_student');
+        return $user->can('delete_any_student::register');
     }
 
     /**
@@ -63,7 +63,7 @@ class StudentPolicy
      */
     public function forceDelete(User $user, Student $student): bool
     {
-        return $user->can('force_delete_student');
+        return $user->can('force_delete_student::register');
     }
 
     /**
@@ -71,7 +71,7 @@ class StudentPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_student');
+        return $user->can('force_delete_any_student::register');
     }
 
     /**
@@ -79,7 +79,7 @@ class StudentPolicy
      */
     public function restore(User $user, Student $student): bool
     {
-        return $user->can('restore_student');
+        return $user->can('restore_student::register');
     }
 
     /**
@@ -87,7 +87,7 @@ class StudentPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_student');
+        return $user->can('restore_any_student::register');
     }
 
     /**
@@ -95,7 +95,7 @@ class StudentPolicy
      */
     public function replicate(User $user, Student $student): bool
     {
-        return $user->can('replicate_student');
+        return $user->can('replicate_student::register');
     }
 
     /**
@@ -103,6 +103,6 @@ class StudentPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_student');
+        return $user->can('reorder_student::register');
     }
 }
