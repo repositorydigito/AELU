@@ -17,8 +17,6 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use SolutionForest\FilamentSimpleLightBox\SimpleLightBoxPlugin;
-use Solutionforest\FilamentLoginScreen\Filament\Pages\Auth\Themes\Theme1\LoginScreenPage;
 use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
 use TomatoPHP\FilamentUsers\FilamentUsersPlugin;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
@@ -26,6 +24,10 @@ use Filament\Support\Enums\MaxWidth;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use Filament\Navigation\MenuItem;
 use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage; 
+use Filament\View\PanelsRenderHook;
+use App\Filament\Pages\Auth\Login;
+use Filament\Support\Facades\FilamentView;
+use Illuminate\Support\Facades\Blade;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -35,10 +37,10 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login(LoginScreenPage::class)
-            ->darkMode(false)
+            ->login(Login::class)
             ->brandName('AELU')
             ->brandLogo(asset('images/logoAELU.svg'))
+            ->darkMode(false)
             ->sidebarFullyCollapsibleOnDesktop()
             ->colors([
                 'primary' => '#017D47',
@@ -81,14 +83,7 @@ class AdminPanelProvider extends PanelProvider
                 'Profesores',
                 'Talleres',
                 'Tesorería',
-                /* \Filament\Navigation\NavigationGroup::make()
-                    ->label('Gestión de Embarcaciones')
-                    ->icon('heroicon-o-globe-alt'),
-                \Filament\Navigation\NavigationGroup::make()
-                    ->label('Configuración')
-                    ->icon('heroicon-o-cog-6-tooth')
-                    ->collapsed(),
-                */
+        
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -104,6 +99,10 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): string => Blade::render('<div id="corporate-theme-enhancer"></div>'),
+            )
             ->renderHook('panels::body.start', fn()=>'
                 <style>
                     .fi-section-content-ctn{
