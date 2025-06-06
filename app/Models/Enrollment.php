@@ -12,7 +12,7 @@ class Enrollment extends Model
 
     protected $fillable = [
         'student_id',
-        'workshop_id',
+        'instructor_workshop_id',        
         'enrollment_date',
         'status',
         'payment_status',
@@ -32,10 +32,15 @@ class Enrollment extends Model
         return $this->belongsTo(Student::class);
     }
 
-    public function workshop(): BelongsTo
+    public function instructorWorkshop(): BelongsTo 
+    {
+        return $this->belongsTo(InstructorWorkshop::class);
+    }
+
+    /* public function workshop(): BelongsTo
     {
         return $this->belongsTo(Workshop::class);
-    }
+    } */
 
     public function getRemainingAmountAttribute(): float
     {

@@ -53,15 +53,12 @@ class WorkshopResource extends Resource
                     ->searchable() // Permite buscar por nombre de taller
                     ->sortable(), // Permite ordenar por nombre de taller
                 TextColumn::make('instructors_count') // Columna para mostrar cuántos instructores dictan este taller
-                    ->counts('instructors') // Usa el método counts() para contar la relación
+                    ->counts('instructorWorkshops') // Usa el método counts() para contar la relación
                     ->label('N° de Profesores')
                     ->sortable(), // Permite ordenar por número de instructores
             ])
             ->filters([
-                // Puedes añadir filtros aquí si lo deseas, por ejemplo, filtrar por talleres populares
-                // Tables\Filters\Filter::make('has_instructors')
-                //     ->query(fn (Builder $query) => $query->has('instructors'))
-                //     ->label('Con Profesores Asignados'),
+                //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
