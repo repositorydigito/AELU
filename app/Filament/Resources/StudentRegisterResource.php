@@ -53,47 +53,58 @@ class StudentRegisterResource extends Resource
                                 ->schema([
                                     Grid::make(2)
                                         ->schema([
-                                            TextInput::make('last_names')
-                                                ->label('Apellidos')
-                                                ->required()
-                                                ->maxLength(255),
+                                            Grid::make(1)
+                                                ->columnSpan(1)
+                                                ->schema([
+                                                    TextInput::make('last_names')
+                                                        ->label('Apellidos')
+                                                        ->required()
+                                                        ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                        ->maxLength(255),
+
+                                                    TextInput::make('first_names')
+                                                        ->label('Nombres')
+                                                        ->required()
+                                                        ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                        ->maxLength(255),
+
+                                                    Grid::make(2)
+                                                        ->schema([
+                                                            Select::make('document_type')
+                                                                ->label('Tipo de documento')
+                                                                ->options([
+                                                                    'DNI' => 'DNI',
+                                                                    'CE' => 'Carné de Extranjería',
+                                                                    'Pasaporte' => 'Pasaporte',
+                                                                ])
+                                                                ->required()
+                                                                ->validationMessages(['required' => 'Este campo es obligatorio']),
+
+                                                            TextInput::make('document_number')
+                                                                ->label('Número de documento')
+                                                                ->required()
+                                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                                ->maxLength(255),
+                                                        ]),
+                                                ]),
                                             FileUpload::make('photo')
                                                 ->label('Foto')
                                                 ->image()
                                                 ->directory('student-photos')
+                                                ->maxSize(10240)
                                                 ->columnSpan(1),
-                                        ]),
-                                    Grid::make(2)
-                                        ->schema([
-                                            TextInput::make('first_names')
-                                                ->label('Nombres')
-                                                ->required()
-                                                ->maxLength(255),
-                                        ]),
-                                    Grid::make(2)
-                                        ->schema([
-                                            Select::make('document_type')
-                                                ->label('Tipo de documento')
-                                                ->options([
-                                                    'DNI' => 'DNI',
-                                                    'CE' => 'Carné de Extranjería',
-                                                    'Pasaporte' => 'Pasaporte',
-                                                ])
-                                                ->required(),
-                                            TextInput::make('document_number')
-                                                ->label('Número de documento')
-                                                ->required()
-                                                ->maxLength(255),
                                         ]),
                                     Grid::make(2)
                                         ->schema([
                                             DatePicker::make('birth_date')
                                                 ->label('Fecha de Nacimiento')
                                                 ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxDate(now()),
                                             TextInput::make('nationality')
                                                 ->label('Nacionalidad')
                                                 ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(255),
                                         ]),
                                     Grid::make(2)
@@ -140,15 +151,18 @@ class StudentRegisterResource extends Resource
                                             TextInput::make('emergency_contact_name')
                                                 ->label('Nombre del familiar responsable')
                                                 ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_relationship')
                                                 ->label('Parentesco o relación')
                                                 ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_phone')
                                                 ->label('Teléfono del familiar responsable')
                                                 ->tel()
                                                 ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(20),
                                         ]),
                                 ]),
@@ -159,12 +173,24 @@ class StudentRegisterResource extends Resource
                             Section::make('Ficha Médica')
                                 ->relationship('medicalRecord')
                                 ->schema([
-                                    Grid::make(3)
+                                    Grid::make(4)
                                         ->schema([
-                                            TextInput::make('weight')
-                                                ->label('Peso')
-                                                ->numeric()
-                                                ->suffix('kg'),
+                                            // Columna 1: Peso y Talla
+                                            Grid::make(1)
+                                                ->columnSpan(1)
+                                                ->schema([
+                                                    TextInput::make('weight')
+                                                        ->label('Peso')
+                                                        ->numeric()
+                                                        ->suffix('kg'),
+
+                                                    TextInput::make('height')
+                                                        ->label('Talla')
+                                                        ->numeric()
+                                                        ->suffix('cm'),
+                                                ]),
+
+                                            // Columna 2: Género
                                             Radio::make('gender')
                                                 ->label('Género')
                                                 ->options([
@@ -172,7 +198,28 @@ class StudentRegisterResource extends Resource
                                                     'Masculino' => 'Masculino',
                                                     'Prefiero no responder' => 'Prefiero no responder',
                                                 ])
-                                                ->inline(),
+                                                ->columnSpan(1),
+
+                                            // Columna 3: Fumar
+                                            Grid::make(1)
+                                                ->columnSpan(1)
+                                                ->schema([
+                                                    Radio::make('smokes')
+                                                        ->label('¿Fuma?')
+                                                        ->options([
+                                                            'Sí' => 'Sí',
+                                                            'No' => 'No',
+                                                        ])
+                                                        ->reactive(),
+
+                                                    TextInput::make('cigarettes_per_day')
+                                                        ->label('¿Cuántos cigarrillos al día?')
+                                                        ->numeric()
+                                                        ->hidden(fn (callable $get) => $get('smokes') !== 'Sí')
+                                                        ->maxLength(255),
+                                                ]),
+
+                                            // Columna 4: Seguro Médico
                                             Select::make('health_insurance')
                                                 ->label('Seguro Médico')
                                                 ->options([
@@ -182,82 +229,79 @@ class StudentRegisterResource extends Resource
                                                     'Pacífico' => 'Pacífico',
                                                     'MAPFRE' => 'MAPFRE',
                                                     'La Positiva' => 'La Positiva',
-                                                ]),
-                                        ]),
-                                    Grid::make(3)
-                                        ->schema([
-                                            TextInput::make('height')
-                                                ->label('Talla')
-                                                ->numeric()
-                                                ->suffix('m'),
-                                            Radio::make('smokes')
-                                                ->label('¿Fuma?')
-                                                ->options([
-                                                    'Sí' => 'Sí',
-                                                    'No' => 'No',
                                                 ])
-                                                ->inline()
-                                                ->reactive(),
-                                            TextInput::make('cigarettes_per_day')
-                                                ->label('¿Cuántos cigarrillos al día?')
-                                                ->numeric()
-                                                ->hidden(fn (callable $get) => $get('smokes') !== 'Sí')
-                                                ->maxLength(255),
+                                                ->columnSpan(1),
                                         ]),
 
-                                    CheckboxList::make('medical_conditions')
-                                        ->label('Condiciones médicas que padece')
-                                        ->options([
-                                            'Hipertension Arterial' => 'Hipertensión Arterial',
-                                            'Asma, Bronquitis' => 'Asma, Bronquitis',
-                                            'Gastritis, Ulceras' => 'Gastritis, Úlceras',
-                                            'Diabetes' => 'Diabetes',
-                                            'Artrosis, Artritis' => 'Artrosis, Artritis',
-                                            'Estrés, Ansiedad, Depresión' => 'Estrés, Ansiedad, Depresión',
-                                            'Taquicardia, Angina de Pecho' => 'Taquicardia, Angina de Pecho',
-                                            'ECV (Enfermedad Cardio Vascular)' => 'ECV (Enfermedad Cardio Vascular)',
-                                            'Hipoacusia (Sordera)' => 'Hipoacusia (Sordera)',
-                                        ])
-                                        ->columns(2),
+                                    Grid::make(2)
+                                        ->schema([
+                                            // Columna izquierda - Condiciones médicas
+                                            Forms\Components\Group::make([
+                                                CheckboxList::make('medical_conditions')
+                                                    ->label('Condiciones médicas que padece *')
+                                                    ->options([
+                                                        'Ninguna' => 'Ninguna',
+                                                        'Hipertension Arterial' => 'Hipertensión Arterial',
+                                                        'Asma, Bronquitis' => 'Asma, Bronquitis',
+                                                        'Gastritis, Ulceras' => 'Gastritis, Úlceras',
+                                                        'Diabetes' => 'Diabetes',
+                                                        'Artrosis, Artritis' => 'Artrosis, Artritis',
+                                                        'Estrés, Ansiedad, Depresión' => 'Estrés, Ansiedad, Depresión',
+                                                        'Taquicardia, Angina de Pecho' => 'Taquicardia, Angina de Pecho',
+                                                        'ECV (Enfermedad Cardio Vascular)' => 'ECV (Enfermedad Cerebro Vascular)',
+                                                        'Hipoacusia (Sordera)' => 'Hipoacusia (Sordera)',
+                                                        'Alergias' => 'Alergias',
+                                                    ])
+                                                    ->columns(1)
+                                                    ->reactive(),
 
-                                    CheckboxList::make('allergies')
-                                        ->label('Alergias')
-                                        ->options([
-                                            'Alimentos' => 'Alimentos',
-                                            'Medicinas' => 'Medicinas',
-                                            'Otros' => 'Otros',
-                                        ])
-                                        ->columns(3)
-                                        ->reactive(),
-                                    Textarea::make('allergy_details')
-                                        ->label('Detalle el tipo de alergia')
-                                        ->hidden(fn (callable $get) => empty($get('allergies'))),
+                                                CheckboxList::make('allergies')
+                                                    ->label('')
+                                                    ->options([
+                                                        'Alimentos' => 'Alimentos',
+                                                        'Medicinas' => 'Medicinas',
+                                                        'Otros' => 'Otros',
+                                                    ])
+                                                    ->columns(1)
+                                                    ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []))
+                                                    ->reactive(),
 
-                                    CheckboxList::make('surgical_operations')
-                                        ->label('Operaciones a las que se ha sometido')
-                                        ->options([
-                                            'Ninguna' => 'Ninguna',
-                                            'Al Corazón' => 'Al Corazón',
-                                            'Al Cerebro' => 'Al Cerebro',
-                                            'A la Vista' => 'A la Vista',
-                                            'A la Columna' => 'A la Columna',
-                                            'A la Rodilla' => 'A la Rodilla',
-                                            'A la Cadera' => 'A la Cadera',
-                                            'Otros' => 'Otros',
-                                        ])
-                                        ->columns(2)
-                                        ->reactive(),
-                                    TextInput::make('surgical_operation_details')
-                                        ->label('Especificar')
-                                        ->hidden(fn (callable $get) => !in_array('Otros', $get('surgical_operations') ?? [])),
+                                                Textarea::make('allergy_details')
+                                                    ->label('Detalle el tipo de alergia')
+                                                    ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
+                                            ]),
 
+                                            // Columna derecha - Operaciones
+                                            Forms\Components\Group::make([
+                                                CheckboxList::make('surgical_operations')
+                                                    ->label('Operaciones a las que se ha sometido *')
+                                                    ->options([
+                                                        'Ninguna' => 'Ninguna',
+                                                        'Al Corazón' => 'Al Corazón',
+                                                        'Al Cerebro' => 'Al Cerebro',
+                                                        'A la Vista' => 'A La Vista',
+                                                        'A la Columna' => 'A La Columna',
+                                                        'A la Rodilla' => 'A La Rodilla',
+                                                        'A la Cadera' => 'A La Cadera',
+                                                        'Otros' => 'Otros',
+                                                    ])
+                                                    ->columns(1)
+                                                    ->reactive(),
+
+                                                TextInput::make('surgical_operation_details')
+                                                    ->label('Especificar *')
+                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('surgical_operations') ?? [])),
+                                            ]),
+                                        ]),
+                            
                                     Repeater::make('medications')
                                         ->relationship('medications')
                                         ->label('Medicamentos que toma')
                                         ->schema([
                                             TextInput::make('medicine')
                                                 ->label('Medicina')
-                                                ->required(),
+                                                ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio']),
                                             TextInput::make('dose')
                                                 ->label('Dosis'),
                                             Select::make('schedule')
@@ -276,7 +320,6 @@ class StudentRegisterResource extends Resource
                         ]),
                     
                     Step::make('Declaración jurada y resumen')
-                        ->description(fn (callable $get) => $get('firma_huella_adjuntada') ? 'Completado' : 'Pendiente de firma y huella')
                         ->schema([
                             Section::make('Resumen de Ficha Personal')
                                 ->description('Revisa los datos antes de completar la declaración jurada.')
@@ -410,13 +453,13 @@ class StudentRegisterResource extends Resource
                                             ->label('Generar Declaración Jurada')
                                             ->color('success')
                                             ->icon('heroicon-o-document-arrow-down')
-                                            ->disabled(fn (callable $get) => !$get('firma_huella_adjuntada'))                                            
-                                            ->action(function ($livewire, Forms\Get $get) {                                                
+                                            ->disabled(fn (callable $get, $livewire) => !$get('digital_signature_and_fingerprint_path') || !isset($livewire->record) || !$livewire->record?->id)
+                                            ->action(function ($livewire, Forms\Get $get) {
                                                 $student = $livewire->record;
-                                                
-                                                if ($student && $student->id) {                                                    
+
+                                                if ($student && $student->id) {
                                                     $livewire->redirect(route('generate.affidavit.pdf', ['student' => $student->id]), navigate: false);
-                                                } else {                                                    
+                                                } else {
                                                     Notification::make()
                                                         ->danger()
                                                         ->title('Error de Generación')
