@@ -20,6 +20,7 @@ return new class extends Migration
             $table->time('end_time');
             $table->integer('class_count')->nullable(); 
             $table->decimal('class_rate', 8, 2)->nullable(); 
+            $table->string('place'); 
             $table->timestamps();
             // Para asegurar que un instructor no dicte el mismo taller en el mismo día y hora
             // $table->unique(['instructor_id', 'workshop_id', 'day_of_week', 'start_time'], 'unique_instructor_workshop_schedule');

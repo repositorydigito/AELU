@@ -28,9 +28,9 @@ return new class extends Migration
             $table->string('address')->nullable(); 
 
             // Contacto de emergencia
-            $table->string('emergency_contact_name'); 
-            $table->string('emergency_contact_relationship'); 
-            $table->string('emergency_contact_phone'); 
+            $table->string('emergency_contact_name')->nullable(); 
+            $table->string('emergency_contact_relationship')->nullable(); 
+            $table->string('emergency_contact_phone')->nullable(); 
             $table->timestamps();
         });
     }

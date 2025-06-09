@@ -12,9 +12,19 @@ class CreateInstructor extends CreateRecord
     protected static string $resource = InstructorResource::class;
 
     public function getRedirectUrl(): string
-    {
-        // return $this->getResource()::getUrl('index');
+    {        
         return InstructorResource::getUrl('index');
-
+    }
+    protected function getFormActions(): array
+    {
+        return [            
+            Actions\Action::make('save') 
+                ->label('Guardar') 
+                ->submit('create'),
+            Actions\Action::make('cancel')
+                ->label('Cancelar')
+                ->url(InstructorResource::getUrl('index'))
+                ->color('gray'),
+        ];
     }
 }

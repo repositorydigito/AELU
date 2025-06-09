@@ -27,14 +27,7 @@ class Workshop extends Model
     public function instructorWorkshops(): HasMany
     {
         return $this->hasMany(InstructorWorkshop::class);
-    }
-
-    public function students(): BelongsToMany
-    {
-        return $this->belongsToMany(Student::class, 'enrollments')
-                    ->withPivot('enrollment_date', 'status', 'payment_status')
-                    ->withTimestamps();
-    }
+    }    
 
     public function enrollments(): HasMany
     {

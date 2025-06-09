@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('enrollments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->constrained()->onDelete('cascade');
-            $table->foreignId('workshop_id')->constrained()->onDelete('cascade');
+            $table->foreignId('student_id');
+            $table->foreignId('instructor_workshop_id');
             $table->date('enrollment_date');
             $table->enum('status', ['enrolled', 'completed', 'dropped', 'pending'])->default('enrolled');
             $table->enum('payment_status', ['pending', 'partial', 'paid', 'overdue'])->default('pending');
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->unique(['student_id', 'workshop_id']);
+            $table->unique(['student_id', 'instructor_workshop_id']);
         });
     }
 

@@ -165,6 +165,9 @@ class InstructorResource extends Resource
                                                 ->mask(RawJs::make('$money($event.target.value)'))
                                                 ->stripCharacters(',')
                                                 ->nullable(),
+                                            TextInput::make('place')
+                                                ->label('Lugar')
+                                                ->required(),                                         
                                         ])
                                         ->columns(3)
                                         ->itemLabel(fn (array $state): ?string => empty($state['workshop_id']) ? null : Workshop::find($state['workshop_id'])?->name . ' (' . ($state['day_of_week'] ?? 'N/A') . ' - ' . (\Carbon\Carbon::parse($state['start_time'])->format('H:i') ?? 'N/A') . ')' )
@@ -225,11 +228,12 @@ class InstructorResource extends Resource
                                                 
                                                 $classCount = $workshopItem['class_count'] ?? 'N/A';
                                                 $classRate = $workshopItem['class_rate'] ?? '0.00';
+                                                $place = $workshopItem['place'];
 
                                                 $summary .= '<div class="p-2 border rounded-md bg-gray-50 dark:bg-gray-800">';
                                                 $summary .= '<p><strong class="text-primary-600">Taller:</strong> ' . $workshopName . '</p>';
                                                 $summary .= '<p><strong class="text-primary-600">Horario:</strong> ' . $dayOfWeek . ' ' . $startTime . ' - ' . $endTime . '</p>';
-                                                $summary .= '<p><strong class="text-primary-600">Detalles:</strong> Clases: ' . $classCount . ' / Tarifa: S/. ' . number_format($classRate, 2) . '</p>';
+                                                $summary .= '<p><strong class="text-primary-600">Detalles:</strong> Clases: ' . $classCount . ' / Tarifa: S/. ' . number_format($classRate, 2) . ' / Lugar: ' .$place . '</p>';
                                                 $summary .= '</div>';
                                             }
                                             $summary .= '</div>';

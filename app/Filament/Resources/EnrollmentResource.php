@@ -243,7 +243,14 @@ class EnrollmentResource extends Resource
                         'warning' => 'Completado',
                         'info' => 'Abandonado',
                         'danger' => 'Pendiente',
-                    ]),
+                    ])
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'enrolled' => 'Inscrito',
+                        'completed' => 'Completado',
+                        'dropped' => 'Abandonado',
+                        'pending' => 'Pendiente',
+                        default => $state, 
+                    }),
                 BadgeColumn::make('payment_status')
                     ->label('Estado Pago')
                     ->colors([
@@ -251,7 +258,14 @@ class EnrollmentResource extends Resource
                         'warning' => 'Parcialmente Pagado',
                         'success' => 'Pagado',
                         'info' => 'Vencido',
-                    ]),
+                    ])
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Pendiente',
+                        'partial' => 'Parcialmente Pagado',
+                        'paid' => 'Pagado',
+                        'overdue' => 'Vencido',
+                        default => $state, 
+                    }),
                 TextColumn::make('total_amount')
                     ->label('Monto Total')
                     ->money('PEN')
