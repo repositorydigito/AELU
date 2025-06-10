@@ -96,8 +96,8 @@ class InstructorResource extends Resource
                                                 Select::make('instructor_type')
                                                     ->label('Tipo de Profesor')
                                                     ->options([
-                                                        'Voluntario' => 'Voluntario',
-                                                        'Por Horas' => 'Por Horas',
+                                                        'VOLUNTARIO' => 'VOLUNTARIO',
+                                                        'POR HORAS' => 'POR HORAS',
                                                     ])
                                                     ->required(),
                                                 TextInput::make('cell_phone')
@@ -257,8 +257,8 @@ class InstructorResource extends Resource
                 BadgeColumn::make('instructor_type')
                     ->label('Tipo')
                     ->colors([
-                        'success' => 'Voluntario',
-                        'info' => 'Por Horas',
+                        'success' => 'VOLUNTARIO',
+                        'info' => 'POR HORAS',
                     ]),
                 TextColumn::make('instructorWorkshops.workshop.name') // Accede a los nombres de los talleres a través de la relación
                     ->label('Talleres que Imparte')
@@ -279,8 +279,8 @@ class InstructorResource extends Resource
                 Tables\Filters\SelectFilter::make('instructor_type')
                     ->label('Modalidad')
                     ->options([
-                        'Voluntario' => 'Voluntario',
-                        'Por Horas' => 'Por Horas',
+                        'VOLUNTARIO' => 'VOLUNTARIO',
+                        'POR HORAS' => 'POR HORAS',
                     ]),
                 // Filtro para talleres, ahora basado en la relación a través de instructorWorkshops
                 Tables\Filters\SelectFilter::make('workshops')
@@ -314,6 +314,7 @@ class InstructorResource extends Resource
             'index' => Pages\ListInstructors::route('/'),
             'create' => Pages\CreateInstructor::route('/create'),
             'edit' => Pages\EditInstructor::route('/{record}/edit'),
+            'import' => Pages\ImportInstructors::route('/import'),
         ];
     }
 }

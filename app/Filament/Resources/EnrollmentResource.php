@@ -276,36 +276,7 @@ class EnrollmentResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('instructor_workshop_id')
-                    ->label('Filtrar por Taller y Horario')
-                    ->options(function () {
-                        return InstructorWorkshop::with(['workshop', 'instructor'])
-                            ->get()
-                            ->mapWithKeys(function ($iw) {
-                                $workshopName = $iw->workshop->name ?? 'Taller Desconocido';
-                                $instructorName = $iw->instructor->full_name ?? 'Instructor Desconocido';
-                                $day = $iw->day_of_week ?? 'N/A';
-                                $startTime = $iw->start_time ? \Carbon\Carbon::parse($iw->start_time)->format('H:i A') : 'N/A';
-                                return [$iw->id => "$workshopName ($day $startTime) - $instructorName"];
-                            });
-                    })
-                    ->searchable(),
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Filtrar por Estado de Inscripción')
-                    ->options([
-                        'enrolled' => 'Inscrito',
-                        'completed' => 'Completado',
-                        'dropped' => 'Abandonado',
-                        'pending' => 'Pendiente',
-                    ]),
-                Tables\Filters\SelectFilter::make('payment_status')
-                    ->label('Filtrar por Estado de Pago')
-                    ->options([
-                        'pending' => 'Pendiente',
-                        'partial' => 'Parcialmente Pagado',
-                        'paid' => 'Pagado',
-                        'overdue' => 'Vencido',
-                    ]),
+                //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -316,13 +287,7 @@ class EnrollmentResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    // Asegúrate de que el modelo Instructor tenga este accesor
-    // public function getFullNameAttribute(): string
-    // {
-    //     return "{$this->first_name} {$this->last_name}"; // Ajusta a tus nombres de columnas
-    // }
+    }    
 
     public static function getRelations(): array
     {
