@@ -19,7 +19,6 @@ class WorkshopResource extends Resource
 {
     protected static ?string $model = Workshop::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'Talleres'; 
     protected static ?string $pluralModelLabel = 'Talleres'; 
     protected static ?string $modelLabel = 'Taller';    

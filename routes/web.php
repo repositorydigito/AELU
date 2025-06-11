@@ -8,3 +8,4 @@ Route::get('/', function () {
 });
 
 Route::get('/generate-affidavit/{student}', [AffidavitController::class, 'generatePdf'])->name('generate.affidavit.pdf');
+Route::get('/generate-affidavit-instructor/{instructor}', [AffidavitController::class, 'generateInstructorPdf'])->name('generate.affidavit.instructor.pdf');

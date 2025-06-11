@@ -8,6 +8,7 @@ class MedicalRecord extends Model
 {
     protected $fillable = [
         'student_id',
+        'instructor_id',
         'weight',
         'height',
         'gender',
@@ -30,6 +31,11 @@ class MedicalRecord extends Model
     public function student()
     {
         return $this->belongsTo(Student::class);
+    }
+
+    public function instructor()
+    {
+        return $this->belongsTo(Instructor::class);
     }
 
     public function medications()
