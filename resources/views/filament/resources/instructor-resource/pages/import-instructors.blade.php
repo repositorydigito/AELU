@@ -19,28 +19,28 @@
                     <li>El archivo debe estar en formato Excel (.xlsx)</li>
                     <li>Las columnas deben tener los siguientes encabezados <strong>exactamente como se muestran</strong>:
                         <div class="bg-gray-50 p-4 my-2 font-mono text-sm">
-                            NOMBRES, APELLIDOS, TIPO_DOCUMENTO, NRO_DOCUMENTO, FECHA_NACIMIENTO, NACIONALIDAD, CODIGO_PROFESOR, TIPO_PROFESOR, CELULAR, TELEFONO, DISTRITO, DIRECCION
+                            nombres, apellidos, tipo_documento, nro_documento, fecha_nacimiento, nacionalidad, codigo_profesor, tipo_profesor, celular, telefono, distrito, direccion
                         </div>
                     </li>
                     <li>Valores permitidos para campos específicos:
                         <ul>
-                            <li>TIPO_DOCUMENTO debe ser uno de estos valores:
+                            <li>tipo_documento debe ser uno de estos valores:
                                 <ul>
                                     <li>DNI</li>
-                                    <li>Pasaporte</li>
-                                    <li>Carné de Extranjería</li>
+                                    <li>PASAPORTE</li>
+                                    <li>CARNÉ DE EXTRANJERÍA</li>
                                 </ul>
                             </li>
-                            <li>TIPO_PROFESOR debe ser uno de estos valores:
+                            <li>tipo_profesor debe ser uno de estos valores:
                                 <ul>
-                                    <li>Voluntario</li>
-                                    <li>Por Horas</li>
+                                    <li>VOLUNTARIO</li>
+                                    <li>POR HORAS</li>
                                 </ul>
                             </li>
-                            <li>FECHA_NACIMIENTO debe estar en formato YYYY-MM-DD (ejemplo: 1990-12-31)</li>
+                            <li>fecha_nacimiento debe estar en formato YYYY-MM-DD (ejemplo: 1990-12-31)</li>
                         </ul>
                     </li>
-                    <li>Campos opcionales: CELULAR, TELEFONO, DISTRITO, DIRECCION</li>
+                    <li>Campos opcionales: celular, telefono, distrito, direccion</li>
                 </ul>
             </div>
         </div>

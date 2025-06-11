@@ -19,6 +19,11 @@ class ListInstructors extends ListRecords
                 ->label('Importar Profesores')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->url(fn () => static::$resource::getUrl('import'))
+                ->color('primary'),
+            Actions\Action::make('download_template') 
+                ->label('Descargar Plantilla') 
+                ->icon('heroicon-o-document-arrow-down') 
+                ->url(route('instructors.download-template'))
                 ->color('primary'),            
         ];
     }

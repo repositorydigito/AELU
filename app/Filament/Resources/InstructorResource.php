@@ -73,21 +73,18 @@ class InstructorResource extends Resource
                                                         'Pasaporte' => 'Pasaporte',
                                                         'Carné de Extranjería' => 'Carné de Extranjería',
                                                     ])
-                                                    ->required(),
-                                                    //->columnSpan(1),
+                                                    ->nullable(),                                                    
                                                 TextInput::make('document_number')
                                                     ->label('Número de Documento')
                                                     ->required()
-                                                    ->maxLength(20),
-                                                    //->columnSpan(1),
-                                                
+                                                    ->maxLength(20),                                                                                                  
                                                 DatePicker::make('birth_date')
                                                     ->label('Fecha de Nacimiento')
-                                                    ->required()
+                                                    ->nullable()                                                   
                                                     ->maxDate(now()),
                                                 TextInput::make('nationality')
                                                     ->label('Nacionalidad')
-                                                    ->required()
+                                                    ->nullable()                                                    
                                                     ->maxLength(255),
                                                 TextInput::make('instructor_code')
                                                     ->label('Código de Profesor')

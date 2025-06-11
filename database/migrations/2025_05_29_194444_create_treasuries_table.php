@@ -17,10 +17,10 @@ return new class extends Migration
             $table->decimal('amount', 10, 2);
             $table->string('description');
             $table->date('transaction_date');
-            $table->foreignId('payment_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('student_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('instructor_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('workshop_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('payment_id')->nullable();
+            $table->foreignId('student_id')->nullable();
+            $table->foreignId('instructor_id')->nullable();
+            $table->foreignId('workshop_id')->nullable();
             $table->string('reference_number')->unique()->nullable();
             $table->enum('status', ['pending', 'confirmed', 'cancelled'])->default('confirmed');
             $table->text('notes')->nullable();
