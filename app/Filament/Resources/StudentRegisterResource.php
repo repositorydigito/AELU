@@ -84,7 +84,7 @@ class StudentRegisterResource extends Resource
                                                                 ->label('Número de documento')
                                                                 ->required()
                                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                                ->maxLength(255),
+                                                                ->maxLength(15),
                                                         ]),
                                                 ]),
                                             FileUpload::make('photo')
@@ -105,13 +105,15 @@ class StudentRegisterResource extends Resource
                                                 ->label('Nacionalidad')
                                                 ->required()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                ->maxLength(255),
+                                                ->maxLength(20),
                                         ]),
                                     Grid::make(2)
                                         ->schema([
                                             TextInput::make('student_code')
                                                 ->label('Código de Asociado')
-                                                ->maxLength(255),
+                                                ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->maxLength(20),
                                             Select::make('category_partner')
                                                 ->label('Categoría de Socio')
                                                 ->options([
@@ -149,20 +151,14 @@ class StudentRegisterResource extends Resource
                                     Grid::make(3)
                                         ->schema([
                                             TextInput::make('emergency_contact_name')
-                                                ->label('Nombre del familiar responsable')
-                                                ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->label('Nombre del familiar responsable')                                            
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_relationship')
                                                 ->label('Parentesco o relación')
-                                                ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_phone')
                                                 ->label('Teléfono del familiar responsable')
                                                 ->tel()
-                                                ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(20),
                                         ]),
                                 ]),

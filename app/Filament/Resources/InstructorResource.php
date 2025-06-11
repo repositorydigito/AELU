@@ -46,80 +46,102 @@ class InstructorResource extends Resource
                 Wizard::make([
                     Step::make('Datos Personales')
                         ->schema([
-                                Section::make('Información Básica')
+                                Section::make('Datos Personales')
                                     ->schema([
                                         Grid::make(2)
                                             ->schema([
-                                                TextInput::make('first_names')
-                                                    ->label('Nombres')
-                                                    ->required()
-                                                    ->maxLength(255)
-                                                    ->columnSpan(1),
-                                                FileUpload::make('photo')
-                                                    ->label('Foto')
-                                                    ->image()
-                                                    ->directory('instructors-photos')
-                                                    ->nullable()
-                                                    ->columnSpan(1),
+                                            Grid::make(1)
+                                                ->columnSpan(1)
+                                            ->schema([
                                                 TextInput::make('last_names')
                                                     ->label('Apellidos')
                                                     ->required()
                                                     ->maxLength(255)
                                                     ->columnSpan(1),
-                                                Select::make('document_type')
-                                                    ->label('Tipo de Documento')
-                                                    ->options([
-                                                        'DNI' => 'DNI',
-                                                        'Pasaporte' => 'Pasaporte',
-                                                        'Carné de Extranjería' => 'Carné de Extranjería',
-                                                    ])
-                                                    ->required(),
-                                                    //->columnSpan(1),
-                                                TextInput::make('document_number')
-                                                    ->label('Número de Documento')
+                                                TextInput::make('first_names')
+                                                    ->label('Nombres')
                                                     ->required()
-                                                    ->maxLength(20),
-                                                    //->columnSpan(1),
-                                                
-                                                DatePicker::make('birth_date')
-                                                    ->label('Fecha de Nacimiento')
-                                                    ->required()
-                                                    ->maxDate(now()),
-                                                TextInput::make('nationality')
-                                                    ->label('Nacionalidad')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                                TextInput::make('instructor_code')
-                                                    ->label('Código de Profesor')
-                                                    ->required()
-                                                    ->maxLength(255),
-                                                Select::make('instructor_type')
-                                                    ->label('Tipo de Profesor')
-                                                    ->options([
-                                                        'Voluntario' => 'Voluntario',
-                                                        'Por Horas' => 'Por Horas',
-                                                    ])
-                                                    ->required(),
-                                                TextInput::make('cell_phone')
-                                                    ->label('Celular')                                                
                                                     ->maxLength(255)
-                                                    ->nullable(),
-                                                TextInput::make('home_phone')
-                                                    ->label('Teléfono')
-                                                    ->tel()
-                                                    ->maxLength(20)
-                                                    ->nullable(),
-                                                TextInput::make('district') 
-                                                    ->label('Distrito')
-                                                    ->maxLength(255)                                                
-                                                    ->nullable(),      
-                                                TextInput::make('address')
-                                                    ->label('Domicilio')
-                                                    ->maxLength(255)                                                
-                                                    ->nullable(),                                     
+                                                    ->columnSpan(1),
+                                                
+                                                Grid::make(2)
+                                                    ->schema([
+                                                        Select::make('document_type')
+                                                            ->label('Tipo de documento')
+                                                            ->options([
+                                                                'DNI' => 'DNI',
+                                                                'CE' => 'Carné de Extranjería',
+                                                                'Pasaporte' => 'Pasaporte',
+                                                            ])
+                                                            ->required()
+                                                            ->validationMessages(['required' => 'Este campo es obligatorio']),
+                                                        TextInput::make('document_number')
+                                                            ->label('Número de Documento')
+                                                            ->required()
+                                                            ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                            ->maxLength(15),
+                                                    ]),
                                             ]),
-                                    ])
+                                            FileUpload::make('photo')
+                                                ->label('Foto')
+                                                ->image()
+                                                ->directory('instructors-photos')
+                                                ->maxSize(10240)
+                                                ->columnSpan(1),
+                                    ]),
+                                    Grid::make(2)
+                                        ->schema([
+                                            DatePicker::make('birth_date')
+                                                ->label('Fecha de Nacimiento')
+                                                ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->maxDate(now()),
+                                            TextInput::make('nationality')
+                                                ->label('Nacionalidad')
+                                                ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->maxLength(20),
+                                        ]),
+                                    Grid::make(2)
+                                        ->schema([
+                                            TextInput::make('instructor_code')
+                                                ->label('Código de Profesor')
+                                                ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->maxLength(20),
+                                            Select::make('instructor_type')
+                                                ->label('Tipo de Profesor')
+                                                ->options([
+                                                    'Voluntario' => 'Voluntario',
+                                                    'Por Horas' => 'Por Horas',
+                                                ]),
+                                        ]),
+                                    Grid::make(2)
+                                        ->schema([
+                                            TextInput::make('cell_phone')
+                                                ->label('Celular')                                                
+                                                ->maxLength(255)
+                                                ->nullable(),
+                                            TextInput::make('home_phone')
+                                                ->label('Teléfono')
+                                                ->tel()
+                                                ->maxLength(20)
+                                                ->nullable(),
+                                        ]),
+                                    Grid::make(2)
+                                        ->schema([
+                                            TextInput::make('district') 
+                                                ->label('Distrito')
+                                                ->maxLength(255)                                                
+                                                ->nullable(),      
+                                            TextInput::make('address')
+                                                ->label('Domicilio')
+                                                ->maxLength(255)                                                
+                                                ->nullable(),                                     
+                                        ]),
+                                    ]),
                         ]),
+                    
 
                     Step::make('Talleres Asignados')
                         ->schema([
@@ -313,3 +335,4 @@ class InstructorResource extends Resource
         ];
     }
 }
+
