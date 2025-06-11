@@ -16,6 +16,7 @@ class InstructorWorkshop extends Model
         'end_time',
         'class_count',
         'class_rate',
+        'place',
     ];
 
     protected $casts = [

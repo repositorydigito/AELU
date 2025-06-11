@@ -28,6 +28,7 @@ use Filament\Forms\Components\Textarea; // Add Textarea for detailed input
 use Filament\Forms\Components\Placeholder; // Import Placeholder for displaying read-only data
 use Filament\Forms\Components\Actions\Action; // Import Action for custom buttons
 use Filament\Notifications\Notification; // For showing notifications
+use Filament\Forms\Components\Fieldset;
 
 use Filament\Tables\Columns\TextColumn;
 
@@ -112,10 +113,10 @@ class StudentRegisterResource extends Resource
                                             TextInput::make('student_code')
                                                 ->label('Código de Asociado')
                                                 ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                ->maxLength(20),
+                                                ->maxLength(255),
                                             Select::make('category_partner')
                                                 ->label('Categoría de Socio')
+                                                ->required()
                                                 ->options([
                                                     'Dependiente' => 'Dependiente',
                                                     'Individual' => 'Individual',
@@ -151,14 +152,17 @@ class StudentRegisterResource extends Resource
                                     Grid::make(3)
                                         ->schema([
                                             TextInput::make('emergency_contact_name')
-                                                ->label('Nombre del familiar responsable')                                            
+                                                ->label('Nombre del familiar responsable')                                                
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_relationship')
-                                                ->label('Parentesco o relación')
+                                                ->label('Parentesco o relación')                                                
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_phone')
                                                 ->label('Teléfono del familiar responsable')
-                                                ->tel()
+                                                ->tel()                                                
+                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(20),
                                         ]),
                                 ]),
@@ -244,9 +248,10 @@ class StudentRegisterResource extends Resource
                                                         'Artrosis, Artritis' => 'Artrosis, Artritis',
                                                         'Estrés, Ansiedad, Depresión' => 'Estrés, Ansiedad, Depresión',
                                                         'Taquicardia, Angina de Pecho' => 'Taquicardia, Angina de Pecho',
-                                                        'ECV (Enfermedad Cardio Vascular)' => 'ECV (Enfermedad Cerebro Vascular)',
+                                                        'ACV (Accidente Cerebro Vascular)' => 'ACV (Accidente Cerebro Vascular)',
                                                         'Hipoacusia (Sordera)' => 'Hipoacusia (Sordera)',
                                                         'Alergias' => 'Alergias',
+                                                        'Otros' => 'Otros',
                                                     ])
                                                     ->columns(1)
                                                     ->reactive(),
@@ -265,6 +270,11 @@ class StudentRegisterResource extends Resource
                                                 Textarea::make('allergy_details')
                                                     ->label('Detalle el tipo de alergia')
                                                     ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
+                                                
+                                                TextInput::make('medical_conditions')
+                                                    ->label('Especifique otra condición médica')
+                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('medical_conditions') ?? []))  
+                                                    ->reactive(),
                                             ]),
 
                                             // Columna derecha - Operaciones
@@ -294,21 +304,32 @@ class StudentRegisterResource extends Resource
                                         ->relationship('medications')
                                         ->label('Medicamentos que toma')
                                         ->schema([
-                                            TextInput::make('medicine')
-                                                ->label('Medicina')
-                                                ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio']),
-                                            TextInput::make('dose')
-                                                ->label('Dosis'),
-                                            Select::make('schedule')
+                                            Fieldset::make('Detalles del Medicamento')
+                                                ->schema([
+                                                    TextInput::make('medicine')
+                                                        ->label('Medicina')
+                                                        ->required()
+                                                        ->validationMessages(['required' => 'Este campo es obligatorio']),
+                                                    TextInput::make('dose')
+                                                        ->label('Dosis'),
+                                                ])
+                                                ->columnSpan(1),                                            
+                                            Radio::make('schedule')
                                                 ->label('Horario')
                                                 ->options([
                                                     'Mañana' => 'Mañana',
                                                     'Tarde' => 'Tarde',
                                                     'Noche' => 'Noche',
-                                                ]),
+                                                    'Mañana-Tarde' => 'Mañana-Tarde',
+                                                    'Mañana-Noche' => 'Mañana-Noche',
+                                                    'Tarde-Noche' => 'Tarde-Noche',
+                                                    'Mañana-Tarde-Noche' => 'Mañana-Tarde-Noche',
+                                                ])
+                                                ->required()  
+                                                ->validationMessages(['required' => 'Seleccione al menos un horario'])
+                                                ->columnSpan(1),                                            
                                         ])
-                                        ->columns(3)
+                                        ->columns(2)
                                         ->addActionLabel('Registrar Medicamento')
                                         ->defaultItems(0)
                                         ->itemLabel(fn (array $state): ?string => $state['medicine'] ?? null),
@@ -502,16 +523,11 @@ class StudentRegisterResource extends Resource
                         'suspended' => 'danger',
                         default => 'gray',
                     }),
-                TextColumn::make('workshops.name')
-                    ->label('Talleres')
-                    ->badge()
-                    ->separator(',')
+                TextColumn::make('enrollments.instructorWorkshop.workshop.name')
+                    ->label('Talleres Inscritos')
+                    ->badge()                    
                     ->colors(['info'])
-                    ->wrap()
-                    ->limit(50)
-                    ->tooltip(function (Student $record) {
-                        return $record->workshops->pluck('name')->implode(', ');
-                    }),
+                    ->wrap(),                   
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

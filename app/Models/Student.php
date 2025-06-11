@@ -49,12 +49,12 @@ class Student extends Model
         return $this->hasOne(Affidavit::class);
     }
 
-    public function workshops(): BelongsToMany
+    /* public function workshops(): BelongsToMany
     {
         return $this->belongsToMany(Workshop::class, 'enrollments')
                     ->withPivot('enrollment_date', 'status', 'payment_status')
                     ->withTimestamps();
-    }
+    } */
 
     public function enrollments(): HasMany
     {

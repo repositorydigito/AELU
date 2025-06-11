@@ -13,7 +13,13 @@ class ListInstructors extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Nuevo Profesor'),
+            Actions\Action::make('import')
+                ->label('Importar Profesores')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->url(fn () => static::$resource::getUrl('import'))
+                ->color('primary'),            
         ];
     }
 }

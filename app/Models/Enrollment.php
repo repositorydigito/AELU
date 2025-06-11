@@ -35,12 +35,7 @@ class Enrollment extends Model
     public function instructorWorkshop(): BelongsTo 
     {
         return $this->belongsTo(InstructorWorkshop::class);
-    }
-
-    /* public function workshop(): BelongsTo
-    {
-        return $this->belongsTo(Workshop::class);
-    } */
+    }    
 
     public function getRemainingAmountAttribute(): float
     {
