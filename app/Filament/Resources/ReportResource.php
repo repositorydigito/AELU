@@ -17,12 +17,11 @@ class ReportResource extends Resource
 {
     protected static ?string $model = Student::class;
 
-    // protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Reportes';
-    // protected static ?string $pluralModelLabel = 'Reportes';
-    // protected static ?string $modelLabel = 'Reporte';
-    protected static ?int $navigationSort = 1; 
-    protected static ?string $navigationGroup = 'Alumnos';    
+    protected static ?string $pluralModelLabel = 'Reportes';
+    protected static ?string $modelLabel = 'Reporte';
+    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationGroup = 'Alumnos';
 
     public static function form(Form $form): Form
     {
@@ -62,8 +61,7 @@ class ReportResource extends Resource
     {
         return [
             'index' => Pages\ListReports::route('/'),
-            'create' => Pages\CreateReport::route('/create'),
-            'edit' => Pages\EditReport::route('/{record}/edit'),
+            // Removemos create y edit ya que es un dashboard
         ];
     }
 }

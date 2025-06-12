@@ -85,7 +85,7 @@ class StudentRegisterResource extends Resource
                                                                 ->label('Número de documento')
                                                                 ->required()
                                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                                ->maxLength(255),
+                                                                ->maxLength(15),
                                                         ]),
                                                 ]),
                                             FileUpload::make('photo')
@@ -106,7 +106,7 @@ class StudentRegisterResource extends Resource
                                                 ->label('Nacionalidad')
                                                 ->required()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                ->maxLength(255),
+                                                ->maxLength(20),
                                         ]),
                                     Grid::make(2)
                                         ->schema([

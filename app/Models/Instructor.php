@@ -41,6 +41,16 @@ class Instructor extends Model
         return $this->hasMany(Treasury::class);
     }
 
+    public function medicalRecord()
+    {
+        return $this->hasOne(MedicalRecord::class);
+    }
+
+    public function affidavit()
+    {
+        return $this->hasOne(Affidavit::class);
+    }
+
     public function getFullNameAttribute(): string
     {
         return $this->first_names . ' ' . $this->last_names;
