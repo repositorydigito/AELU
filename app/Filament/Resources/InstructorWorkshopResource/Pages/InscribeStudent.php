@@ -28,7 +28,7 @@ class InscribeStudent extends Page implements HasForms
     {
         $this->form->fill([
             'enrollment_date' => now()->toDateString(), 
-            'status' => 'active', 
+            'status' => 'enrolled', 
             'payment_status' => 'pending', 
             'total_amount' => $this->record->class_rate * $this->record->class_count, 
             'paid_amount' => 0, 
@@ -58,12 +58,12 @@ class InscribeStudent extends Page implements HasForms
                 Select::make('status')
                     ->label('Estado de Inscripción')
                     ->options([
-                        'active' => 'Activo',
-                        'inactive' => 'Inactivo',
+                        'enrolled' => 'Inscrito',
                         'completed' => 'Completado',
                         'dropped' => 'Abandonado',
+                        'pending' => 'Pendiente',
                     ])
-                    ->default('active')
+                    ->default('enrolled')
                     ->required(),
 
                 Select::make('payment_status')
