@@ -12,34 +12,35 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
 
 class WorkshopResource extends Resource
 {
     protected static ?string $model = Workshop::class;
-
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Talleres'; 
     protected static ?string $pluralModelLabel = 'Talleres'; 
     protected static ?string $modelLabel = 'Taller';    
-    protected static ?int $navigationSort = 6; 
-    protected static ?string $navigationGroup = 'Talleres';
-    
+    protected static ?int $navigationSort = 7; 
+    protected static ?string $navigationGroup = 'Talleres';       
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Detalles del Taller')
-                    ->description('Define el nombre de un nuevo tipo de taller.')
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Nombre del Taller')
-                            ->required()
-                            ->unique(ignoreRecord: true) // Asegura que el nombre sea único al crear y al editar
-                            ->maxLength(255)
-                            ->placeholder('Ej: Yoga, Pilates, Baile, Zumba'),
-                    ])
-                    ->columns(1), // Una columna para esta sección
+                Forms\Components\TextInput::make('name')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\Textarea::make('description')
+                    ->columnSpanFull(),
+                Forms\Components\TextInput::make('duration_hours')
+                    ->numeric(),
+                Forms\Components\TextInput::make('price')
+                    ->numeric()
+                    ->prefix('S/.'),
+                Forms\Components\TextInput::make('max_students')
+                    ->numeric(),
+                Forms\Components\TextInput::make('status')
+                    ->required(),
             ]);
     }
 
@@ -47,29 +48,59 @@ class WorkshopResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')
-                    ->label('Nombre del Taller')
-                    ->searchable() // Permite buscar por nombre de taller
-                    ->sortable(), // Permite ordenar por nombre de taller
-                TextColumn::make('instructors_count') // Columna para mostrar cuántos instructores dictan este taller
-                    ->counts('instructorWorkshops') // Usa el método counts() para contar la relación
-                    ->label('N° de Profesores')
-                    ->sortable(), // Permite ordenar por número de instructores
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Nombre')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('duration_hours')
+                    ->label('Duración (horas)')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('price')
+                    ->label('Precio')
+                    ->money('PEN')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('max_students')
+                    ->label('Máximo de Estudiantes')
+                    ->numeric()
+                    ->sortable(),
+                /* Tables\Columns\TextColumn::make('status')
+                    ->label('Estado'), */
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Estado') // Label en español
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'active' => 'Activo',
+                        'inactive' => 'Inactivo',
+                        'completed' => 'Completado',
+                        default => $state, // Por si acaso hay un valor inesperado
+                    })
+                    ->badge() 
+                    ->color(fn (string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'warning',
+                        'completed' => 'info', 
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make()
-                    ->modalDescription('¿Estás seguro de que quieres eliminar este taller? Si lo eliminas, se desconectará de cualquier profesor que lo imparta.')
-                    ->requiresConfirmation(), // Pide confirmación antes de eliminar
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);            
+            ]);
     }
 
     public static function getRelations(): array

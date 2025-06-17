@@ -38,4 +38,12 @@ class InstructorWorkshop extends Model
     {
         return $this->hasMany(Enrollment::class);        
     }
+
+    public function getTimeRangeAttribute(): string
+    {
+        $startTime = $this->start_time->format('h:i A');
+        $endTime = $this->end_time->format('h:i A');
+
+        return "{$startTime} - {$endTime}";
+    }
 }
