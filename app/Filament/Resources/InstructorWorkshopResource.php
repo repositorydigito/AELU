@@ -165,10 +165,10 @@ class InstructorWorkshopResource extends Resource
                     ->label('Filtrar por Día'),
             ])
             ->contentGrid([
-                'default' => 1, // Una columna en pantallas pequeñas
-                'sm' => 2,      // Dos columnas en pantallas medianas
-                'md' => 3,      // Tres columnas en pantallas de escritorio
-                'lg' => 4,      // Cuatro columnas en pantallas grandes
+                'default' => 1, 
+                'sm' => 2,      
+                'md' => 3,      
+                'lg' => 4, 
             ])
             ->paginated([
                 12, 
@@ -177,7 +177,13 @@ class InstructorWorkshopResource extends Resource
                 'all',
             ])
             ->actions([
-                
+                Tables\Actions\Action::make('inscribe')
+                    ->label('Inscribir')
+                    ->icon('heroicon-o-user-plus') 
+                    ->color('primary') 
+                    ->url(fn (InstructorWorkshop $record): string => InstructorWorkshopResource::getUrl('inscribe-student', ['record' => $record])),
+                Tables\Actions\EditAction::make(), 
+                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
                 
@@ -199,6 +205,7 @@ class InstructorWorkshopResource extends Resource
             'create' => Pages\CreateInstructorWorkshop::route('/create'),
             'edit' => Pages\EditInstructorWorkshop::route('/{record}/edit'),
             'view' => Pages\ViewInstructorWorkshop::route('/{record}'),
+            'inscribe-student' => Pages\InscribeStudent::route('/{record}/inscribe-student'),
         ];
     }
 }
