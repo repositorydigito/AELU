@@ -23,11 +23,12 @@ use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Toggle; // Add Toggle for Yes/No questions
-use Filament\Forms\Components\Textarea; // Add Textarea for detailed input
-use Filament\Forms\Components\Placeholder; // Import Placeholder for displaying read-only data
-use Filament\Forms\Components\Actions\Action; // Import Action for custom buttons
-use Filament\Notifications\Notification; // For showing notifications
+use Filament\Forms\Components\Toggle; 
+use Filament\Forms\Components\Textarea; 
+use Filament\Forms\Components\Placeholder; 
+//use Filament\Forms\Components\Actions\Action;
+use Filament\Tables\Actions\Action; 
+use Filament\Notifications\Notification; 
 use Filament\Forms\Components\Fieldset;
 
 use Filament\Tables\Columns\TextColumn;
@@ -542,9 +543,16 @@ class StudentRegisterResource extends Resource
                     ->relationship('workshops', 'name')
                     ->searchable(),
             ])
+            ->headerActions([
+                Action::make('import')
+                    ->label('Importar Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn () => static::getUrl('import'))
+                    ->color('primary')
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make(),                
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -566,6 +574,7 @@ class StudentRegisterResource extends Resource
             'index' => Pages\ListStudentRegisters::route('/'),
             'create' => Pages\CreateStudentRegister::route('/create'),
             'edit' => Pages\EditStudentRegister::route('/{record}/edit'),
+            'import' => Pages\ImportStudents::route('/import'),
         ];
     }
 }

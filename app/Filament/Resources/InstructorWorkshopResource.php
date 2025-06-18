@@ -163,8 +163,7 @@ class InstructorWorkshopResource extends Resource
 
                     Tables\Columns\TextColumn::make('class_rate')
                         ->label('Costo por Clase')
-                        ->money('PEN')
-                        ->sortable()
+                        ->money('PEN')                        
                         ->color('success'),
                 ])->space(0),
             ])
@@ -206,6 +205,11 @@ class InstructorWorkshopResource extends Resource
                     ->icon('heroicon-o-user-plus') 
                     ->color('warning') 
                     ->url(fn (InstructorWorkshop $record): string => InstructorWorkshopResource::getUrl('inscribe-student', ['record' => $record])),
+                Tables\Actions\Action::make('register_attendance')
+                ->label('Asistencia')
+                ->icon('heroicon-o-calendar-days') 
+                ->color('info')
+                ->url(fn (InstructorWorkshop $record): string => InstructorWorkshopResource::getUrl('register-attendance', ['record' => $record])),
                 Tables\Actions\EditAction::make(), 
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -230,6 +234,7 @@ class InstructorWorkshopResource extends Resource
             'edit' => Pages\EditInstructorWorkshop::route('/{record}/edit'),
             'view' => Pages\ViewInstructorWorkshop::route('/{record}'),
             'inscribe-student' => Pages\InscribeStudent::route('/{record}/inscribe-student'),
+            'register-attendance' => Pages\RegisterAttendance::route('/{record}/attendance'),
         ];
     }
 }
