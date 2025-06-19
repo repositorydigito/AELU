@@ -20,6 +20,11 @@ class EnrollmentsRelationManager extends RelationManager
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('student.full_name')
+                    ->sortable(query: function (Builder $query, string $direction) {
+                        $query->join('students', 'enrollments.student_id', '=', 'students.id')
+                            ->orderBy('students.first_names', $direction)
+                            ->orderBy('students.last_names', $direction);
+                    })
                     ->label('Alumno'),
                 Tables\Columns\TextColumn::make('enrollment_date')
                     ->label('Fecha de Inscripción'),
@@ -31,6 +36,7 @@ class EnrollmentsRelationManager extends RelationManager
                     ->label('Pagado')
                     ->money('PEN'),
             ])
+            //->defaultSort('student.full_name')
             ->filters([
                 //
             ])

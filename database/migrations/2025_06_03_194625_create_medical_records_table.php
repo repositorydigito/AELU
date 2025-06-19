@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('medical_records', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id');
+            $table->foreignId('student_id')->nullable();
+            $table->foreignId('instructor_id')->nullable();
             $table->decimal('weight', 5, 2)->nullable(); 
             $table->decimal('height', 5, 2)->nullable(); 
             $table->string('gender')->nullable(); 

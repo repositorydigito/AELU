@@ -132,6 +132,7 @@ class InstructorWorkshopResource extends Resource
                                     $inscritos = $record->enrollments()->count();                                    
                                     return "{$inscritos}/{$max}";
                                 })
+                                ->icon('heroicon-o-user-group')
                                 ->size('xl')
                                 ->weight('bold')
                                 ->alignRight()
@@ -211,7 +212,7 @@ class InstructorWorkshopResource extends Resource
                 ->color('info')
                 ->url(fn (InstructorWorkshop $record): string => InstructorWorkshopResource::getUrl('register-attendance', ['record' => $record])),
                 Tables\Actions\EditAction::make(), 
-                Tables\Actions\DeleteAction::make(),
+                //Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 

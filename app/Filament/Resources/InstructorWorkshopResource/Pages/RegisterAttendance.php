@@ -97,7 +97,11 @@ class RegisterAttendance extends Page implements HasForms
 
     public function loadEnrollmentsAndAttendance(): void
     {
-        $this->enrollments = $this->record->enrollments()->with('student', 'attendances')->get();
+        $this->enrollments = $this->record->enrollments()->with('student', 'attendances')->get()
+            ->sortBy(function($enrollment) {
+                return $enrollment->student->full_name;
+            })
+            ->values();
         $this->attendanceData = [];
 
         foreach ($this->enrollments as $enrollment) {

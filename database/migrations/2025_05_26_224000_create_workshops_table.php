@@ -14,6 +14,11 @@ return new class extends Migration
         Schema::create('workshops', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->text('description')->nullable();
+            $table->integer('duration_hours')->nullable();
+            $table->decimal('price', 8, 2)->nullable();
+            $table->integer('max_students')->nullable();
+            $table->enum('status', ['active', 'inactive', 'completed'])->default('active');
             $table->timestamps();
         });
     }

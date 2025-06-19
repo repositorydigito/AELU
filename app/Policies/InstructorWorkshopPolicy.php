@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Instructor;
+use App\Models\InstructorWorkshop;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class InstructorPolicy
+class InstructorWorkshopPolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class InstructorPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_instructor::reports');
+        return $user->can('view_any_instructor::workshop');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Instructor $instructor): bool
+    public function view(User $user, InstructorWorkshop $instructorWorkshop): bool
     {
-        return $user->can('view_instructor::reports');
+        return $user->can('view_instructor::workshop');
     }
 
     /**
@@ -31,23 +31,23 @@ class InstructorPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_instructor::reports');
+        return $user->can('create_instructor::workshop');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Instructor $instructor): bool
+    public function update(User $user, InstructorWorkshop $instructorWorkshop): bool
     {
-        return $user->can('update_instructor::reports');
+        return $user->can('update_instructor::workshop');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Instructor $instructor): bool
+    public function delete(User $user, InstructorWorkshop $instructorWorkshop): bool
     {
-        return $user->can('delete_instructor::reports');
+        return $user->can('delete_instructor::workshop');
     }
 
     /**
@@ -55,15 +55,15 @@ class InstructorPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_instructor::reports');
+        return $user->can('delete_any_instructor::workshop');
     }
 
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, Instructor $instructor): bool
+    public function forceDelete(User $user, InstructorWorkshop $instructorWorkshop): bool
     {
-        return $user->can('force_delete_instructor::reports');
+        return $user->can('force_delete_instructor::workshop');
     }
 
     /**
@@ -71,15 +71,15 @@ class InstructorPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_instructor::reports');
+        return $user->can('force_delete_any_instructor::workshop');
     }
 
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, Instructor $instructor): bool
+    public function restore(User $user, InstructorWorkshop $instructorWorkshop): bool
     {
-        return $user->can('restore_instructor::reports');
+        return $user->can('restore_instructor::workshop');
     }
 
     /**
@@ -87,15 +87,15 @@ class InstructorPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_instructor::reports');
+        return $user->can('restore_any_instructor::workshop');
     }
 
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, Instructor $instructor): bool
+    public function replicate(User $user, InstructorWorkshop $instructorWorkshop): bool
     {
-        return $user->can('replicate_instructor::reports');
+        return $user->can('replicate_instructor::workshop');
     }
 
     /**
@@ -103,6 +103,6 @@ class InstructorPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_instructor::reports');
+        return $user->can('reorder_instructor::workshop');
     }
 }

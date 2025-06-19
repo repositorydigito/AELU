@@ -21,6 +21,7 @@ class InscribeStudent extends Page implements HasForms
     use InteractsWithForms;
     protected static string $resource = InstructorWorkshopResource::class;
     protected static string $view = 'filament.resources.instructor-workshop-resource.pages.inscribe-student';
+    protected static ?string $title = 'Inscribir Alumno';
     public InstructorWorkshop $record; 
     public ?array $data = [];
 
@@ -52,7 +53,7 @@ class InscribeStudent extends Page implements HasForms
                 
                 DatePicker::make('enrollment_date')
                     ->label('Fecha de Inscripción')
-                    ->default(now()) 
+                    ->default(now())                    
                     ->required(),
 
                 Select::make('status')
@@ -81,7 +82,8 @@ class InscribeStudent extends Page implements HasForms
                     ->label('Monto Total')
                     ->numeric()
                     ->prefix('S/.')
-                    ->readOnly() 
+                    ->required()
+                    //->readOnly() 
                     ->default(fn (callable $get) => $this->record->class_rate * $this->record->class_count) 
                     ->live(onBlur: true), 
 
