@@ -16,4 +16,9 @@ class EditWorkshop extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getRedirectUrl(): string
+    {        
+        return WorkshopResource::getUrl('index');     
+    }
 }

@@ -48,8 +48,7 @@ class InstructorWorkshopResource extends Resource
                         titleAttribute: 'last_names',
                         modifyQueryUsing: fn ($query) => $query->orderBy('first_names')->orderBy('last_names')
                     )
-                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}")
-                    //->searchable(['first_names', 'last_names'])
+                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names} - {$record->instructor_code}")
                     ->label('Instructor') 
                     ->required(),                
                 Forms\Components\Select::make('workshop_id')
@@ -106,44 +105,67 @@ class InstructorWorkshopResource extends Resource
                     ->label('Hora'),                  
                 TextEntry::make('place')
                     ->label('Lugar'),
+                TextEntry::make('workshop.max_students')
+                ->label('Cupos Máximos'),
             ]);
-    }
-
+    }  
+    
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\Layout\Stack::make([                   
-                    Tables\Columns\Layout\Stack::make([                        
-                        Tables\Columns\TextColumn::make('workshop.name')
-                            ->label('Taller')                            
-                            ->size('lg')
-                            ->weight(FontWeight::Bold)
-                            ->sortable(),                                                    
-                        Tables\Columns\TextColumn::make('instructor.full_name')
-                            ->label('Instructor')                            
-                            ->size('sm')
-                            ->weight(FontWeight::SemiBold)
-                            ->sortable(query: function (Builder $query, string $direction): Builder {
-                                return $query->orderBy(
-                                    \Illuminate\Support\Facades\DB::raw("(SELECT CONCAT(last_names, ' ', first_names) FROM instructors WHERE instructors.id = instructor_workshops.instructor_id)"),
-                                    $direction
-                                );
-                            }),                                                    
-                        Tables\Columns\TextColumn::make('day_of_week')
-                            ->label('Día'),
-                        Tables\Columns\TextColumn::make('time_range') 
-                            ->label('Hora'),                                                                           
-                        Tables\Columns\TextColumn::make('place')
-                            ->label('Lugar')
-                            ->icon('heroicon-o-map-pin'),                        
-                        Tables\Columns\TextColumn::make('class_rate')
-                            ->label('Costo por Clase')
-                            ->money('PEN')
-                            ->sortable()                             
-                            ->color('success'),
-                    ]),                                        
-                ])->space(0), 
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\Layout\Grid::make(2) // Dos columnas en la misma línea
+                        ->schema([
+                            Tables\Columns\TextColumn::make('workshop.name')
+                                ->label('Taller')
+                                ->size('lg')
+                                ->weight(FontWeight::Bold)
+                                ->searchable()
+                                ->sortable()
+                                ->columnSpan(1),  
+                            
+                            Tables\Columns\TextColumn::make('cupos')
+                                ->label('Cupos (Disp./Máx.)')
+                                ->getStateUsing(function ($record) {
+                                    $max = $record->workshop->max_students ?? 0;
+                                    $inscritos = $record->enrollments()->count();                                    
+                                    return "{$inscritos}/{$max}";
+                                })
+                                ->size('xl')
+                                ->weight('bold')
+                                ->alignRight()
+                                ->columnSpan(1),
+                        ]),
+
+                    // Otros datos que van a continuación
+                    Tables\Columns\TextColumn::make('instructor.full_name')
+                        ->label('Instructor')
+                        ->size('sm')
+                        ->weight(FontWeight::SemiBold)
+                        ->searchable(query: function (Builder $query, string $search) {
+                            return $query->whereHas('instructor', function ($query) use ($search) {
+                                $query->whereRaw("CONCAT(instructors.first_names, ' ', instructors.last_names, ' - ', instructors.instructor_code) LIKE ?", ["%{$search}%"]);
+                            });
+                        })
+                        ->getStateUsing(fn ($record) => "{$record->instructor->first_names} {$record->instructor->last_names} - {$record->instructor->instructor_code}"),
+
+                    Tables\Columns\TextColumn::make('day_of_week')
+                        ->label('Día'),
+
+                    Tables\Columns\TextColumn::make('time_range') 
+                        ->label('Hora'),
+
+                    Tables\Columns\TextColumn::make('place')
+                        ->label('Lugar')
+                        ->searchable()
+                        ->icon('heroicon-o-map-pin'),
+
+                    Tables\Columns\TextColumn::make('class_rate')
+                        ->label('Costo por Clase')
+                        ->money('PEN')                        
+                        ->color('success'),
+                ])->space(0),
             ])
             ->filters([                
                 Tables\Filters\SelectFilter::make('workshop_id')
@@ -165,10 +187,10 @@ class InstructorWorkshopResource extends Resource
                     ->label('Filtrar por Día'),
             ])
             ->contentGrid([
-                'default' => 1, // Una columna en pantallas pequeñas
-                'sm' => 2,      // Dos columnas en pantallas medianas
-                'md' => 3,      // Tres columnas en pantallas de escritorio
-                'lg' => 4,      // Cuatro columnas en pantallas grandes
+                'default' => 1, 
+                'sm' => 2,      
+                'md' => 3,      
+                'lg' => 4, 
             ])
             ->paginated([
                 12, 
@@ -176,8 +198,20 @@ class InstructorWorkshopResource extends Resource
                 48,
                 'all',
             ])
+            ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]))
             ->actions([
-                
+                Tables\Actions\Action::make('inscribe')
+                    ->label('Inscribir')
+                    ->icon('heroicon-o-user-plus') 
+                    ->color('warning') 
+                    ->url(fn (InstructorWorkshop $record): string => InstructorWorkshopResource::getUrl('inscribe-student', ['record' => $record])),
+                Tables\Actions\Action::make('register_attendance')
+                ->label('Asistencia')
+                ->icon('heroicon-o-calendar-days') 
+                ->color('info')
+                ->url(fn (InstructorWorkshop $record): string => InstructorWorkshopResource::getUrl('register-attendance', ['record' => $record])),
+                Tables\Actions\EditAction::make(), 
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 
@@ -188,7 +222,7 @@ class InstructorWorkshopResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\EnrollmentsRelationManager::class,
         ];
     }
 
@@ -199,6 +233,8 @@ class InstructorWorkshopResource extends Resource
             'create' => Pages\CreateInstructorWorkshop::route('/create'),
             'edit' => Pages\EditInstructorWorkshop::route('/{record}/edit'),
             'view' => Pages\ViewInstructorWorkshop::route('/{record}'),
+            'inscribe-student' => Pages\InscribeStudent::route('/{record}/inscribe-student'),
+            'register-attendance' => Pages\RegisterAttendance::route('/{record}/attendance'),
         ];
     }
 }

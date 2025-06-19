@@ -28,18 +28,24 @@ class WorkshopResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
+                    ->label('Nombre del Taller')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\Textarea::make('description')
+                    ->label('Descripción')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('duration_hours')
+                    ->label('Duración (horas)')
                     ->numeric(),
                 Forms\Components\TextInput::make('price')
+                    ->label('Precio')
                     ->numeric()
                     ->prefix('S/.'),
                 Forms\Components\TextInput::make('max_students')
+                    ->label('Máximo de Estudiantes')
                     ->numeric(),
                 Forms\Components\TextInput::make('status')
+                    ->label('Estado')
                     ->required(),
             ]);
     }

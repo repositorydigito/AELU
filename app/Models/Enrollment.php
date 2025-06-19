@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Enrollment extends Model
 {
@@ -31,11 +32,14 @@ class Enrollment extends Model
     {
         return $this->belongsTo(Student::class);
     }
-
     public function instructorWorkshop(): BelongsTo 
     {
         return $this->belongsTo(InstructorWorkshop::class);
     }    
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
 
     public function getRemainingAmountAttribute(): float
     {

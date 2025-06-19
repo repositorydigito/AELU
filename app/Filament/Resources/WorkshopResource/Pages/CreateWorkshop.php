@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateWorkshop extends CreateRecord
 {
     protected static string $resource = WorkshopResource::class;
+
+    protected function getRedirectUrl(): string
+    {        
+        return WorkshopResource::getUrl('index');     
+    }
 }
