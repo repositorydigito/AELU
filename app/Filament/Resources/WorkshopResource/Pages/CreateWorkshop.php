@@ -10,8 +10,21 @@ class CreateWorkshop extends CreateRecord
 {
     protected static string $resource = WorkshopResource::class;
 
-    protected function getRedirectUrl(): string
-    {        
-        return WorkshopResource::getUrl('index');     
+    public function getRedirectUrl(): string
+    {
+        return WorkshopResource::getUrl('index');
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('save')
+                ->label('Guardar')
+                ->submit('create'),
+            Actions\Action::make('cancel')
+                ->label('Cancelar')
+                ->url(WorkshopResource::getUrl('index'))
+                ->color('gray'),
+        ];
     }
 }

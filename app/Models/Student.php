@@ -61,6 +61,6 @@ class Student extends Model
 
     public function getFullNameAttribute(): string
     {
-        return $this->last_names . ' ' . $this->first_names;
+        return $this->first_names . ' ' . $this->last_names;
     }
 }
