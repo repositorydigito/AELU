@@ -10,15 +10,15 @@ class EditWorkshop extends EditRecord
 {
     protected static string $resource = WorkshopResource::class;
 
-    public function getRedirectUrl(): string
-    {
-        return WorkshopResource::getUrl('index');
-    }
-
     protected function getHeaderActions(): array
     {
         return [
             Actions\DeleteAction::make(),
         ];
+    }
+
+    protected function getRedirectUrl(): string
+    {        
+        return WorkshopResource::getUrl('index');     
     }
 }

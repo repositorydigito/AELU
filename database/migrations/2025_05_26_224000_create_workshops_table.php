@@ -5,29 +5,27 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{    
+{
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('workshops', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('instructor_id');
             $table->string('name');
-            $table->date('start_date');
-            $table->date('end_date');
-            $table->string('weekday');
-            $table->time('start_time'); 
-            $table->time('end_time');   
-            $table->string('place')->nullable(); 
-            $table->integer('max_students'); 
-            $table->integer('class_count');
-            $table->decimal('monthly_fee', 8, 2); 
-            $table->decimal('final_monthly_fee', 8, 2)->nullable();
-            $table->decimal('surcharge_percentage')->default(20.00);
-            $table->string('icon')->nullable();            
+            $table->text('description')->nullable();
+            $table->integer('duration_hours')->nullable();
+            $table->decimal('price', 8, 2)->nullable();
+            $table->integer('max_students')->nullable();
+            $table->enum('status', ['active', 'inactive', 'completed'])->default('active');
             $table->timestamps();
         });
     }
-    
+
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('workshops');

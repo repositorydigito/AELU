@@ -215,7 +215,7 @@ class InstructorResource extends Resource
                                             // Columna izquierda - Condiciones médicas
                                             Forms\Components\Group::make([
                                                 CheckboxList::make('medical_conditions')
-                                                    ->label('Condiciones médicas que padece')
+                                                    ->label('Condiciones médicas que padece *')
                                                     ->options([
                                                         'Ninguna' => 'Ninguna',
                                                         'Hipertension Arterial' => 'Hipertensión Arterial',
@@ -257,7 +257,7 @@ class InstructorResource extends Resource
                                             // Columna derecha - Operaciones
                                             Forms\Components\Group::make([
                                                 CheckboxList::make('surgical_operations')
-                                                    ->label('Operaciones a las que se ha sometido')
+                                                    ->label('Operaciones a las que se ha sometido *')
                                                     ->options([
                                                         'Ninguna' => 'Ninguna',
                                                         'Al Corazón' => 'Al Corazón',

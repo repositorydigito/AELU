@@ -8,19 +8,19 @@ return new class extends Migration
 {    
     public function up(): void
     {
-        Schema::create('payments', function (Blueprint $table) {
+        Schema::create('attendances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id');
-            $table->decimal('amount', 10, 2);
-            $table->dateTime('payment_date');
-            $table->string('method'); 
+            $table->foreignId('enrollment_id');
+            $table->date('attendance_date');
+            $table->boolean('is_present')->default(false);
             $table->text('notes')->nullable();
+            $table->unique(['enrollment_id', 'attendance_date']);
             $table->timestamps();
         });
     }
     
     public function down(): void
     {
-        Schema::dropIfExists('payments');
+        Schema::dropIfExists('attendances');
     }
 };
