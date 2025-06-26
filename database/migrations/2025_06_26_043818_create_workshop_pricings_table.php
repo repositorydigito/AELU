@@ -14,9 +14,10 @@ return new class extends Migration
             $table->tinyInteger('number_of_classes');
             $table->decimal('price', 8, 2);
             $table->boolean('is_default')->default(true);
+            $table->boolean('for_volunteer_workshop')->default(false);
             $table->timestamps();
             
-            $table->unique(['workshop_id', 'number_of_classes'], 'unique_workshop_pricing');
+            $table->unique(['workshop_id', 'number_of_classes', 'for_volunteer_workshop'], 'unique_workshop_pricing_combo');
         });
     }
     

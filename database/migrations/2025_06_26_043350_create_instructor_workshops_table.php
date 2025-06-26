@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('instructor_id')->constrained()->onDelete('cascade');
             $table->foreignId('workshop_id')->constrained()->onDelete('cascade');
+            $table->foreignId('initial_monthly_period_id')->nullable()->constrained('monthly_periods')->onDelete('set null');
             $table->tinyInteger('day_of_week');
             $table->time('start_time');
             $table->time('end_time');

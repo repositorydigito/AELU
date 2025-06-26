@@ -10,11 +10,14 @@ use Filament\Forms\Form;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker; 
-use Filament\Forms\Components\Textarea; 
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use App\Models\InstructorWorkshop;
 use App\Models\Student;
-use App\Models\Enrollment;
+use App\Models\MonthlyPeriod;
+use App\Models\StudentEnrollment;
+use App\Models\WorkshopClass;
 
 class InscribeStudent extends Page implements HasForms
 {
@@ -28,11 +31,12 @@ class InscribeStudent extends Page implements HasForms
     public function mount(): void
     {
         $this->form->fill([
-            'enrollment_date' => now()->toDateString(), 
-            'status' => 'enrolled', 
-            'payment_status' => 'pending', 
-            'total_amount' => $this->record->class_rate * $this->record->class_count, 
-            'paid_amount' => 0, 
+            'enrollment_date' => now()->toDateString(),
+            'enrollment_type' => 'full_month',
+            'payment_status' => 'pending',
+            'number_of_classes' => $this->record->class_count ?? 4,
+            'price_per_quantity' => $this->record->class_rate ?? 0,
+            'total_amount' => ($this->record->class_rate ?? 0) * ($this->record->class_count ?? 4),
         ]);
     }
 
@@ -42,71 +46,77 @@ class InscribeStudent extends Page implements HasForms
             ->schema([
                 Select::make('student_id')
                     ->label('Alumno')
-                    ->options(Student::all()->mapWithKeys(function ($student) {
-                        return [
-                            $student->id => "{$student->full_name} - {$student->student_code}",
-                        ];
-                    }))
+                    ->options(Student::all()->mapWithKeys(fn ($student) => [
+                        $student->id => "{$student->full_name} - {$student->student_code}",
+                    ]))
                     ->searchable()
-                    ->required()
-                    ->columnSpanFull(), 
-                
-                DatePicker::make('enrollment_date')
-                    ->label('Fecha de Inscripción')
-                    ->default(now())                    
                     ->required(),
 
-                Select::make('status')
-                    ->label('Estado de Inscripción')
-                    ->options([
-                        'enrolled' => 'Inscrito',
-                        'completed' => 'Completado',
-                        'dropped' => 'Abandonado',
-                        'pending' => 'Pendiente',
-                    ])
-                    ->default('enrolled')
+                Select::make('monthly_period_id')
+                    ->label('Periodo mensual')
+                    ->options(\App\Models\MonthlyPeriod::all()->mapWithKeys(fn ($period) => [
+                        $period->id => "{$period->year} - " . \Illuminate\Support\Carbon::create()->month($period->month)->monthName,
+                    ]))
+                    ->searchable()
+                    ->reactive()
                     ->required(),
+
+                Select::make('enrollment_type')
+                    ->label('Tipo de inscripción')
+                    ->options([
+                        'full_month' => 'Mes completo',
+                        'specific_classes' => 'Clases específicas',
+                    ])
+                    ->default('full_month')
+                    ->reactive()
+                    ->required(),
+
+                // Campo oculto para number_of_classes, calculado dinámicamente
+                TextInput::make('number_of_classes')
+                    ->label('Cantidad de clases')
+                    ->numeric()
+                    ->default(4)
+                    ->hidden()
+                    ->dehydrated(),
+
+                CheckboxList::make('selected_classes')
+                    ->label('Clases a inscribir')
+                    ->options(function (callable $get) {
+                        $periodId = $get('monthly_period_id');
+                        $workshopId = $this->record->id;
+                        if (!$periodId) return [];
+
+                        $clases = WorkshopClass::where('instructor_workshop_id', $workshopId)
+                            ->where('monthly_period_id', $periodId)
+                            ->orderBy('class_date')
+                            ->get();
+
+                        return $clases->mapWithKeys(fn($clase) => [
+                            $clase->id => $clase->class_date->format('d/m/Y') . ' ' . $clase->start_time->format('H:i') . ' - ' . $clase->end_time->format('H:i'),
+                        ])->toArray();
+                    })
+                    ->visible(fn (callable $get) => $get('monthly_period_id'))
+                    ->required(fn (callable $get) => $get('enrollment_type') === 'specific_classes')
+                    ->disabled(fn (callable $get) => $get('enrollment_type') !== 'specific_classes')
+                    ->columns(2)
+                    ->reactive()
+                    ->helperText('Selecciona las clases a las que deseas inscribirte. Si es mes completo, se inscribirá a todas las clases automáticamente.'),
 
                 Select::make('payment_status')
-                    ->label('Estado de Pago')
+                    ->label('Estado de pago')
                     ->options([
                         'pending' => 'Pendiente',
-                        'paid' => 'Pagado',
                         'partial' => 'Parcial',
-                        'refunded' => 'Reembolsado',
+                        'completed' => 'Pagado',
                     ])
                     ->default('pending')
                     ->required(),
 
-                TextInput::make('total_amount')
-                    ->label('Monto Total')
-                    ->numeric()
-                    ->prefix('S/.')
-                    ->required()
-                    //->readOnly() 
-                    ->default(fn (callable $get) => $this->record->class_rate * $this->record->class_count) 
-                    ->live(onBlur: true), 
-
-                TextInput::make('paid_amount')
-                    ->label('Monto Pagado')
-                    ->numeric()
-                    ->prefix('S/.')
-                    ->required()
-                    ->default(0) 
-                    ->rules([
-                        fn (callable $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
-                            $totalAmount = (float) $get('total_amount');
-                            if ((float) $value > $totalAmount) {
-                                $fail("El monto pagado no puede ser mayor que el monto total ({$totalAmount}).");
-                            }
-                        },
-                    ]),
-
-                Textarea::make('notes')
-                    ->label('Notas')
-                    ->maxLength(65535)
-                    ->rows(3)
-                    ->nullable(),
+                DatePicker::make('enrollment_date')
+                    ->label('Fecha de inscripción')
+                    ->default(now())
+                    ->required(),
+                
             ])
             ->statePath('data');
     }
@@ -115,11 +125,56 @@ class InscribeStudent extends Page implements HasForms
     {
         try {
             $data = $this->form->getState();
-
-            // Asegúrate de que instructor_workshop_id se asigne correctamente
             $data['instructor_workshop_id'] = $this->record->id;
 
-            Enrollment::create($data);
+            // Si no viene number_of_classes, lo calculamos según la selección
+            if (!isset($data['number_of_classes']) || $data['number_of_classes'] === null) {
+                if (($data['enrollment_type'] ?? null) === 'specific_classes') {
+                    $data['number_of_classes'] = isset($data['selected_classes']) ? count($data['selected_classes']) : 0;
+                } elseif (($data['enrollment_type'] ?? null) === 'full_month') {
+                    $data['number_of_classes'] = \App\Models\WorkshopClass::where('instructor_workshop_id', $this->record->id)
+                        ->where('monthly_period_id', $data['monthly_period_id'])
+                        ->count();
+                }
+            }
+
+            $pricing = \App\Models\WorkshopPricing::where('workshop_id', $this->record->workshop_id)
+                ->where('number_of_classes', $data['number_of_classes'])
+                ->where(function($q) {
+                    $q->where('for_volunteer_workshop', $this->record->is_volunteer)
+                    ->orWhereNull('for_volunteer_workshop');
+                })
+                ->first();
+
+            if ($pricing) {
+                $data['price_per_quantity'] = $pricing->price;
+                $data['total_amount'] = $pricing->price;
+            } else {
+                Notification::make()
+                    ->title('No existe tarifa configurada para esa cantidad de clases.')
+                    ->danger()
+                    ->send();
+                return;
+            }
+
+            if ($data['enrollment_type'] === 'full_month') {
+                $clases = WorkshopClass::where('instructor_workshop_id', $this->record->id)
+                    ->where('monthly_period_id', $data['monthly_period_id'])
+                    ->orderBy('class_date')
+                    ->pluck('id')
+                    ->toArray();
+                $data['selected_classes'] = $clases;
+            }
+
+            $enrollment = StudentEnrollment::create($data);
+
+            foreach ($data['selected_classes'] as $classId) {
+                $enrollment->enrollmentClasses()->create([
+                    'workshop_class_id' => $classId,
+                    'class_fee' => $data['price_per_quantity'] ?? 0,
+                    'attendance_status' => 'enrolled',
+                ]);
+            }
 
             Notification::make()
                 ->title('¡Inscripción exitosa!')
@@ -127,7 +182,6 @@ class InscribeStudent extends Page implements HasForms
                 ->send();
 
             $this->redirect(InstructorWorkshopResource::getUrl('index'));
-
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error al inscribir al alumno')

@@ -33,19 +33,25 @@ class WorkshopResource extends Resource
                     ->maxLength(255),
                 Forms\Components\Textarea::make('description')
                     ->label('Descripción')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('duration_hours')
-                    ->label('Duración (horas)')
-                    ->numeric(),
-                Forms\Components\TextInput::make('price')
-                    ->label('Precio')
+                    ->nullable()
+                    ->columnSpanFull(), 
+                Forms\Components\TextInput::make('standard_monthly_fee')
+                    ->label('Tarifa Mensual Estándar (4 clases)')
                     ->numeric()
-                    ->prefix('S/.'),
-                Forms\Components\TextInput::make('max_students')
-                    ->label('Máximo de Estudiantes')
-                    ->numeric(),
-                Forms\Components\TextInput::make('status')
-                    ->label('Estado')
+                    ->prefix('S/.') 
+                    ->step(0.01)
+                    ->required(),
+                Forms\Components\TextInput::make('hourly_rate')
+                    ->label('Honorario por Hora (si aplica)')
+                    ->numeric()
+                    ->prefix('S/.') 
+                    ->step(0.01)
+                    ->nullable(),
+                Forms\Components\TextInput::make('duration_minutes')
+                    ->label('Duración de Clase (minutos)')
+                    ->numeric()
+                    ->minValue(1) 
+                    ->default(60) 
                     ->required(),
             ]);
     }
@@ -56,36 +62,20 @@ class WorkshopResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('duration_hours')
-                    ->label('Duración (horas)')
-                    ->numeric()
+                    ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Precio')
+                Tables\Columns\TextColumn::make('standard_monthly_fee')
+                    ->label('Tarifa Mensual')
                     ->money('PEN')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('max_students')
-                    ->label('Máximo de Estudiantes')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('hourly_rate')
+                    ->label('Honorario p/h')
+                    ->money('PEN') 
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
-                /* Tables\Columns\TextColumn::make('status')
-                    ->label('Estado'), */
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Estado') // Label en español
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'active' => 'Activo',
-                        'inactive' => 'Inactivo',
-                        'completed' => 'Completado',
-                        default => $state, // Por si acaso hay un valor inesperado
-                    })
-                    ->badge() 
-                    ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
-                        'inactive' => 'warning',
-                        'completed' => 'info', 
-                        default => 'gray',
-                    }),
+                Tables\Columns\TextColumn::make('duration_minutes')
+                    ->label('Duración (min)')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -96,7 +86,7 @@ class WorkshopResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // 
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

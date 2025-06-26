@@ -40,4 +40,8 @@ class MonthlyPeriod extends Model
     {
         return $this->hasMany(InstructorPayment::class);
     }
+    public function initialInstructorWorkshops()
+    {
+        return $this->hasMany(InstructorWorkshop::class, 'initial_monthly_period_id');
+    }
 }

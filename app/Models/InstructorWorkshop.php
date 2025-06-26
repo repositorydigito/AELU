@@ -9,6 +9,7 @@ class InstructorWorkshop extends Model
     protected $fillable = [
         'instructor_id',
         'workshop_id',
+        'initial_monthly_period_id',
         'day_of_week',
         'start_time',
         'end_time',
@@ -42,6 +43,10 @@ class InstructorWorkshop extends Model
     public function enrollments()
     {
         return $this->hasMany(StudentEnrollment::class);
+    }
+    public function initialMonthlyPeriod()
+    {
+        return $this->belongsTo(MonthlyPeriod::class, 'initial_monthly_period_id');
     }
     public function payments()
     {

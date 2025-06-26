@@ -114,6 +114,7 @@ class InstructorResource extends Resource
                                                 ->maxLength(20),
                                             Select::make('instructor_type')
                                                 ->label('Tipo de Profesor')
+                                                ->required()
                                                 ->options([
                                                     'Voluntario' => 'Voluntario',
                                                     'Por Horas' => 'Por Horas',
@@ -365,7 +366,7 @@ class InstructorResource extends Resource
                                         ])
                                         ->columns(3)
                                         ->itemLabel(fn (array $state): ?string => empty($state['workshop_id']) ? null : Workshop::find($state['workshop_id'])?->name . ' (' . ($state['day_of_week'] ?? 'N/A') . ' - ' . (\Carbon\Carbon::parse($state['start_time'])->format('H:i') ?? 'N/A') . ')' )
-                                        ->defaultItems(1)
+                                        ->defaultItems(0)
                                         ->collapsible()
                                         ->cloneable()
                                         ->grid(2)
