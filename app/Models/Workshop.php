@@ -3,39 +3,42 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Workshop extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'name',
         'description',
-        'duration_hours',
-        'price',
-        'max_students',
-        'status',
+        'standard_monthly_fee',
+        'hourly_rate',
+        'duration_minutes',
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
-    ];    
+        'standard_monthly_fee' => 'decimal:2',
+        'hourly_rate' => 'decimal:2',
+        'duration_minutes' => 'integer',
+    ];
 
-    public function instructorWorkshops(): HasMany
+    public function instructorWorkshops()
     {
         return $this->hasMany(InstructorWorkshop::class);
-    }    
-
-    public function enrollments(): HasMany
-    {
-        return $this->hasMany(Enrollment::class);
     }
 
-    public function treasuryTransactions(): HasMany
+    public function instructors()
     {
-        return $this->hasMany(Treasury::class);
+        return $this->belongsToMany(Instructor::class, 'instructor_workshops')
+                    ->withPivot('day_of_week', 'start_time', 'end_time', 'is_volunteer', 'is_active')
+                    ->withTimestamps();
+    }
+
+    public function pricing()
+    {
+        return $this->hasMany(WorkshopPricing::class);
+    }
+
+    public function enrollments()
+    {
+        return $this->hasManyThrough(StudentEnrollment::class, InstructorWorkshop::class);
     }
 }

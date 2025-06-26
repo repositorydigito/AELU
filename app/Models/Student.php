@@ -49,15 +49,22 @@ class Student extends Model
         return $this->hasOne(Affidavit::class);
     }    
 
-    public function enrollments(): HasMany
+    public function enrollments()
     {
-        return $this->hasMany(Enrollment::class);
+        return $this->hasMany(StudentEnrollment::class);
     }
 
-    public function payments(): HasMany
+    public function workshops()
+    {
+        return $this->belongsToMany(Workshop::class, 'student_enrollments')
+                    ->withPivot('monthly_period_id', 'enrollment_type', 'number_of_classes', 'price_per_quantity', 'total_amount', 'payment_status', 'enrollment_date')
+                    ->withTimestamps();
+    }
+
+    /* public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
-    }
+    } */
 
     public function getFullNameAttribute(): string
     {

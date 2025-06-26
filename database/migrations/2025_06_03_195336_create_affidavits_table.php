@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('affidavits', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('student_id')->nullable();
-            $table->foreignId('instructor_id')->nullable();
+            $table->foreignId('student_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('instructor_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('digital_signature_and_fingerprint_path')->nullable();
             $table->timestamps();
         });

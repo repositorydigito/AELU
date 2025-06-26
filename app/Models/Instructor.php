@@ -31,25 +31,29 @@ class Instructor extends Model
         'birth_date' => 'date',
     ];
     
-    public function instructorWorkshops(): HasMany
-    {
-        return $this->hasMany(InstructorWorkshop::class);
-    }    
-
-    public function treasuryTransactions(): HasMany
-    {
-        return $this->hasMany(Treasury::class);
-    }
-
     public function medicalRecord()
     {
         return $this->hasOne(MedicalRecord::class);
     }
-
     public function affidavit()
     {
         return $this->hasOne(Affidavit::class);
     }
+
+    public function instructorWorkshops()
+    {
+        return $this->hasMany(InstructorWorkshop::class);
+    }
+    public function workshops()
+    {
+        return $this->belongsToMany(Workshop::class, 'instructor_workshops')
+                    ->withPivot('day_of_week', 'start_time', 'end_time', 'is_volunteer', 'is_active')
+                    ->withTimestamps();
+    }
+    public function payments()
+    {
+        return $this->hasMany(InstructorPayment::class);
+    }       
 
     public function getFullNameAttribute(): string
     {

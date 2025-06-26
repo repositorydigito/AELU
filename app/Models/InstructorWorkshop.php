@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InstructorWorkshop extends Model
 {
@@ -14,36 +12,39 @@ class InstructorWorkshop extends Model
         'day_of_week',
         'start_time',
         'end_time',
-        'class_count',
-        'class_rate',
+        'max_capacity',
         'place',
+        'is_volunteer',
+        'is_active',
     ];
 
     protected $casts = [
-        'start_time' => 'datetime', 
-        'end_time' => 'datetime',   
+        'day_of_week' => 'integer',
+        'start_time' => 'datetime:H:i:s',
+        'end_time' => 'datetime:H:i:s',
+        'is_volunteer' => 'boolean',
+        'is_active' => 'boolean',
+        'max_capacity' => 'integer',
     ];
 
-    public function instructor(): BelongsTo
+    public function instructor()
     {
         return $this->belongsTo(Instructor::class);
     }
-
-    public function workshop(): BelongsTo
+    public function workshop()
     {
         return $this->belongsTo(Workshop::class);
     }
-
-    public function enrollments(): HasMany 
+    public function classes()
     {
-        return $this->hasMany(Enrollment::class);        
+        return $this->hasMany(WorkshopClass::class);
     }
-
-    public function getTimeRangeAttribute(): string
+    public function enrollments()
     {
-        $startTime = $this->start_time->format('h:i A');
-        $endTime = $this->end_time->format('h:i A');
-
-        return "{$startTime} - {$endTime}";
+        return $this->hasMany(StudentEnrollment::class);
+    }
+    public function payments()
+    {
+        return $this->hasMany(InstructorPayment::class);
     }
 }

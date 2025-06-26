@@ -5,27 +5,20 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
+{    
     public function up(): void
     {
         Schema::create('workshops', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->integer('duration_hours')->nullable();
-            $table->decimal('price', 8, 2)->nullable();
-            $table->integer('max_students')->nullable();
-            $table->enum('status', ['active', 'inactive', 'completed'])->default('active');
+            $table->decimal('standard_monthly_fee', 8, 2);
+            $table->decimal('hourly_rate', 8, 2)->nullable();
+            $table->integer('duration_minutes')->default(60);
             $table->timestamps();
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
+    
     public function down(): void
     {
         Schema::dropIfExists('workshops');
