@@ -5,100 +5,153 @@ namespace App\Filament\Resources\InstructorWorkshopResource\Pages;
 use App\Filament\Resources\InstructorWorkshopResource;
 use Filament\Resources\Pages\Page;
 use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\DatePicker;
-use Filament\Notifications\Notification;
 use App\Models\Student;
 use App\Models\MonthlyPeriod;
 use App\Models\InstructorWorkshop;
 use App\Models\WorkshopClass;
 use App\Models\WorkshopPricing;
 use App\Models\StudentEnrollment;
+use Illuminate\Support\Arr;
+use Filament\Notifications\Notification;
 
-class BulkInscribeStudents extends Page implements HasForms
+class BulkInscribeStudents extends Page
 {
-    use InteractsWithForms;
-
     protected static string $resource = InstructorWorkshopResource::class;
     protected static string $view = 'filament.resources.instructor-workshop-resource.pages.bulk-inscribe-students';
-    protected static ?string $title = 'Inscripción múltiple de alumno';
 
-    public ?array $data = [];
-    public array $workshops = [];
-
-    public function mount(): void
+    public $workshops;
+    public $students;
+    public $selectedStudent = null;
+    public $enrollmentData = [];
+    
+    public function mount()
     {
-        // Recibe los IDs de los talleres seleccionados como string separado por comas o array
-        $workshopIds = request()->get('workshops', []);
-        if (is_string($workshopIds)) {
-            $workshopIds = array_filter(explode(',', $workshopIds));
-        }
-        $this->workshops = InstructorWorkshop::whereIn('id', $workshopIds)->get()->all();
-    }
+        $ids = request()->query('workshops', '');
+        $ids = array_filter(explode(',', $ids));
 
-    public function form(Form $form): Form
-    {
-        return $form->schema([
-            Select::make('student_id')
-                ->label('Alumno')
-                ->options(Student::all()->mapWithKeys(fn ($student) => [
-                    $student->id => "{$student->full_name} - {$student->student_code}",
-                ]))
-                ->searchable()
-                ->required(),
-            Select::make('monthly_period_id')
-                ->label('Periodo mensual')
-                ->options(MonthlyPeriod::all()->mapWithKeys(fn ($period) => [
-                    $period->id => "{$period->year} - " . \Illuminate\Support\Carbon::create()->month($period->month)->monthName,
-                ]))
-                ->searchable()
-                ->required(),
-            // Aquí, por cada taller, se agregará dinámicamente un bloque de selección
-        ])->statePath('data');
-    }    
+        $this->workshops = InstructorWorkshop::with(['workshop', 'instructor', 'classes'])->whereIn('id', $ids)->get();
+        $this->students = Student::orderBy('last_names')->get();
 
-    /**
-     * Devuelve las clases del workshop filtradas por periodo mensual seleccionado.
-     * Si no hay periodo seleccionado, retorna colección vacía.
-     *
-     * @param int $workshopId
-     * @return \Illuminate\Support\Collection
-     */
-    public function getWorkshopClasses($workshopId)
-    {
-        // Forzar reactividad: accedemos a los datos relevantes para que Livewire detecte cambios
-        $periodId = $this->data['monthly_period_id'] ?? null;
-        $enrollmentType = data_get($this->data, 'workshops.' . $workshopId . '.enrollment_type', null);
-        // Si no hay periodo, no hay clases
-        if (!$periodId) {
-            return collect();
-        }
-        // Siempre devolver las clases del periodo y workshop
-        return WorkshopClass::where('instructor_workshop_id', $workshopId)
-            ->where('monthly_period_id', $periodId)
-            ->orderBy('class_date')
-            ->get();
-    }
+        $defaultPeriod = MonthlyPeriod::query()->where('start_date', '>', now())->orderBy('start_date')->first();
 
-    // Opcional: Si quieres forzar el refresco de la vista al cambiar el periodo o tipo de inscripción
-    public function updated($propertyName)
-    {
-        // Si cambia el periodo o el tipo de inscripción de cualquier taller, forzar refresco
-        if ($propertyName === 'data.monthly_period_id' || str_starts_with($propertyName, 'data.workshops.')) {
-            $this->emitSelf('$refresh');
+        foreach ($this->workshops as $workshop) {
+            $periodClasses = collect([]);
+            if ($defaultPeriod) {
+                $periodClasses = $workshop->classes->where('monthly_period_id', $defaultPeriod->id);
+            }
+
+            $this->enrollmentData[$workshop->id] = [
+                'period_id' => $defaultPeriod?->id, 
+                'type' => 'full_month',                 
+                'classes' => $periodClasses->pluck('id')->toArray(),
+                'payment_status' => 'pending', 
+            ];
         }
     }
-
-    public function inscribe()
+    public function updatedEnrollmentDataPeriodId($value, $key)
     {
-        // Aquí procesarás la inscripción múltiple, leyendo los datos de $this->data
-        // y de los campos dinámicos por taller
+        list($workshopId, $field) = explode('.', $key);
+
+        $workshop = $this->workshops->firstWhere('id', $workshopId);
+        if ($workshop) {
+            $periodId = $this->enrollmentData[$workshopId]['period_id'];
+            $type = $this->enrollmentData[$workshopId]['type'];
+            $periodClasses = $workshop->classes->where('monthly_period_id', $periodId);
+            
+            $this->enrollmentData[$workshopId]['classes'] = ($type === 'full_month')
+                ? $periodClasses->pluck('id')->toArray()
+                : []; 
+        }
+    }
+    
+    public function updatedEnrollmentDataType($value, $key)
+    {
+        list($workshopId, $field) = explode('.', $key);
+
+        $workshop = $this->workshops->firstWhere('id', $workshopId);
+        if ($workshop) {
+            $periodId = $this->enrollmentData[$workshopId]['period_id'];
+            $type = $this->enrollmentData[$workshopId]['type'];
+
+            $periodClasses = $workshop->classes->where('monthly_period_id', $periodId);            
+            $this->enrollmentData[$workshopId]['classes'] = $periodClasses->pluck('id')->toArray();
+        }
+    }
+    
+    public function bulkInscribe()
+    {
+        if (!$this->selectedStudent) {
+            Notification::make()
+                ->title('Debes seleccionar un alumno.')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        foreach ($this->workshops as $workshop) {
+            $data = $this->enrollmentData[$workshop->id];
+            $periodId = $data['period_id'];
+            $type = $data['type'];
+            $selectedClassIds = $data['classes'] ?? []; 
+
+            $availablePeriodClassIds = $workshop->classes->where('monthly_period_id', $periodId)->pluck('id')->toArray();
+            $classIdsToEnroll = array_intersect($selectedClassIds, $availablePeriodClassIds);
+
+            if (empty($classIdsToEnroll)) {
+                Notification::make()
+                    ->title("Advertencia: No se seleccionaron clases para el taller '{$workshop->workshop->name}' en el periodo seleccionado. Se omitirá este taller.")
+                    ->warning()
+                    ->send();
+                continue; 
+            }
+
+            $alreadyEnrolled = StudentEnrollment::where([
+                'student_id' => $this->selectedStudent,
+                'instructor_workshop_id' => $workshop->id,
+                'monthly_period_id' => $periodId,
+            ])->exists();
+
+            if ($alreadyEnrolled) {
+                Notification::make()
+                    ->title("El alumno ya está inscrito en '{$workshop->workshop->name}' para el periodo seleccionado.")
+                    ->warning()
+                    ->send();
+                continue;
+            }
+
+            $classCount = count($classIdsToEnroll);
+
+            $pricing = WorkshopPricing::where('workshop_id', $workshop->workshop_id)
+                ->where('number_of_classes', $classCount)
+                ->first();
+
+            $enrollment = StudentEnrollment::create([
+                'student_id' => $this->selectedStudent,
+                'instructor_workshop_id' => $workshop->id,
+                'monthly_period_id' => $periodId,
+                'enrollment_type' => $type,
+                'number_of_classes' => $classCount,
+                'price_per_quantity' => $pricing->price ?? 0,
+                'total_amount' => $pricing->price ?? 0, 
+                'payment_status' => $data['payment_status'],
+                'enrollment_date' => now(),
+            ]);
+
+            foreach ($classIdsToEnroll as $classId) {
+                $enrollment->enrollmentClasses()->create([
+                    'workshop_class_id' => $classId,
+                    'class_fee' => $pricing->price ?? 0,
+                    'attendance_status' => 'enrolled',
+                ]);
+            }
+        }
+
         Notification::make()
-            ->title('Funcionalidad de inscripción múltiple aún no implementada')
-            ->warning()
+            ->title('¡Alumno inscrito en todos los horarios seleccionados!')
+            ->success()
             ->send();
-    }
+
+        return redirect(InstructorWorkshopResource::getUrl('index'));
+    }    
 }
