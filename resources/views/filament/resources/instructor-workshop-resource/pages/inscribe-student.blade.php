@@ -18,5 +18,21 @@
             <x-filament::button type="submit" color="primary">Inscribir Alumno</x-filament::button>
         </div>
     </form>
+
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            // Escuchar el evento 'open-pdf-ticket' disparado desde el componente Livewire
+            Livewire.on('open-pdf-ticket', (event) => {
+                // event.detail contendrá los datos pasados por dispatchBrowserEvent
+                const url = event.url; // Accedemos a la URL del PDF
+
+                if (url) {
+                    window.open(url, '_blank'); // Abre la URL en una nueva pestaña
+                } else {
+                    console.error('Error: URL del PDF no proporcionada.');
+                }
+            });
+        });
+    </script>
 </x-filament-panels::page>
 

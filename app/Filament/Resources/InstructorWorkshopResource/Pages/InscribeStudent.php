@@ -176,11 +176,15 @@ class InscribeStudent extends Page implements HasForms
                 ]);
             }
 
+            $ticketUrl = route('enrollment.ticket', ['enrollmentId' => $enrollment->id]);
+
             Notification::make()
                 ->title('¡Inscripción exitosa!')
-                ->success()
+                ->success()                
                 ->send();
-
+            
+            //$this->dispatchBrowserEvent('open-pdf-ticket', ['url' => $ticketUrl]);
+            $this->js('window.open("' . $ticketUrl . '", "_blank")');
             $this->redirect(InstructorWorkshopResource::getUrl('index'));
         } catch (\Exception $e) {
             Notification::make()
