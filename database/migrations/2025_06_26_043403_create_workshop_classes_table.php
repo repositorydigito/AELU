@@ -15,6 +15,7 @@ return new class extends Migration
             $table->date('class_date');
             $table->time('start_time');
             $table->time('end_time');
+            $table->integer('max_capacity');
             $table->enum('status', ['scheduled', 'completed', 'cancelled'])->default('scheduled');
             $table->text('notes')->nullable();
             $table->timestamps();

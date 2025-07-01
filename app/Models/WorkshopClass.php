@@ -14,6 +14,7 @@ class WorkshopClass extends Model
         'end_time',
         'status',
         'notes',
+        'max_capacity',
     ];
 
     protected $casts = [

@@ -68,6 +68,7 @@ class InstructorWorkshopObserver
                         'start_time' => $instructorWorkshop->start_time,
                         'end_time' => $instructorWorkshop->end_time,
                         'status' => 'scheduled',
+                        'max_capacity' => $instructorWorkshop->max_capacity,
                     ]);
                 }
             }
