@@ -315,7 +315,7 @@ class InstructorResource extends Resource
                         ]),
 
 
-                    Step::make('Talleres Asignados')
+                    /* Step::make('Talleres Asignados')
                         ->schema([
                             Section::make('Talleres que Imparte el Profesor')
                                 ->description('Añade los talleres que este instructor dictará, especificando el horario y la tarifa.')
@@ -372,7 +372,7 @@ class InstructorResource extends Resource
                                         ->grid(2)
                                         ->addActionLabel('Añadir Taller y Horario')
                                 ])
-                        ]),
+                        ]), */
                     Step::make('Declaración jurada y resumen')
                         ->schema([
                             Section::make('Resumen de Ficha Personal')
@@ -480,7 +480,7 @@ class InstructorResource extends Resource
                                                 ->hidden(fn (callable $get) => empty($get('medicalRecord.medications'))),
                                         ]),
                                 ]),
-                            Section::make('Resumen de Talleres Asignados')
+                            /* Section::make('Resumen de Talleres Asignados')
                                 ->schema([
                                     Placeholder::make('workshops_list_summary')
                                         ->label('Talleres y Horarios')
@@ -512,7 +512,7 @@ class InstructorResource extends Resource
                                             $summary .= '</div>';
                                             return new \Illuminate\Support\HtmlString($summary); // Importante para renderizar HTML
                                         }),
-                                ]),
+                                ]), */
                             Section::make('Firma y Huella Digital')
                                 ->relationship('affidavit')
                                 ->schema([
@@ -577,9 +577,9 @@ class InstructorResource extends Resource
                         'success' => 'VOLUNTARIO',
                         'info' => 'POR HORAS',
                     ]),
-                TextColumn::make('instructorWorkshops.workshop.name') // Accede a los nombres de los talleres a través de la relación
+                TextColumn::make('instructorWorkshops.workshop.name') 
                     ->label('Talleres que Imparte')
-                    ->listWithLineBreaks() // Muestra cada taller en una nueva línea
+                    ->listWithLineBreaks() 
                     ->limit(50)
                     ->tooltip(function (Instructor $record) {
                         return $record->instructorWorkshops->map(function ($iw) {
