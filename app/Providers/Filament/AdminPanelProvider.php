@@ -23,7 +23,7 @@ use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Support\Enums\MaxWidth;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use Filament\Navigation\MenuItem;
-use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage; 
+use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage;
 use Filament\View\PanelsRenderHook;
 use App\Filament\Pages\Auth\Login;
 use Filament\Support\Facades\FilamentView;
@@ -60,19 +60,21 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
+                \App\Filament\Resources\InstructorPaymentResource\Widgets\LiquidatedInstructorsCount::class,
+                \App\Filament\Resources\InstructorPaymentResource\Widgets\PaymentStatusChart::class,
             ])
             ->plugins([
                 FilamentUsersPlugin::make(),
                 FilamentShieldPlugin::make(),
                 FilamentApexChartsPlugin::make(),
-                FilamentEditProfilePlugin::make()                    
-                    ->shouldRegisterNavigation(false) 
+                FilamentEditProfilePlugin::make()
+                    ->shouldRegisterNavigation(false)
             ])
             ->userMenuItems([
                 MenuItem::make()
-                    ->label('Perfil') 
+                    ->label('Perfil')
                     ->url(fn (): string => EditProfilePage::getUrl())
-                    ->icon('heroicon-o-user') 
+                    ->icon('heroicon-o-user')
             ])
             ->sidebarWidth('18rem')
             ->sidebarCollapsibleOnDesktop()
@@ -83,7 +85,7 @@ class AdminPanelProvider extends PanelProvider
                 'Profesores',
                 'Talleres',
                 'Tesorería',
-        
+
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -120,7 +122,7 @@ class AdminPanelProvider extends PanelProvider
                     .fi-sidebar-item-icon {
                         color: #017D47 !important;
                     }
-                    
+
                     .fi-sidebar-group-label{
                         color:grey;
                     }
@@ -132,7 +134,7 @@ class AdminPanelProvider extends PanelProvider
                     .fi-sidebar-item-active .fi-sidebar-item-icon {
                         color: #017D47 !important;
                     }
-                    
+
                     .fi-sidebar-item a>span:hover{
                         color: #017D47 !important;
                     }
@@ -142,6 +144,6 @@ class AdminPanelProvider extends PanelProvider
                         border-radius: 0.5rem;
                     }
                 </style>
-            ');            
+            ');
     }
 }

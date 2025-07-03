@@ -319,7 +319,8 @@ class InstructorWorkshopResource extends Resource
                     ->deselectRecordsAfterCompletion(false),
             ])
             // Si necesitas precargar relaciones para evitar N+1 en la vista de tarjetas
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['workshop', 'instructor', 'enrollments']));
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['workshop', 'instructor', 'enrollments']))
+            ->defaultSort('workshop.name', 'asc');
     }      
 
     public static function getRelations(): array

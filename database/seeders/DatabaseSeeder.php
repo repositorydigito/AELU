@@ -12,11 +12,12 @@ class DatabaseSeeder extends Seeder
      * Seed the application's database.
      */
     public function run(): void
-    {      
+    {
         $this->call([
             MonthlyPeriodsSeeder::class,
             WorkshopSeeder::class,
-            InstructorWorkshopSeeder::class,            
+            InstructorWorkshopSeeder::class,
+            MovementCategorySeeder::class,
         ]);
     }
 }

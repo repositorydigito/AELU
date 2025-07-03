@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class InstructorPayment extends Model
 {
@@ -59,5 +60,11 @@ class InstructorPayment extends Model
             'instructor_workshop_id',
             'workshop_id'
         );
+    }
+
+    public function movement(): MorphOne
+    {
+        // 'movable' es el nombre de la relación polimórfica en el modelo Movement
+        return $this->morphOne(Movement::class, 'movable');
     }
 }

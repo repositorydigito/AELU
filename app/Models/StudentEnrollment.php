@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class StudentEnrollment extends Model
 {
@@ -57,8 +58,11 @@ class StudentEnrollment extends Model
     {
         return $this->hasOne(StudentEnrollment::class, 'previous_enrollment_id');
     }
-
-
+    public function movements(): MorphMany
+    {
+        return $this->morphMany(Movement::class, 'movable');
+    }
+    
     // Relaciones indirectas
     public function instructor()
     {
@@ -66,7 +70,7 @@ class StudentEnrollment extends Model
             Instructor::class,
             InstructorWorkshop::class,
             'id',
-            'id', 
+            'id',
             'instructor_workshop_id',
             'instructor_id'
         );
@@ -78,8 +82,8 @@ class StudentEnrollment extends Model
             InstructorWorkshop::class,
             'id',
             'id',
-            'instructor_workshop_id', 
+            'instructor_workshop_id',
             'workshop_id'
         );
-    }       
+    }
 }

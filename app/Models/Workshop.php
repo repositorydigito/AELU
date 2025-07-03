@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Workshop extends Model
 {
@@ -40,5 +41,9 @@ class Workshop extends Model
     public function enrollments()
     {
         return $this->hasManyThrough(StudentEnrollment::class, InstructorWorkshop::class);
+    }
+    public function movements(): MorphMany
+    {
+        return $this->morphMany(Movement::class, 'movable');
     }
 }
