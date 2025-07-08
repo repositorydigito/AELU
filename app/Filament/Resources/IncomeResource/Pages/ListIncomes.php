@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\MovementResource\Pages;
+namespace App\Filament\Resources\IncomeResource\Pages;
 
-use App\Filament\Resources\MovementResource;
+use App\Filament\Resources\IncomeResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-class ListMovements extends ListRecords
+class ListIncomes extends ListRecords
 {
-    protected static string $resource = MovementResource::class;
+    protected static string $resource = IncomeResource::class;
 
     protected function getHeaderActions(): array
     {

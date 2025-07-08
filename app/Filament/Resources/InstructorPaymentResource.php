@@ -26,7 +26,7 @@ class InstructorPaymentResource extends Resource
     protected static ?string $navigationLabel = 'Pago de Profesores';
     protected static ?string $pluralModelLabel = 'Pagos';
     protected static ?string $modelLabel = 'Pago';
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 13;
     protected static ?string $navigationGroup = 'Tesorería';
 
     public static function form(Form $form): Form

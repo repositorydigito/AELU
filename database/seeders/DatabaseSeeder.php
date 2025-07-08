@@ -17,7 +17,6 @@ class DatabaseSeeder extends Seeder
             MonthlyPeriodsSeeder::class,
             WorkshopSeeder::class,
             InstructorWorkshopSeeder::class,
-            MovementCategorySeeder::class,
         ]);
     }
 }

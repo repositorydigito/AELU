@@ -8,16 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('movement_categories', function (Blueprint $table) {
+        Schema::create('expenses', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
-            $table->enum('type', ['income', 'expense']);
+            $table->string('concept');
+            $table->string('vale_code')->nullable();
+            $table->string('voucher_path')->nullable();
+            $table->boolean('is_income')->default(false);
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('movement_categories');
+        Schema::dropIfExists('expenses');
     }
 };
