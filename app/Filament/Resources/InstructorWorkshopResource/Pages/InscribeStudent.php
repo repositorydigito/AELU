@@ -187,8 +187,9 @@ class InscribeStudent extends Page implements HasForms
                     ->columns(2)
                     ->reactive()
                     ->helperText('Selecciona las clases a las que deseas inscribirte. Si es mes completo, se inscribirá a todas las clases automáticamente.'),
-
-                Select::make('payment_status')
+                
+                // Por default es pending
+                /* Select::make('payment_status')
                     ->label('Estado de pago')
                     ->options([
                         'pending' => 'Pendiente',
@@ -196,6 +197,13 @@ class InscribeStudent extends Page implements HasForms
                         'completed' => 'Pagado',
                     ])
                     ->default('pending')
+                    ->required(), */
+                Select::make('payment_method')
+                    ->label('Método de pago')
+                    ->options([
+                        'Link' => 'Link',
+                        'Efectivo' => 'Efectivo',
+                    ])
                     ->required(),
 
                 DatePicker::make('enrollment_date')

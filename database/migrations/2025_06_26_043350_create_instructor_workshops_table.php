@@ -18,7 +18,7 @@ return new class extends Migration
             $table->time('end_time');
             $table->integer('max_capacity');
             $table->string('place')->nullable();
-            $table->boolean('is_volunteer')->default(false);
+            $table->boolean('is_volunteer')->default(true);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             

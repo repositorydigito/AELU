@@ -17,6 +17,7 @@ class StudentEnrollment extends Model
         'price_per_quantity',
         'total_amount',
         'payment_status',
+        'payment_method',
         'enrollment_date',
         'renewal_status',
         'renewal_deadline',

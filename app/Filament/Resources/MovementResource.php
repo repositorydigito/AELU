@@ -71,7 +71,7 @@ class MovementResource extends Resource
                     // --- Lógica Condicional para el campo 'Concepto' y 'movable' ---
 
                     // Campo de selección para Pago a Profesor
-                    Forms\Components\Select::make('related_instructor_payment_id')
+                    /* Forms\Components\Select::make('related_instructor_payment_id')
                         ->label('Seleccionar Pago a Profesor')
                         ->options(
                             fn (Get $get) => InstructorPayment::with('instructor', 'monthlyPeriod')
@@ -95,10 +95,31 @@ class MovementResource extends Resource
                                 $set('concept', null);
                             }
                         })
-                        ->dehydrated(false), // No guardar este campo directamente en la BD
+                        ->dehydrated(false), */
+
+                    Forms\Components\Select::make('related_instructor_id')
+                    ->label('Seleccionar Profesor')
+                    ->options(
+                        \App\Models\Instructor::all()->pluck('full_name', 'id') // full_name: accesor en el modelo o concatena nombres
+                    )
+                    ->visible(fn (Get $get) => MovementCategory::find($get('movement_category_id'))?->name === 'Pago a profesor')
+                    ->live()
+                    ->afterStateUpdated(function (Set $set, ?string $state) {
+                        if ($state) {
+                            $instructor = \App\Models\Instructor::find($state);
+                            $set('movable_id', $instructor->id);
+                            $set('movable_type', $instructor->getMorphClass());
+                            $set('concept', "Pago a Prof. {$instructor->first_names} {$instructor->last_names}");
+                        } else {
+                            $set('movable_id', null);
+                            $set('movable_type', null);
+                            $set('concept', null);
+                        }
+                    })
+                    ->dehydrated(false),
 
                     // Campo de selección para Cobro de Taller
-                    Forms\Components\Select::make('related_student_enrollment_id')
+                    /* Forms\Components\Select::make('related_student_enrollment_id')
                         ->label('Seleccionar Inscripción de Taller')
                         ->options(
                             fn (Get $get) => StudentEnrollment::with(['student', 'instructorWorkshop.workshop', 'monthlyPeriod'])
@@ -116,6 +137,27 @@ class MovementResource extends Resource
                                 $set('movable_id', $enrollment->id);
                                 $set('movable_type', $enrollment->getMorphClass());
                                 $set('concept', "Cobro de Taller: {$enrollment->instructorWorkshop->workshop->name} ({$enrollment->instructorWorkshop->day_of_week} {$enrollment->instructorWorkshop->start_time->format('H:i')})");
+                            } else {
+                                $set('movable_id', null);
+                                $set('movable_type', null);
+                                $set('concept', null);
+                            }
+                        })
+                        ->dehydrated(false), */
+                    // Select para Cobro de Taller (mostrar todos los talleres)
+                    Forms\Components\Select::make('related_workshop_id_for_charge')
+                        ->label('Seleccionar Taller')
+                        ->options(
+                            \App\Models\Workshop::all()->pluck('name', 'id')
+                        )
+                        ->visible(fn (Get $get) => MovementCategory::find($get('movement_category_id'))?->name === 'Cobro de taller')
+                        ->live()
+                        ->afterStateUpdated(function (Set $set, ?string $state) {
+                            if ($state) {
+                                $workshop = \App\Models\Workshop::find($state);
+                                $set('movable_id', $workshop->id);
+                                $set('movable_type', $workshop->getMorphClass());
+                                $set('concept', "Cobro de Taller: {$workshop->name}");
                             } else {
                                 $set('movable_id', null);
                                 $set('movable_type', null);
@@ -198,7 +240,7 @@ class MovementResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('date')
                     ->label('Fecha')
-                    ->date()
+                    ->date('d/m/Y')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('notes')
                     ->label('Observaciones')
@@ -208,7 +250,7 @@ class MovementResource extends Resource
                 Tables\Filters\SelectFilter::make('movement_category_id')
                     ->relationship('category', 'name')
                     ->label('Filtrar por Categoría')
-                    ->native(false),
+                    ->native(false),                                
                 Tables\Filters\Filter::make('date')
                     ->form([
                         Forms\Components\DatePicker::make('date_from')->label('Desde'),
@@ -228,7 +270,7 @@ class MovementResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(), // Para ver detalles, incluyendo movable_id/type
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
 

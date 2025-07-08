@@ -59,9 +59,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
-                \App\Filament\Resources\InstructorPaymentResource\Widgets\LiquidatedInstructorsCount::class,
-                \App\Filament\Resources\InstructorPaymentResource\Widgets\PaymentStatusChart::class,
+                Widgets\AccountWidget::class,                
             ])
             ->plugins([
                 FilamentUsersPlugin::make(),

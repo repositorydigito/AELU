@@ -22,18 +22,11 @@ class Movement extends Model
         'date' => 'date',
         'amount' => 'decimal:2',
     ];
-
-    /**
-     * Get the category that owns the movement.
-     */
+    
     public function category(): BelongsTo
     {
         return $this->belongsTo(MovementCategory::class, 'movement_category_id');
-    }
-
-    /**
-     * Get the parent movable model (e.g., InstructorPayment, StudentEnrollment, Workshop).
-     */
+    }    
     public function movable(): MorphTo
     {
         return $this->morphTo();
