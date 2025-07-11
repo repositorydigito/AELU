@@ -254,25 +254,51 @@ class InscribeStudent extends Page implements HasForms
                 }
             }
 
-            $isVolunteerWorkshop = $this->record->payment_type === 'volunteer';
-
-            // Obtener tarifa
-            $pricing = \App\Models\WorkshopPricing::where('workshop_id', $this->record->workshop_id)
-                ->where('number_of_classes', $data['number_of_classes']) 
-                ->where('for_volunteer_workshop', $isVolunteerWorkshop)
-                ->first();            
-
-            if ($pricing) {
-                $data['price_per_quantity'] = $pricing->price;
-                $data['total_amount'] = $pricing->price;
-            } else {
-                Notification::make() 
-                    ->title('No existe tarifa configurada para esa cantidad de clases.')
+            $student = Student::find($data['student_id']);
+            if (!$student) {
+                Notification::make()
+                    ->title('Error')
+                    ->body('Estudiante no encontrado.')
                     ->danger()
                     ->send();
-                DB::rollBack(); // Revertir la transacción
+                DB::rollBack();
+                return;
+            }
+
+            $isVolunteerWorkshop = $this->record->payment_type === 'volunteer';
+
+            // Obtener tarifa base
+            $basePricing = \App\Models\WorkshopPricing::where('workshop_id', $this->record->workshop_id)
+                ->where('number_of_classes', $data['number_of_classes']) 
+                ->where('for_volunteer_workshop', $isVolunteerWorkshop)
+                ->first();
+
+            if (!$basePricing) {
+                Notification::make() 
+                    ->title('Error de tarifa')
+                    ->body("No existe tarifa base configurada para {$data['number_of_classes']} clases en el taller {$this->record->workshop->name}.")
+                    ->danger()
+                    ->send();
+                DB::rollBack();
                 return; 
             }
+
+            // 🎯 APLICAR TARIFA DIFERENCIADA SEGÚN CATEGORÍA DEL ESTUDIANTE
+            $basePrice = $basePricing->price;
+            $finalPrice = $student->calculateFinalPrice($basePrice);
+            $pricingDescription = $student->pricing_description;
+
+            // Verificar si el estudiante está exento
+            if ($student->isPaymentExempt()) {
+                $finalPrice = 0.00;
+                $pricingDescription = 'Exento de pago (' . $student->category_partner . ')';
+            }
+
+            $data['price_per_quantity'] = $finalPrice;
+            $data['total_amount'] = $finalPrice;
+            
+            // Agregar información de la tarifa aplicada
+            $data['pricing_notes'] = $pricingDescription . " | Base: S/ " . number_format($basePrice, 2) . " | Final: S/ " . number_format($finalPrice, 2);
 
             // Crear la inscripción del estudiante
             $enrollment = StudentEnrollment::create($data); 

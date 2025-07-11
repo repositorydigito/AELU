@@ -16,6 +16,7 @@ class StudentEnrollment extends Model
         'number_of_classes',
         'price_per_quantity',
         'total_amount',
+        'pricing_notes',
         'payment_status',
         'payment_method',
         'enrollment_date',

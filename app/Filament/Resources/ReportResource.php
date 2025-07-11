@@ -20,8 +20,9 @@ class ReportResource extends Resource
     protected static ?string $navigationLabel = 'Reportes';
     protected static ?string $pluralModelLabel = 'Reportes';
     protected static ?string $modelLabel = 'Reporte';
-    protected static ?int $navigationSort = 1;
-    protected static ?string $navigationGroup = 'Alumnos';
+    //protected static ?int $navigationSort = 1;
+    //protected static ?string $navigationGroup = 'Alumnos';
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Form $form): Form
     {

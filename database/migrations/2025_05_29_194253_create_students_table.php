@@ -5,10 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
+{    
     public function up(): void
     {
         Schema::create('students', function (Blueprint $table) {
@@ -32,12 +29,13 @@ return new class extends Migration
             $table->string('emergency_contact_relationship')->nullable(); 
             $table->string('emergency_contact_phone')->nullable(); 
             $table->timestamps();
+
+            // Tarifas
+            $table->boolean('has_payment_exemption')->default(false);
+            $table->decimal('pricing_multiplier', 5, 2)->default(1.00); // Multiplicador para el precio (1.5 para PRE-PAMA, 1.0 para otros, 0.0 para exentos)
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
+    
     public function down(): void
     {
         Schema::dropIfExists('students');

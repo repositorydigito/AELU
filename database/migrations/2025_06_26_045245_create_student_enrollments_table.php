@@ -17,6 +17,7 @@ return new class extends Migration
             $table->tinyInteger('number_of_classes');
             $table->decimal('price_per_quantity', 8, 2);
             $table->decimal('total_amount', 8, 2);
+            $table->text('pricing_notes')->nullable();
             $table->enum('payment_status', ['pending', 'partial', 'completed'])->default('pending');
             $table->string('payment_method');
             $table->date('enrollment_date');

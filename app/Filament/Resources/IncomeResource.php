@@ -19,8 +19,9 @@ class IncomeResource extends Resource
     protected static ?string $navigationLabel = 'Ingresos';
     protected static ?string $pluralModelLabel = 'Ingresos';
     protected static ?string $modelLabel = 'Ingreso';
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 1;
     protected static ?string $navigationGroup = 'Tesorería';
+    protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-up';
 
     public static function form(Form $form): Form
     {

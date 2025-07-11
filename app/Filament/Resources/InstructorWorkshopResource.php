@@ -33,12 +33,12 @@ class InstructorWorkshopResource extends Resource
 {
     protected static ?string $model = InstructorWorkshop::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static ?string $navigationLabel = 'Horarios'; 
     protected static ?string $pluralModelLabel = 'Horarios'; 
-    protected static ?string $modelLabel = 'Horario';    
-    protected static ?int $navigationSort = 6; 
-    protected static ?string $navigationGroup = 'Talleres';    
+    protected static ?string $modelLabel = 'Horario';        
+    protected static ?string $navigationGroup = 'Gestión';    
+    protected static ?int $navigationSort = 4; 
 
     public static function getTableQuery(): Builder
     {
@@ -110,7 +110,7 @@ class InstructorWorkshopResource extends Resource
                     ->required(),
                 
                 // Sección de configuración de pago
-                Forms\Components\Section::make('Configuración de Pago')
+                Forms\Components\Section::make('Configuración de Pago del Profesor')
                     ->schema([
                         Forms\Components\Select::make('payment_type')
                             ->label('Tipo de Pago')

@@ -28,6 +28,7 @@ use Filament\View\PanelsRenderHook;
 use App\Filament\Pages\Auth\Login;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Blade;
+use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -79,11 +80,15 @@ class AdminPanelProvider extends PanelProvider
             ->collapsibleNavigationGroups()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->navigationGroups([
-                'Alumnos',
-                'Profesores',
-                'Talleres',
-                'Tesorería',
-
+                NavigationGroup::make()
+                    ->label('Gestión')
+                    ->collapsible(false),
+                NavigationGroup::make()
+                    ->label('Tesorería')
+                    ->collapsible(false),
+                NavigationGroup::make()
+                    ->label('Filament Shield')
+                    ->collapsible(true),
             ])
             ->middleware([
                 EncryptCookies::class,

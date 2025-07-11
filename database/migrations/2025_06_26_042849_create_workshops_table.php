@@ -13,8 +13,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->decimal('standard_monthly_fee', 8, 2);
-            $table->decimal('hourly_rate', 8, 2)->nullable();
-            $table->integer('duration_minutes')->default(60);
+            $table->decimal('pricing_surcharge_percentage', 5, 2)->default(20.00);
             $table->timestamps();
         });
     }

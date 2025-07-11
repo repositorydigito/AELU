@@ -27,7 +27,7 @@ class InstructorPaymentResource extends Resource
     protected static ?string $navigationLabel = 'Pago de Profesores';
     protected static ?string $pluralModelLabel = 'Pagos';
     protected static ?string $modelLabel = 'Pago';
-    protected static ?int $navigationSort = 13;
+    protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Tesorería';
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
@@ -222,7 +222,9 @@ class InstructorPaymentResource extends Resource
                 Tables\Columns\TextColumn::make('period_info')
                     ->label('Período')
                     ->getStateUsing(fn (InstructorPayment $record) => 
-                        \Carbon\Carbon::create()->month($record->monthlyPeriod->month)->translatedFormat('M') . ' ' . $record->monthlyPeriod->year
+                        \Carbon\Carbon::create()->month($record->monthlyPeriod->month)
+                        ->year($record->monthlyPeriod->year)
+                        ->format('m/Y') // Este es el formato que necesitas: MM/YYYY
                     )
                     ->sortable(['monthlyPeriod.year', 'monthlyPeriod.month']),
 

@@ -28,8 +28,9 @@ class ExpenseResource extends Resource
     protected static ?string $navigationLabel = 'Egresos';
     protected static ?string $pluralModelLabel = 'Egresos';
     protected static ?string $modelLabel = 'Egreso';
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 2;
     protected static ?string $navigationGroup = 'Tesorería';
+    protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-down';
 
     public static function form(Form $form): Form
     {

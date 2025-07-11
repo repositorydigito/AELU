@@ -34,14 +34,15 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Fieldset;
 use Filament\Notifications\Notification;
 
-class InstructorResource extends Resource
+class InstructorResource extends Resource 
 {
     protected static ?string $model = Instructor::class;
-    protected static ?string $navigationLabel = 'Registrar Profesores';
+    protected static ?string $navigationIcon = 'heroicon-o-briefcase';  
+    protected static ?string $navigationLabel = 'Profesores';
     protected static ?string $pluralModelLabel = 'Profesores';
-    protected static ?string $modelLabel = 'Profesor';
-    protected static ?int $navigationSort = 5;
-    protected static ?string $navigationGroup = 'Profesores';
+    protected static ?string $modelLabel = 'Profesor';    
+    protected static ?string $navigationGroup = 'Gestión';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
