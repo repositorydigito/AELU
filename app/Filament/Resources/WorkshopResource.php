@@ -114,4 +114,14 @@ class WorkshopResource extends Resource
             'edit' => Pages\EditWorkshop::route('/{record}/edit'),
         ];
     }
+
+    public static function getBadgeCount(): int
+    {
+        return Workshop::count();
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return self::getBadgeCount();
+    }
 }

@@ -14,7 +14,7 @@ class MonthlyPeriodsSeeder extends Seeder
         // Define el año de inicio (puedes ajustar si quieres empezar antes)
         $startYear = Carbon::now()->year;
         // Define el año final
-        $endYear = 2040;
+        $endYear = 2070;
 
         $periodsToInsert = [];
 

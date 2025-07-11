@@ -26,6 +26,8 @@ use Filament\Infolists\Components;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
 use Illuminate\Support\Carbon;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 
 class InstructorWorkshopResource extends Resource
 {
@@ -72,15 +74,32 @@ class InstructorWorkshopResource extends Resource
                         '0' => 'Domingo',
                     ])
                     ->required(),
-                Forms\Components\TimePicker::make('start_time')
-                    ->label('Hora de Inicio')
-                    ->required()
-                    ->seconds(false),
-                Forms\Components\TimePicker::make('end_time')
-                    ->label('Hora de Fin')
-                    ->required()
-                    ->seconds(false)
-                    ->afterOrEqual('start_time'),
+                Forms\Components\Grid::make(3)
+                    ->schema([
+                        Forms\Components\TimePicker::make('start_time')
+                            ->label('Hora de Inicio')
+                            ->required()
+                            ->seconds(false)
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                self::calculateDurationHours($get, $set);
+                            }),
+                        Forms\Components\TimePicker::make('end_time')
+                            ->label('Hora de Fin')
+                            ->required()
+                            ->seconds(false)
+                            ->afterOrEqual('start_time')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                self::calculateDurationHours($get, $set);
+                            }),
+                        Forms\Components\TextInput::make('duration_hours')
+                            ->label('Duración (Horas)')
+                            ->numeric()
+                            ->step(0.25)
+                            ->readOnly()
+                            ->helperText('Se calcula automáticamente'),
+                    ]),
                 Forms\Components\TextInput::make('max_capacity')
                     ->label('Cupos máximos')
                     ->numeric()
@@ -89,20 +108,73 @@ class InstructorWorkshopResource extends Resource
                 Forms\Components\TextInput::make('place')
                     ->label('Lugar')
                     ->required(),
-                Forms\Components\Toggle::make('is_volunteer')
-                    ->label('Es Voluntario (para este horario)')
-                    ->helperText('Indica si el instructor es voluntario para este horario específico del taller.'),
+                
+                // Sección de configuración de pago
+                Forms\Components\Section::make('Configuración de Pago')
+                    ->schema([
+                        Forms\Components\Select::make('payment_type')
+                            ->label('Tipo de Pago')
+                            ->options([
+                                'volunteer' => 'Voluntario (% de ingresos)',
+                                'hourly' => 'Por Horas (tarifa fija)',
+                            ])
+                            ->default('volunteer')
+                            ->required()
+                            ->live()
+                            ->helperText('Define cómo se calculará el pago para este horario específico'),
+                        
+                        Forms\Components\TextInput::make('hourly_rate')
+                            ->label('Tarifa por Hora (S/)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->minValue(0)
+                            ->visible(fn (Get $get): bool => $get('payment_type') === 'hourly')
+                            ->required(fn (Get $get): bool => $get('payment_type') === 'hourly')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                self::updateEstimatedPay($get, $set);
+                            })
+                            ->helperText('Tarifa individual para este instructor en este taller'),
+                        
+                        Forms\Components\TextInput::make('custom_volunteer_percentage')
+                            ->label('Porcentaje Personalizado (%)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->visible(fn (Get $get): bool => $get('payment_type') === 'volunteer')
+                            ->helperText('Opcional: Porcentaje personalizado (si se deja vacío, usará el porcentaje mensual predeterminado)')
+                            ->suffix('%')
+                            ->formatStateUsing(fn ($state) => $state ? $state * 100 : null)
+                            ->dehydrateStateUsing(fn ($state) => $state ? $state / 100 : null),
+                        
+                        Forms\Components\Placeholder::make('estimated_pay')
+                            ->label('Pago Estimado (Por clase)')
+                            ->visible(fn (Get $get): bool => $get('payment_type') === 'hourly')
+                            ->content(function (Get $get) {
+                                $hourlyRate = $get('hourly_rate');
+                                $durationHours = $get('duration_hours');
+                                
+                                if ($hourlyRate && $durationHours) {
+                                    $estimated = $hourlyRate * $durationHours;
+                                    return 'S/ ' . number_format($estimated, 2);
+                                }
+                                
+                                return 'S/ 0.00';
+                            }),
+                    ]),
+                
                 Forms\Components\Toggle::make('is_active')
                     ->label('Activo')
                     ->default(true),
                 Forms\Components\Select::make('initial_monthly_period_id')
                     ->label('Generar clases a partir del mes')
-                    ->relationship('initialMonthlyPeriod', 'month') // Puedes mostrar el mes numérico
-                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->year . ' - ' . Carbon::create()->month($record->month)->monthName) // Muestra "Año - Nombre del Mes"
+                    ->relationship('initialMonthlyPeriod', 'month')
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->year . ' - ' . Carbon::create()->month($record->month)->monthName)
                     ->preload()
                     ->searchable()
-                    ->nullable() // Permite que sea nulo si no se quiere generar automáticamente de inmediato
-                    ->default(function () { // Sugerir el próximo mes por defecto
+                    ->nullable()
+                    ->default(function () {
                         $nextMonth = Carbon::now()->addMonth();
                         $period = MonthlyPeriod::where('year', $nextMonth->year)
                                                 ->where('month', $nextMonth->month)
@@ -113,21 +185,45 @@ class InstructorWorkshopResource extends Resource
             ]);
     }
 
+    private static function calculateDurationHours(Get $get, Set $set): void
+    {
+        $startTime = $get('start_time');
+        $endTime = $get('end_time');
+        
+        if ($startTime && $endTime) {
+            $start = Carbon::parse($startTime);
+            $end = Carbon::parse($endTime);
+                    
+            if ($end->greaterThan($start)) {
+                    $durationMinutes = $start->diffInMinutes($end);
+                    $durationHours = round($durationMinutes / 60, 2);
+                    $set('duration_hours', $durationHours);
+                }    
+        }
+    }
+    
+    private static function updateEstimatedPay(Get $get, Set $set): void
+    {
+        // Este método se puede usar para actualizar campos calculados en tiempo real
+        // Ya se maneja en el Placeholder 'estimated_pay'
+    }
+
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
                 Components\Section::make('Detalles del Horario')
                     ->schema([
-                        Components\TextEntry::make('workshop.name') // Muestra el nombre del taller
+                        Components\TextEntry::make('workshop.name')
                             ->label('Taller')
                             ->size(Components\TextEntry\TextEntrySize::Large)
                             ->weight(FontWeight::Bold),
-                        Components\TextEntry::make('instructor.full_name') // Asume un accesor 'full_name' en Instructor
+                        Components\TextEntry::make('instructor.full_name')
                             ->label('Instructor')
                             ->size(Components\TextEntry\TextEntrySize::Medium)
-                            ->helperText(fn (InstructorWorkshop $record): string => $record->is_volunteer ? 'Instructor Voluntario' : 'Instructor por Horas'), // Información extra
-                        Components\Grid::make(2) // Usa una cuadrícula para alinear los siguientes campos
+                            ->getStateUsing(fn (InstructorWorkshop $record) => "{$record->instructor->first_names} {$record->instructor->last_names}")
+                            ->helperText(fn (InstructorWorkshop $record): string => $record->isVolunteer() ? 'Instructor Voluntario' : 'Instructor por Horas'),
+                        Components\Grid::make(2)
                             ->schema([
                                 Components\TextEntry::make('day_of_week')
                                     ->label('Día')
@@ -140,25 +236,56 @@ class InstructorWorkshopResource extends Resource
                                         5 => 'Viernes',
                                         6 => 'Sábado',
                                     }),
-                                Components\TextEntry::make('time_range') // Accesor personalizado para mostrar "HH:MM - HH:MM"
+                                Components\TextEntry::make('time_range')
                                     ->label('Hora')
-                                    ->getStateUsing(fn (InstructorWorkshop $record) => Carbon::parse($record->start_time)->format('H:i') . ' - ' . Carbon::parse($record->end_time)->format('H:i')),
+                                    ->getStateUsing(fn (InstructorWorkshop $record) => 
+                                        Carbon::parse($record->start_time)->format('H:i') . ' - ' . 
+                                        Carbon::parse($record->end_time)->format('H:i') . 
+                                        ' (' . $record->duration_hours . ' hrs)'
+                                    ),
                             ]),
                         Components\Grid::make(2)
                             ->schema([
                                 Components\TextEntry::make('max_capacity')
                                     ->label('Capacidad Máx.'),
-                                Components\TextEntry::make('current_enrollments_count') // Aquí podrías tener un `withCount` o un accesor para mostrar los alumnos inscritos
+                                Components\TextEntry::make('current_enrollments_count')
                                     ->label('Alumnos Inscritos')
-                                    ->default(0), // Valor por defecto si no hay inscripciones
+                                    ->default(0),
                             ]),
                         Components\TextEntry::make('place')
                             ->label('Lugar')
-                            ->placeholder('No especificado'), // Si el lugar es null
-                        Components\IconEntry::make('is_active')
-                            ->label('Estado')
-                            ->boolean(),
-                    ])->columns(1), // Puedes ajustar las columnas del Section si quieres un diseño más compacto en cada tarjeta
+                            ->placeholder('No especificado'),
+                    ])
+                    ->columns(1),
+                    
+                Components\Section::make('Configuración de Pago')
+                    ->schema([
+                        Components\TextEntry::make('payment_type')
+                            ->label('Tipo de Pago')
+                            ->formatStateUsing(fn (string $state): string => match ($state) {
+                                'volunteer' => 'Voluntario (% de ingresos)',
+                                'hourly' => 'Por Horas (tarifa fija)',
+                            })
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'volunteer' => 'success',
+                                'hourly' => 'info',
+                            }),
+                        Components\TextEntry::make('payment_details')
+                            ->label('Detalles de Pago')
+                            ->getStateUsing(function (InstructorWorkshop $record) {
+                                if ($record->isVolunteer()) {
+                                    $percentage = $record->custom_volunteer_percentage 
+                                        ? number_format($record->custom_volunteer_percentage * 100, 2) . '% (personalizado)'
+                                        : 'Porcentaje mensual predeterminado';
+                                    return $percentage;
+                                } else {
+                                    $estimated = $record->hourly_rate * $record->duration_hours;
+                                    return 'S/ ' . number_format($record->hourly_rate, 2) . '/hora → S/ ' . number_format($estimated, 2) . '/clase';
+                                }
+                            }),                        
+                    ])
+                    ->columns(1),
             ]);
     }
 
@@ -175,35 +302,27 @@ class InstructorWorkshopResource extends Resource
                                 ->weight(FontWeight::Bold)
                                 ->searchable()
                                 ->sortable()
-                                ->columnSpan(1),
-
-                            Tables\Columns\TextColumn::make('capacity_info') // Nombre del campo para la info de cupos
-                                ->label('Cupos (Inscritos/Máx.)')
-                                ->getStateUsing(function (InstructorWorkshop $record) {
-                                    // Asumo que tienes una relación 'enrollments' o similar para contar
-                                    // Es importante cargar esta relación si la vas a usar aquí para evitar N+1
-                                    $enrolled = $record->enrollments->count(); // Usar la colección si ya está cargada
-                                    $max = $record->max_capacity;
-                                    return "{$enrolled}/{$max}";
-                                })
-                                ->icon('heroicon-o-user-group')
-                                ->size('xl')
-                                ->weight(FontWeight::Bold) // Usar FontWeight
-                                ->alignEnd() // Alinea al final del contenedor de la columna
-                                ->columnSpan(1),
+                                ->columnSpan(1),                            
                         ]),
 
-                    Tables\Columns\TextColumn::make('instructor.full_name_with_code') // Accesor para nombre completo + código
+                    Tables\Columns\TextColumn::make('instructor_info')
                         ->label('Instructor')
                         ->size('sm')
                         ->weight(FontWeight::SemiBold)
                         ->searchable(query: function (Builder $query, string $search) {
-                            // Búsqueda personalizada que considera nombre, apellido y código del instructor
                             return $query->whereHas('instructor', function ($query) use ($search) {
                                 $query->whereRaw("CONCAT(first_names, ' ', last_names, ' - ', instructor_code) LIKE ?", ["%{$search}%"]);
                             });
                         })
-                        ->getStateUsing(fn (InstructorWorkshop $record) => "{$record->instructor->first_names} {$record->instructor->last_names} - {$record->instructor->instructor_code}"),
+                        ->getStateUsing(function (InstructorWorkshop $record) {
+                            $paymentTypeBadge = match($record->payment_type) {
+                                'volunteer' => 'Voluntario',
+                                'hourly' => 'Por Horas',
+                                default => 'No definido'
+                            };
+                            
+                            return "{$record->instructor->first_names} {$record->instructor->last_names} ({$paymentTypeBadge})";
+                        }),                    
 
                     Tables\Columns\TextColumn::make('day_of_week')
                         ->label('Día')
@@ -228,23 +347,19 @@ class InstructorWorkshopResource extends Resource
                         ->label('Lugar')
                         ->searchable()
                         ->icon('heroicon-o-map-pin')
-                        ->placeholder('No especificado'), // Mostrar esto si el lugar es nulo
+                        ->placeholder('No especificado'), 
 
                     Tables\Columns\TextColumn::make('class_rate')
-                        ->label('Costo por Clase')
-                        // Esto es un ejemplo. La lógica de 'Costo por Clase'
-                        // debería venir de tu tabla 'WorkshopPricings' y ser más compleja
-                        // para manejar diferentes números de clases.
-                        // Por ahora, un ejemplo simplificado:
+                        ->label('Costo por Clase')                        
                         ->getStateUsing(fn (InstructorWorkshop $record) => number_format($record->workshop->standard_monthly_fee, 2))
                         ->money('PEN')
                         ->color('success')
                         ->tooltip('Cálculo simplificado: Tarifa mensual estándar / 4 clases.'),
 
-                    Tables\Columns\ToggleColumn::make('is_active') // Mostrar si está activo o inactivo
-                        ->label('Estado Activo'),
+                    /* Tables\Columns\ToggleColumn::make('is_active') 
+                        ->label('Estado Activo'), */
 
-                ])->space(2), // Espacio entre los elementos dentro de cada tarjeta
+                ])->space(2), 
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('workshop_id')
@@ -257,30 +372,7 @@ class InstructorWorkshopResource extends Resource
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}") // Mostrar nombre completo en el filtro
                     ->label('Filtrar por Instructor')
                     ->preload()
-                    ->searchable(),
-                Tables\Filters\SelectFilter::make('day_of_week')
-                    ->options([
-                        0 => 'Domingo',
-                        1 => 'Lunes',
-                        2 => 'Martes',
-                        3 => 'Miércoles',
-                        4 => 'Jueves',
-                        5 => 'Viernes',
-                        6 => 'Sábado',
-                    ])
-                    ->label('Filtrar por Día'),
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Estado del Horario')
-                    ->boolean()
-                    ->trueLabel('Activo')
-                    ->falseLabel('Inactivo')
-                    ->nullable(),
-                Tables\Filters\TernaryFilter::make('is_volunteer')
-                    ->label('Tipo de Instructor')
-                    ->boolean()
-                    ->trueLabel('Voluntario')
-                    ->falseLabel('Por Horas')
-                    ->nullable(),
+                    ->searchable(),                
             ])
             ->actions([
                 Tables\Actions\Action::make('inscribe')
@@ -306,7 +398,7 @@ class InstructorWorkshopResource extends Resource
             ])
             ->recordUrl(fn ($record) => static::getUrl('view', ['record' => $record]))
             ->bulkActions([
-                Tables\Actions\BulkAction::make('goToBulkInscribeStudent')
+                /* Tables\Actions\BulkAction::make('goToBulkInscribeStudent')
                     ->label('Inscribir alumno en múltiples horarios')
                     ->icon('heroicon-o-user-plus')
                     ->action(function ($records) {
@@ -316,7 +408,7 @@ class InstructorWorkshopResource extends Resource
                         ], true); // Forzar el prefijo /page/
                         return redirect($url);
                     })
-                    ->deselectRecordsAfterCompletion(false),
+                    ->deselectRecordsAfterCompletion(false), */
             ])
             // Si necesitas precargar relaciones para evitar N+1 en la vista de tarjetas
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['workshop', 'instructor', 'enrollments']))

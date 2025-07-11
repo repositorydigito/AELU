@@ -10,42 +10,62 @@ use Illuminate\Support\Facades\Log;
 
 class InstructorWorkshopObserver
 {  
+    public function creating(InstructorWorkshop $instructorWorkshop): void
+    {
+        // Calcular duration_hours antes de guardar
+        $this->calculateDurationHours($instructorWorkshop);
+    }
+
+    public function updating(InstructorWorkshop $instructorWorkshop): void
+    {
+        // Recalcular duration_hours si cambian las horas
+        if ($instructorWorkshop->isDirty(['start_time', 'end_time'])) {
+            $this->calculateDurationHours($instructorWorkshop);
+        }
+    }
+
     public function created(InstructorWorkshop $instructorWorkshop): void
     {
         if ($instructorWorkshop->initial_monthly_period_id) {
             $this->generateClassesForPeriod($instructorWorkshop, $instructorWorkshop->initialMonthlyPeriod);
         }
     }
+
     public function updated(InstructorWorkshop $instructorWorkshop): void
     {
-        // Si el initial_monthly_period_id ha cambiado y tiene un valor, regeneramos/generamos desde ahí
         if ($instructorWorkshop->isDirty('initial_monthly_period_id') && $instructorWorkshop->initial_monthly_period_id) {
-            // Eliminar clases generadas previamente *sólo si no tienen inscripciones*
-            // Esta parte requiere lógica de negocio: ¿se pueden borrar clases ya creadas?
-            // Por simplicidad, no borramos automáticamente. Asumimos que el admin sabe lo que hace.
-            // Considera añadir un modal de confirmación en Filament si esto es crítico.
-
             $this->generateClassesForPeriod($instructorWorkshop, $instructorWorkshop->initialMonthlyPeriod);
         }
-        // Puedes añadir más lógica aquí si cambian start_time, end_time, day_of_week etc.
-        // Pero eso es más complejo porque implica modificar clases ya existentes.
-        // Para empezar, nos centramos en la generación inicial o en el cambio del periodo inicial.
+    }
+
+    protected function calculateDurationHours(InstructorWorkshop $instructorWorkshop): void
+    {
+        if ($instructorWorkshop->start_time && $instructorWorkshop->end_time) {
+            try {
+                $start = Carbon::parse($instructorWorkshop->start_time);
+                $end = Carbon::parse($instructorWorkshop->end_time);
+                
+                if ($end->greaterThan($start)) {
+                    $durationMinutes = $start->diffInMinutes($end);
+                    $instructorWorkshop->duration_hours = round($durationMinutes / 60, 2);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Error calculando duration_hours: ' . $e->getMessage());
+            }
+        }
     }
 
     protected function generateClassesForPeriod(InstructorWorkshop $instructorWorkshop, MonthlyPeriod $monthlyPeriod): void
     {
-        // Asegurarse de que el InstructorWorkshop esté activo para generar clases
         if (!$instructorWorkshop->is_active) {
             Log::info('No se generaron clases para InstructorWorkshop ID ' . $instructorWorkshop->id . ' porque no está activo.');
             return;
         }
 
-        // Asegurarse de que el MonthlyPeriod permita la auto-generación de clases
         if (!$monthlyPeriod->auto_generate_classes) {
             Log::info('No se generaron clases para InstructorWorkshop ID ' . $instructorWorkshop->id . ' en el periodo ' . $monthlyPeriod->id . ' porque auto_generate_classes está deshabilitado.');
             return;
         }
-
 
         $startDate = Carbon::parse($monthlyPeriod->start_date);
         $endDate = Carbon::parse($monthlyPeriod->end_date);
@@ -54,7 +74,6 @@ class InstructorWorkshopObserver
         $currentDate = $startDate->copy();
         while ($currentDate->lte($endDate)) {
             if ($currentDate->dayOfWeek === $dayOfWeek) {
-                // Previene duplicados
                 $classExists = WorkshopClass::where('instructor_workshop_id', $instructorWorkshop->id)
                                             ->where('monthly_period_id', $monthlyPeriod->id)
                                             ->where('class_date', $currentDate->toDateString())
@@ -75,5 +94,4 @@ class InstructorWorkshopObserver
             $currentDate->addDay();
         }
     }
-    
 }

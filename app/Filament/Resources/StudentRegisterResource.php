@@ -577,4 +577,14 @@ class StudentRegisterResource extends Resource
             'import' => Pages\ImportStudents::route('/import'),
         ];
     }
+
+    public static function getBadgeCount(): int
+    {
+        return Student::count();
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return self::getBadgeCount();
+    }
 }

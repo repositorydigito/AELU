@@ -73,19 +73,7 @@ class InscribeStudent extends Page implements HasForms
             'monthly_period_id' => $defaultMonthlyPeriodId, // Setear el periodo por defecto
             'selected_classes' => $initialSelectedClasses, // Setear todas las clases marcadas por defecto
         ]);
-    }
-
-    /* public function mount(): void
-    {
-        $this->form->fill([
-            'enrollment_date' => now()->toDateString(),
-            'enrollment_type' => 'full_month',
-            'payment_status' => 'pending',
-            'number_of_classes' => $this->record->class_count ?? 4,
-            'price_per_quantity' => $this->record->class_rate ?? 0,
-            'total_amount' => ($this->record->class_rate ?? 0) * ($this->record->class_count ?? 4),
-        ]);
-    } */
+    }    
 
     public function form(Form $form): Form
     {
@@ -102,7 +90,7 @@ class InscribeStudent extends Page implements HasForms
                 Select::make('student_id')
                     ->label('Alumno')
                     ->options(Student::all()->mapWithKeys(fn ($student) => [
-                        $student->id => "{$student->full_name} - {$student->student_code}",
+                        $student->id => "{$student->first_names} {$student->last_names} - {$student->student_code}",
                     ]))
                     ->searchable()
                     ->required(),
@@ -187,17 +175,7 @@ class InscribeStudent extends Page implements HasForms
                     ->columns(2)
                     ->reactive()
                     ->helperText('Selecciona las clases a las que deseas inscribirte. Si es mes completo, se inscribirá a todas las clases automáticamente.'),
-                
-                // Por default es pending
-                /* Select::make('payment_status')
-                    ->label('Estado de pago')
-                    ->options([
-                        'pending' => 'Pendiente',
-                        'partial' => 'Parcial',
-                        'completed' => 'Pagado',
-                    ])
-                    ->default('pending')
-                    ->required(), */
+                                
                 Select::make('payment_method')
                     ->label('Método de pago')
                     ->options([
@@ -214,85 +192,10 @@ class InscribeStudent extends Page implements HasForms
             ])
             ->statePath('data');
     }
-
-    /* public function inscribe(): void
-    {
-        try {
-            $data = $this->form->getState();
-            $data['instructor_workshop_id'] = $this->record->id;
-
-            // Si no viene number_of_classes, lo calculamos según la selección
-            if (!isset($data['number_of_classes']) || $data['number_of_classes'] === null) {
-                if (($data['enrollment_type'] ?? null) === 'specific_classes') {
-                    $data['number_of_classes'] = isset($data['selected_classes']) ? count($data['selected_classes']) : 0;
-                } elseif (($data['enrollment_type'] ?? null) === 'full_month') {
-                    $data['number_of_classes'] = \App\Models\WorkshopClass::where('instructor_workshop_id', $this->record->id)
-                        ->where('monthly_period_id', $data['monthly_period_id'])
-                        ->count();
-                }
-            }
-
-            $pricing = \App\Models\WorkshopPricing::where('workshop_id', $this->record->workshop_id)
-                ->where('number_of_classes', $data['number_of_classes'])
-                ->where(function($q) {
-                    $q->where('for_volunteer_workshop', $this->record->is_volunteer)
-                    ->orWhereNull('for_volunteer_workshop');
-                })
-                ->first();
-
-            if ($pricing) {
-                $data['price_per_quantity'] = $pricing->price;
-                $data['total_amount'] = $pricing->price;
-            } else {
-                Notification::make()
-                    ->title('No existe tarifa configurada para esa cantidad de clases.')
-                    ->danger()
-                    ->send();
-                return;
-            }
-
-            if ($data['enrollment_type'] === 'full_month') {
-                $clases = WorkshopClass::where('instructor_workshop_id', $this->record->id)
-                    ->where('monthly_period_id', $data['monthly_period_id'])
-                    ->orderBy('class_date')
-                    ->pluck('id')
-                    ->toArray();
-                $data['selected_classes'] = $clases;
-            }
-
-            $enrollment = StudentEnrollment::create($data);
-
-            foreach ($data['selected_classes'] as $classId) {
-                $enrollment->enrollmentClasses()->create([
-                    'workshop_class_id' => $classId,
-                    'class_fee' => $data['price_per_quantity'] ?? 0,
-                    'attendance_status' => 'enrolled',
-                ]);
-            }
-
-            $ticketUrl = route('enrollment.ticket', ['enrollmentId' => $enrollment->id]);
-
-            Notification::make()
-                ->title('¡Inscripción exitosa!')
-                ->success()                
-                ->send();
-            
-            //$this->dispatchBrowserEvent('open-pdf-ticket', ['url' => $ticketUrl]);
-            $this->js('window.open("' . $ticketUrl . '", "_blank")');
-            $this->redirect(InstructorWorkshopResource::getUrl('index'));
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error al inscribir al alumno')
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
-        }
-    } */
+    
 
     public function inscribe(): void
-    {
-        // Usar una transacción de base de datos para asegurar la consistencia de los datos
-        // Si algo falla, se revierte todo
+    {        
         DB::beginTransaction();
 
         try {
@@ -350,14 +253,14 @@ class InscribeStudent extends Page implements HasForms
                     return; // Detener el proceso
                 }
             }
+
+            $isVolunteerWorkshop = $this->record->payment_type === 'volunteer';
+
             // Obtener tarifa
             $pricing = \App\Models\WorkshopPricing::where('workshop_id', $this->record->workshop_id)
                 ->where('number_of_classes', $data['number_of_classes']) 
-                ->where(function($q) {
-                    $q->where('for_volunteer_workshop', $this->record->is_volunteer)
-                        ->orWhereNull('for_volunteer_workshop'); 
-                })
-                ->first();
+                ->where('for_volunteer_workshop', $isVolunteerWorkshop)
+                ->first();            
 
             if ($pricing) {
                 $data['price_per_quantity'] = $pricing->price;

@@ -6,35 +6,36 @@ use App\Models\StudentEnrollment;
 use App\Models\InstructorPayment;
 use App\Models\InstructorWorkshop;
 use App\Models\WorkshopClass;
+use App\Models\MonthlyInstructorRate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 // Este observer se utiliza para crear InstructorPayments cuando se crean,actualizan o eliminan StudentEnrollments.
-
 class StudentEnrollmentObserver
 {    
     public function created(StudentEnrollment $studentEnrollment): void
     {
         $this->calculateAndSaveInstructorPayment($studentEnrollment);
     }
+
     public function updated(StudentEnrollment $studentEnrollment): void
     {
-        // Recalculate if any relevant field changes (e.g., price_per_quantity, or workshop/period linkage)
-        if ($studentEnrollment->isDirty(['price_per_quantity', 'instructor_workshop_id', 'monthly_period_id'])) {
+        if ($studentEnrollment->isDirty(['total_amount', 'instructor_workshop_id', 'monthly_period_id'])) {
             $this->calculateAndSaveInstructorPayment($studentEnrollment);
         }
     }
+
     public function deleted(StudentEnrollment $studentEnrollment): void
     {
         $this->calculateAndSaveInstructorPayment($studentEnrollment);
     }
+
     protected function calculateAndSaveInstructorPayment(StudentEnrollment $studentEnrollment): void
     {
         $instructorWorkshopId = $studentEnrollment->instructor_workshop_id;
         $monthlyPeriodId = $studentEnrollment->monthly_period_id;
 
         if (!$instructorWorkshopId || !$monthlyPeriodId) {
-            // Should not happen if foreign keys are set up correctly and required.
             return;
         }
 
@@ -43,54 +44,68 @@ class StudentEnrollmentObserver
             return;
         }
 
-        // Initialize calculation variables
+        // Obtener la tarifa mensual para voluntarios
+        $monthlyRate = MonthlyInstructorRate::where('monthly_period_id', $monthlyPeriodId)
+                                           ->where('is_active', true)
+                                           ->first();
+
         $calculatedAmount = 0;
-        $paymentType = $instructorWorkshop->is_volunteer ? 'volunteer' : 'hourly';
+        $paymentType = $instructorWorkshop->payment_type;
         $totalStudents = null;
         $monthlyRevenue = null;
         $totalHours = null;
         $hourlyRate = null;
         $volunteerPercentage = null;
+        $appliedHourlyRate = null;
+        $appliedVolunteerPercentage = null;
 
-        if ($instructorWorkshop->is_volunteer) {
-            // Logic for volunteer instructor: sum price_per_quantity from student_enrollments
-            $volunteerPercentage = $instructorWorkshop->volunteer_percentage ?? 0.50; // Use default 50% if not set
+        if ($instructorWorkshop->isVolunteer()) {
+            // LÓGICA PARA INSTRUCTORES VOLUNTARIOS
+            
+            // Determinar el porcentaje a aplicar
+            $appliedVolunteerPercentage = $instructorWorkshop->custom_volunteer_percentage 
+                                        ?? $monthlyRate?->volunteer_percentage 
+                                        ?? 0.5000; // 50% por defecto
 
-            // Sum price_per_quantity for all student enrollments in this instructor_workshop and monthly_period
+            // Sumar total_amount de todas las inscripciones de estudiantes
             $monthlyRevenue = DB::table('student_enrollments')
                 ->where('instructor_workshop_id', $instructorWorkshopId)
                 ->where('monthly_period_id', $monthlyPeriodId)
-                ->sum('price_per_quantity');
+                ->sum('total_amount');
 
-            // Count unique students for the total_students field
+            // Contar estudiantes únicos
             $totalStudents = DB::table('student_enrollments')
                 ->where('instructor_workshop_id', $instructorWorkshopId)
                 ->where('monthly_period_id', $monthlyPeriodId)
+                ->distinct('student_id')
                 ->count('student_id');
 
-            $calculatedAmount = $monthlyRevenue * $volunteerPercentage;
+            $calculatedAmount = $monthlyRevenue * $appliedVolunteerPercentage;
+            
+            // Campos originales para auditoría
+            $volunteerPercentage = $monthlyRate?->volunteer_percentage;
 
         } else {
-            // Logic for hourly instructor: sum hours from completed workshop_classes
-            $hourlyRate = $instructorWorkshop->workshop->hourly_rate; // Get hourly rate from workshop
+            // LÓGICA PARA INSTRUCTORES NO VOLUNTARIOS (POR HORAS)
+            
+            $appliedHourlyRate = $instructorWorkshop->hourly_rate;
+            
+            // Contar clases programadas/completadas en el mes
+            $classesInMonth = WorkshopClass::where('instructor_workshop_id', $instructorWorkshopId)
+                                          ->where('monthly_period_id', $monthlyPeriodId)
+                                          ->whereIn('status', ['scheduled', 'completed'])
+                                          ->count();
 
-            $workshopClasses = WorkshopClass::where('instructor_workshop_id', $instructorWorkshopId)
-                                            ->where('monthly_period_id', $monthlyPeriodId)
-                                            ->where('status', 'completed') // Only count completed classes for hourly payment
-                                            ->get();
-
-            $totalHours = 0;
-            foreach ($workshopClasses as $class) {
-                $start = Carbon::parse($class->start_time);
-                $end = Carbon::parse($class->end_time);
-                $totalHours += $end->diffInMinutes($start) / 60; // Convert minutes to hours
-            }
-
-            $calculatedAmount = $totalHours * $hourlyRate;
-            $volunteerPercentage = 1.00;
+            // Calcular total de horas: clases_en_el_mes * duration_hours
+            $totalHours = $classesInMonth * ($instructorWorkshop->duration_hours ?? 0);
+            
+            $calculatedAmount = $totalHours * $appliedHourlyRate;
+            
+            // Campos originales para auditoría
+            $hourlyRate = $instructorWorkshop->hourly_rate;
         }
 
-        // Create or update the InstructorPayment record
+        // Crear o actualizar el registro de pago del instructor
         InstructorPayment::updateOrCreate(
             [
                 'instructor_workshop_id' => $instructorWorkshopId,
@@ -98,23 +113,35 @@ class StudentEnrollmentObserver
             ],
             [
                 'instructor_id' => $instructorWorkshop->instructor_id,
+                'monthly_instructor_rate_id' => $monthlyRate?->id,
                 'payment_type' => $paymentType,
+                
+                // Para voluntarios
                 'total_students' => $totalStudents,
                 'monthly_revenue' => $monthlyRevenue,
                 'volunteer_percentage' => $volunteerPercentage,
+                
+                // Para por horas
                 'total_hours' => $totalHours,
                 'hourly_rate' => $hourlyRate,
+                
+                // Campos aplicados (los que se usaron realmente)
+                'applied_hourly_rate' => $appliedHourlyRate,
+                'applied_volunteer_percentage' => $appliedVolunteerPercentage,
+                
+                // Resultado final
                 'calculated_amount' => round($calculatedAmount, 2),
-                // Keep existing payment status and date if payment already exists
+                
+                // Preservar estado de pago existente
                 'payment_status' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
                                                     ->where('monthly_period_id', $monthlyPeriodId)
                                                     ->value('payment_status') ?? 'pending',
                 'payment_date' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
-                                                    ->where('monthly_period_id', $monthlyPeriodId)
-                                                    ->value('payment_date'),
+                                                   ->where('monthly_period_id', $monthlyPeriodId)
+                                                   ->value('payment_date'),
                 'notes' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
-                                                    ->where('monthly_period_id', $monthlyPeriodId)
-                                                    ->value('notes'),
+                                            ->where('monthly_period_id', $monthlyPeriodId)
+                                            ->value('notes'),
             ]
         );
     }

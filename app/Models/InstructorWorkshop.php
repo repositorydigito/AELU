@@ -15,7 +15,10 @@ class InstructorWorkshop extends Model
         'end_time',
         'max_capacity',
         'place',
-        'is_volunteer',
+        'payment_type',
+        'hourly_rate',
+        'duration_hours',
+        'custom_volunteer_percentage',
         'is_active',
     ];
 
@@ -51,5 +54,29 @@ class InstructorWorkshop extends Model
     public function payments()
     {
         return $this->hasMany(InstructorPayment::class);
+    }
+
+    // Métodos helper
+    public function isVolunteer(): bool
+    {
+        return $this->payment_type === 'volunteer';
+    }
+    public function isHourly(): bool
+    {
+        return $this->payment_type === 'hourly';
+    }
+    public function getEstimatedPayPerClass(): ?float
+    {
+        if ($this->isHourly() && $this->hourly_rate && $this->duration_hours) {
+            return $this->hourly_rate * $this->duration_hours;
+        }
+        return null;
+    }
+    public function getEffectiveVolunteerPercentage(?MonthlyInstructorRate $monthlyRate = null): ?float
+    {
+        if ($this->isVolunteer()) {
+            return $this->custom_volunteer_percentage ?? $monthlyRate?->volunteer_percentage;
+        }
+        return null;
     }
 }

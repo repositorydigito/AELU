@@ -9,6 +9,19 @@
             <li><strong>Lugar:</strong> {{ $record->place }}</li>
             <li><strong>Tarifa mensual estándar:</strong> S/. {{ number_format($record->workshop->standard_monthly_fee, 2) }}</li>
             <li><strong>Cupos máximos:</strong> {{ $record->max_capacity }}</li>
+
+            <li><strong>Tipo de Instructor:</strong> 
+                @if($record->payment_type === 'volunteer')
+                    <span>
+                        Voluntario ({{ $record->custom_volunteer_percentage ? number_format($record->custom_volunteer_percentage * 100, 1) . '% personalizado' : 'Porcentaje mensual' }})
+                    </span>
+                @else
+                    <span>
+                        Por Horas (S/ {{ number_format($record->hourly_rate, 2) }}/hora)
+                    </span>
+                @endif
+            </li>           
+            
         </ul>
     </div>
 

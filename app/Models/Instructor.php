@@ -19,7 +19,6 @@ class Instructor extends Model
         'birth_date',
         'nationality',
         'instructor_code',
-        'instructor_type',
         'cell_phone',
         'home_phone',
         'district',
@@ -50,7 +49,7 @@ class Instructor extends Model
                     ->withPivot('day_of_week', 'start_time', 'end_time', 'is_volunteer', 'is_active')
                     ->withTimestamps();
     }
-    public function payments()
+    public function instructorPayments()
     {
         return $this->hasMany(InstructorPayment::class);
     }       

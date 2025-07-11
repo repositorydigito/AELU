@@ -13,16 +13,22 @@ return new class extends Migration
             $table->foreignId('instructor_id')->constrained()->onDelete('cascade');
             $table->foreignId('instructor_workshop_id')->constrained()->onDelete('cascade');
             $table->foreignId('monthly_period_id')->constrained()->onDelete('cascade');
+            $table->foreignId('monthly_instructor_rate_id')->nullable()->constrained()->onDelete('set null');
+            
             $table->enum('payment_type', ['volunteer', 'hourly']);
             
             // Para voluntarios
             $table->integer('total_students')->nullable()->comment('Total de estudiantes inscritos (solo voluntarios)');
             $table->decimal('monthly_revenue', 10, 2)->nullable()->comment('Ingresos totales del taller (solo voluntarios)');
-            $table->decimal('volunteer_percentage', 5, 4)->default(0.5000)->comment('Porcentaje para voluntarios (default 50%)');
+            $table->decimal('volunteer_percentage', 5, 4)->nullable()->comment('Porcentaje original para voluntarios');
             
             // Para por horas
             $table->decimal('total_hours', 8, 2)->nullable()->comment('Total de horas dictadas (solo por horas)');
-            $table->decimal('hourly_rate', 8, 2)->nullable()->comment('Tarifa por hora (solo por horas)');
+            $table->decimal('hourly_rate', 8, 2)->nullable()->comment('Tarifa por hora original');
+            
+            // Campos aplicados (los que realmente se usaron en el cálculo)
+            $table->decimal('applied_hourly_rate', 8, 2)->nullable()->comment('Tarifa por hora aplicada');
+            $table->decimal('applied_volunteer_percentage', 5, 4)->nullable()->comment('Porcentaje de voluntario aplicado');
             
             // Resultado final
             $table->decimal('calculated_amount', 10, 2)->comment('Monto calculado a pagar');

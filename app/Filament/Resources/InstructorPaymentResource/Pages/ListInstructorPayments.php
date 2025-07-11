@@ -18,7 +18,7 @@ class ListInstructorPayments extends ListRecords
         ];
     }
 
-    protected function getHeaderWidgets(): array
+    /* protected function getHeaderWidgets(): array
     {
         return [
             LiquidatedInstructorsCount::class,
@@ -27,12 +27,11 @@ class ListInstructorPayments extends ListRecords
         ];
     }
 
-    // Configurar el layout de widgets (método correcto)
     public function getHeaderWidgetsColumns(): int|array
     {
         return [
             'md' => 2,
             'xl' => 4,
         ];
-    }
+    } */
 }
