@@ -23,25 +23,26 @@ use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Toggle; // Add Toggle for Yes/No questions
-use Filament\Forms\Components\Textarea; // Add Textarea for detailed input
-use Filament\Forms\Components\Placeholder; // Import Placeholder for displaying read-only data
-use Filament\Forms\Components\Actions\Action; // Import Action for custom buttons
-use Filament\Notifications\Notification; // For showing notifications
+use Filament\Forms\Components\Toggle; 
+use Filament\Forms\Components\Textarea; 
+use Filament\Forms\Components\Placeholder; 
+//use Filament\Forms\Components\Actions\Action;
+use Filament\Tables\Actions\Action; 
+use Filament\Notifications\Notification; 
 use Filament\Forms\Components\Fieldset;
-
+use Filament\Forms\Components\Hidden;
 use Filament\Tables\Columns\TextColumn;
 
 class StudentRegisterResource extends Resource
 {
     protected static ?string $model = Student::class;
 
-    // protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';    
-    protected static ?string $navigationLabel = 'Registrar Alumnos';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';    
+    protected static ?string $navigationLabel = 'Alumnos';
     protected static ?string $pluralModelLabel = 'Alumnos';
-    protected static ?string $modelLabel = 'Alumno';
-    protected static ?int $navigationSort = 3; 
-    protected static ?string $navigationGroup = 'Alumnos';  
+    protected static ?string $modelLabel = 'Alumno';    
+    protected static ?string $navigationGroup = 'Gestión'; 
+    protected static ?int $navigationSort = 1;  
     
     public static function form(Form $form): Form
     {
@@ -84,7 +85,11 @@ class StudentRegisterResource extends Resource
                                                             TextInput::make('document_number')
                                                                 ->label('Número de documento')
                                                                 ->required()
-                                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                                ->unique(ignoreRecord: true)
+                                                                ->validationMessages([
+                                                                    'required' => 'Este campo es obligatorio',
+                                                                    'unique' => 'Ya existe un estudiante registrado con este número de documento.'
+                                                                ])
                                                                 ->maxLength(15),
                                                         ]),
                                                 ]),
@@ -113,18 +118,33 @@ class StudentRegisterResource extends Resource
                                             TextInput::make('student_code')
                                                 ->label('Código de Asociado')
                                                 ->required()
+                                                ->unique(ignoreRecord: true)
+                                                ->validationMessages([
+                                                    'required' => 'Este campo es obligatorio',
+                                                    'unique' => 'Ya existe un estudiante con este código de asociado.'
+                                                ])
                                                 ->maxLength(255),
                                             Select::make('category_partner')
                                                 ->label('Categoría de Socio')
                                                 ->required()
                                                 ->options([
-                                                    'Dependiente' => 'Dependiente',
-                                                    'Individual' => 'Individual',
-                                                    'Transitorio 65 años' => 'Transitorio 65 años',
-                                                    'Hijo de Fundador' => 'Hijo de Fundador',
-                                                    'Vitalicios' => 'Vitalicios',
-                                                ]),
+                                                    'Individual PRE-PAMA' => 'Individual PRE-PAMA (< 60 años)',
+                                                    'Individual' => 'Individual (60-64 años)',
+                                                    'Transitorio Individual' => 'Transitorio Individual (65+ años)',
+                                                    'Transitorio Exonerado' => 'Transitorio Exonerado (65+ años - Sin pago)',
+                                                    'Hijo de Fundador' => 'Hijo de Fundador (Sin pago)',
+                                                    'Vitalicios' => 'Vitalicios (Sin pago)',
+                                                ])
+                                                ->live()
+                                                ->afterStateUpdated(function (callable $get, callable $set, $state) {
+                                                    static::updatePricingFields($get, $set);
+                                                }),
                                         ]),
+                                    Hidden::make('has_payment_exemption')
+                                        ->default(false),
+                                    
+                                    Hidden::make('pricing_multiplier')
+                                        ->default(1.00),
                                     Grid::make(2)
                                         ->schema([
                                             TextInput::make('cell_phone')
@@ -492,6 +512,35 @@ class StudentRegisterResource extends Resource
             ]);
     }
 
+    protected static function updatePricingFields(callable $get, callable $set): void
+    {
+        $category = $get('category_partner');
+        $birthDate = $get('birth_date');
+        
+        if (!$category) {
+            return;
+        }
+
+        $age = $birthDate ? \Carbon\Carbon::parse($birthDate)->age : 0;
+        
+        // Categorías exentas de pago
+        $exemptCategories = ['Hijo de Fundador', 'Vitalicios', 'Transitorio Exonerado'];
+        $isExempt = in_array($category, $exemptCategories);
+        
+        $set('has_payment_exemption', $isExempt);
+        
+        // Calcular multiplicador según la lógica del modelo Student
+        $multiplier = 1.00; // Tarifa normal por defecto
+        
+        if ($isExempt) {
+            $multiplier = 0.00; // Exento
+        } elseif ($category === 'Individual PRE-PAMA' || ($category === 'Individual' && $age < 60)) {
+            $multiplier = 1.50; // 150% = tarifa normal + 50%
+        }
+        
+        $set('pricing_multiplier', $multiplier);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -511,6 +560,59 @@ class StudentRegisterResource extends Resource
                 TextColumn::make('document_number')
                     ->label('Documento')
                     ->searchable(),
+                TextColumn::make('age')
+                    ->label('Edad')
+                    ->getStateUsing(fn (Student $record) => $record->age . ' años')
+                    ->sortable()
+                    ->alignCenter()
+                    ->color(fn (Student $record) => match (true) {
+                        $record->age < 60 => 'info',
+                        $record->age >= 60 && $record->age < 65 => 'success',
+                        $record->age >= 65 => 'warning',
+                        default => 'gray'
+                    }),
+                TextColumn::make('category_partner')
+                    ->label('Categoría')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Individual PRE-PAMA' => 'warning',
+                        'Individual' => 'warning',
+                        'Transitorio Individual' => 'warning',
+                        'Transitorio Exonerado' => 'success',
+                        'Hijo de Fundador' => 'success',
+                        'Vitalicios' => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'Individual PRE-PAMA' => 'PRE-PAMA',
+                        'Individual' => 'Individual',
+                        'Transitorio Individual' => 'Trans. Ind.',
+                        'Transitorio Exonerado' => 'Trans. Exon.',
+                        'Hijo de Fundador' => 'H. Fundador',
+                        'Vitalicios' => 'Vitalicio',
+                        default => $state,
+                    }),
+                TextColumn::make('pricing_info')
+                    ->label('Tarifa')
+                    ->getStateUsing(function (Student $record) {
+                        $multiplier = $record->pricing_multiplier;
+                        
+                        if ($multiplier == 0.00) {
+                            return 'Exento';
+                        }
+                        
+                        if ($multiplier == 1.50) {
+                            return '+50%';
+                        }
+                        
+                        return 'Normal';
+                    })
+                    ->badge()
+                    ->color(fn (Student $record) => match ($record->pricing_multiplier) {
+                        0.00 => 'success',
+                        1.50 => 'warning',
+                        default => 'info'
+                    }),
                 TextColumn::make('cell_phone')
                     ->label('Teléfono')
                     ->searchable(),
@@ -530,21 +632,40 @@ class StudentRegisterResource extends Resource
                     ->wrap(),                   
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Estado')
+                Tables\Filters\SelectFilter::make('category_partner')
+                    ->label('Categoría')
                     ->options([
-                        'active' => 'Activo',
-                        'inactive' => 'Inactivo',
-                        'suspended' => 'Suspendido',
+                        'Individual PRE-PAMA' => 'Individual PRE-PAMA',
+                        'Individual' => 'Individual',
+                        'Transitorio Individual' => 'Transitorio Individual',
+                        'Transitorio Exonerado' => 'Transitorio Exonerado',
+                        'Hijo de Fundador' => 'Hijo de Fundador',
+                        'Vitalicios' => 'Vitalicios',
                     ]),
-                Tables\Filters\SelectFilter::make('workshops')
-                    ->label('Taller')
-                    ->relationship('workshops', 'name')
-                    ->searchable(),
+            ])
+            ->headerActions([
+                Action::make('import')
+                    ->label('Importar Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn () => static::getUrl('import'))
+                    ->color('primary')
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+                /* Tables\Actions\Action::make('update_pricing')
+                    ->label('Actualizar Tarifa')
+                    ->icon('heroicon-o-calculator')
+                    ->color('warning')
+                    ->action(function (Student $record) {
+                        $record->updatePricingFields();
+                        Notification::make()
+                            ->title('Tarifa actualizada')
+                            ->body("Multiplicador: {$record->pricing_multiplier}")
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn (Student $record) => $record->shouldUpdateCategory()), */                
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -566,6 +687,17 @@ class StudentRegisterResource extends Resource
             'index' => Pages\ListStudentRegisters::route('/'),
             'create' => Pages\CreateStudentRegister::route('/create'),
             'edit' => Pages\EditStudentRegister::route('/{record}/edit'),
+            'import' => Pages\ImportStudents::route('/import'),
         ];
+    }
+
+    public static function getBadgeCount(): int
+    {
+        return Student::count();
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return self::getBadgeCount();
     }
 }

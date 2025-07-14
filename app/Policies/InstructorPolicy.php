@@ -15,7 +15,7 @@ class InstructorPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_instructor::register');
+        return $user->can('view_any_instructor::reports');
     }
 
     /**
@@ -23,7 +23,7 @@ class InstructorPolicy
      */
     public function view(User $user, Instructor $instructor): bool
     {
-        return $user->can('view_instructor::register');
+        return $user->can('view_instructor::reports');
     }
 
     /**
@@ -31,7 +31,7 @@ class InstructorPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_instructor::register');
+        return $user->can('create_instructor::reports');
     }
 
     /**
@@ -39,7 +39,7 @@ class InstructorPolicy
      */
     public function update(User $user, Instructor $instructor): bool
     {
-        return $user->can('update_instructor::register');
+        return $user->can('update_instructor::reports');
     }
 
     /**
@@ -47,7 +47,7 @@ class InstructorPolicy
      */
     public function delete(User $user, Instructor $instructor): bool
     {
-        return $user->can('delete_instructor::register');
+        return $user->can('delete_instructor::reports');
     }
 
     /**
@@ -55,7 +55,7 @@ class InstructorPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_instructor::register');
+        return $user->can('delete_any_instructor::reports');
     }
 
     /**
@@ -63,7 +63,7 @@ class InstructorPolicy
      */
     public function forceDelete(User $user, Instructor $instructor): bool
     {
-        return $user->can('force_delete_instructor::register');
+        return $user->can('force_delete_instructor::reports');
     }
 
     /**
@@ -71,7 +71,7 @@ class InstructorPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_instructor::register');
+        return $user->can('force_delete_any_instructor::reports');
     }
 
     /**
@@ -79,7 +79,7 @@ class InstructorPolicy
      */
     public function restore(User $user, Instructor $instructor): bool
     {
-        return $user->can('restore_instructor::register');
+        return $user->can('restore_instructor::reports');
     }
 
     /**
@@ -87,7 +87,7 @@ class InstructorPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_instructor::register');
+        return $user->can('restore_any_instructor::reports');
     }
 
     /**
@@ -95,7 +95,7 @@ class InstructorPolicy
      */
     public function replicate(User $user, Instructor $instructor): bool
     {
-        return $user->can('replicate_instructor::register');
+        return $user->can('replicate_instructor::reports');
     }
 
     /**
@@ -103,6 +103,6 @@ class InstructorPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_instructor::register');
+        return $user->can('reorder_instructor::reports');
     }
 }

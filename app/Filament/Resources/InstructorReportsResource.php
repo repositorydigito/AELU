@@ -14,11 +14,9 @@ class InstructorReportsResource extends Resource
     protected static ?string $navigationLabel = 'Reportes';
     protected static ?string $pluralModelLabel = 'Reportes';
     protected static ?string $modelLabel = 'Reporte';
-    protected static ?int $navigationSort = 4;
-    protected static ?string $navigationGroup = 'Profesores';
-
-    // Deshabilitar las operaciones CRUD normales
-    protected static bool $shouldRegisterNavigation = true;
+    //protected static ?int $navigationSort = 4;
+    //protected static ?string $navigationGroup = 'Profesores';
+    protected static bool $shouldRegisterNavigation = false;    
 
     public static function form(Form $form): Form
     {
@@ -55,6 +53,11 @@ class InstructorReportsResource extends Resource
 
     public static function canDeleteAny(): bool
     {
+        return false;
+    }
+    public static function getNavigationVisibility(): bool
+    {
+        // Aquí puedes controlar la visibilidad. Retorna `false` para ocultar el recurso
         return false;
     }
 }

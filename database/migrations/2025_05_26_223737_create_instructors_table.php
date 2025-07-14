@@ -20,7 +20,6 @@ return new class extends Migration
             $table->date('birth_date')->nullable(); 
             $table->string('nationality')->nullable(); 
             $table->string('instructor_code')->unique(); 
-            $table->string('instructor_type'); 
             $table->string('cell_phone')->nullable(); 
             $table->string('home_phone')->nullable(); 
             $table->string('district')->nullable(); 

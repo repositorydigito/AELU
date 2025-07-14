@@ -34,14 +34,15 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Fieldset;
 use Filament\Notifications\Notification;
 
-class InstructorResource extends Resource
+class InstructorResource extends Resource 
 {
     protected static ?string $model = Instructor::class;
-    protected static ?string $navigationLabel = 'Listado de Profesores';
+    protected static ?string $navigationIcon = 'heroicon-o-briefcase';  
+    protected static ?string $navigationLabel = 'Profesores';
     protected static ?string $pluralModelLabel = 'Profesores';
-    protected static ?string $modelLabel = 'Profesor';
-    protected static ?int $navigationSort = 5;
-    protected static ?string $navigationGroup = 'Profesores';
+    protected static ?string $modelLabel = 'Profesor';    
+    protected static ?string $navigationGroup = 'Gestión';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
@@ -111,13 +112,7 @@ class InstructorResource extends Resource
                                                 ->label('Código de Profesor')
                                                 ->required()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                ->maxLength(20),
-                                            Select::make('instructor_type')
-                                                ->label('Tipo de Profesor')
-                                                ->options([
-                                                    'Voluntario' => 'Voluntario',
-                                                    'Por Horas' => 'Por Horas',
-                                                ]),
+                                                ->maxLength(20),                                            
                                         ]),
                                     Grid::make(2)
                                         ->schema([
@@ -311,67 +306,7 @@ class InstructorResource extends Resource
                                         ->defaultItems(0)
                                         ->itemLabel(fn (array $state): ?string => $state['medicine'] ?? null),
                                 ]),
-                        ]),
-
-
-                    Step::make('Talleres Asignados')
-                        ->schema([
-                            Section::make('Talleres que Imparte el Profesor')
-                                ->description('Añade los talleres que este instructor dictará, especificando el horario y la tarifa.')
-                                ->schema([
-                                    Repeater::make('instructorWorkshops')
-                                        ->relationship('instructorWorkshops')
-                                        ->label('Talleres')
-                                        ->schema([
-                                            Select::make('workshop_id')
-                                                ->label('Taller')
-                                                ->options(Workshop::all()->pluck('name', 'id'))
-                                                ->searchable()
-                                                ->required(),
-                                            Select::make('day_of_week')
-                                                ->label('Día de la Semana')
-                                                ->options([
-                                                    'Lunes' => 'Lunes', 'Martes' => 'Martes', 'Miércoles' => 'Miércoles',
-                                                    'Jueves' => 'Jueves', 'Viernes' => 'Viernes', 'Sábado' => 'Sábado',
-                                                    'Domingo' => 'Domingo',
-                                                ])
-                                                ->required(),
-                                            TimePicker::make('start_time')
-                                                ->label('Hora de Inicio')
-                                                ->required()
-                                                ->seconds(false)
-                                                ->displayFormat('H:i'),
-                                            TimePicker::make('end_time')
-                                                ->label('Hora de Fin')
-                                                ->required()
-                                                ->seconds(false)
-                                                ->displayFormat('H:i'),
-                                            TextInput::make('class_count')
-                                                ->label('Número de Clases')
-                                                ->numeric()
-                                                ->minValue(1)
-                                                ->nullable(),
-                                            TextInput::make('class_rate')
-                                                ->label('Tarifa por Clase/Hora (S/.)')
-                                                ->numeric()
-                                                ->prefix('S/.')
-                                                ->mask(RawJs::make('$money($event.target.value)'))
-                                                ->stripCharacters(',')
-                                                ->nullable(),
-                                            TextInput::make('place')
-                                                ->label('Lugar')
-                                                ->required()
-                                                ->columnSpanFull(),
-                                        ])
-                                        ->columns(3)
-                                        ->itemLabel(fn (array $state): ?string => empty($state['workshop_id']) ? null : Workshop::find($state['workshop_id'])?->name . ' (' . ($state['day_of_week'] ?? 'N/A') . ' - ' . (\Carbon\Carbon::parse($state['start_time'])->format('H:i') ?? 'N/A') . ')' )
-                                        ->defaultItems(1)
-                                        ->collapsible()
-                                        ->cloneable()
-                                        ->grid(2)
-                                        ->addActionLabel('Añadir Taller y Horario')
-                                ])
-                        ]),
+                        ]),                    
                     Step::make('Declaración jurada y resumen')
                         ->schema([
                             Section::make('Resumen de Ficha Personal')
@@ -478,40 +413,7 @@ class InstructorResource extends Resource
                                                 ->columns(3)
                                                 ->hidden(fn (callable $get) => empty($get('medicalRecord.medications'))),
                                         ]),
-                                ]),
-                            Section::make('Resumen de Talleres Asignados')
-                                ->schema([
-                                    Placeholder::make('workshops_list_summary')
-                                        ->label('Talleres y Horarios')
-                                        ->content(function ($get) {
-                                            $workshopsData = $get('instructorWorkshops'); // Obtener los datos del repeater de talleres
-
-                                            if (empty($workshopsData)) {
-                                                return 'No se han asignado talleres.';
-                                            }
-
-                                            $summary = '<div class="space-y-2">'; // Contenedor para los elementos de la lista
-                                            foreach ($workshopsData as $workshopItem) {
-                                                $workshopName = Workshop::find($workshopItem['workshop_id'])?->name ?? 'Taller Desconocido';
-                                                $dayOfWeek = $workshopItem['day_of_week'] ?? 'N/A';
-
-                                                $startTime = isset($workshopItem['start_time']) ? \Carbon\Carbon::parse($workshopItem['start_time'])->format('H:i') : 'N/A';
-                                                $endTime = isset($workshopItem['end_time']) ? \Carbon\Carbon::parse($workshopItem['end_time'])->format('H:i') : 'N/A';
-
-                                                $classCount = $workshopItem['class_count'] ?? 'N/A';
-                                                $classRate = $workshopItem['class_rate'] ?? '0.00';
-                                                $place = $workshopItem['place'];
-
-                                                $summary .= '<div class="p-2 border rounded-md bg-gray-50 dark:bg-gray-800">';
-                                                $summary .= '<p><strong class="text-primary-600">Taller:</strong> ' . $workshopName . '</p>';
-                                                $summary .= '<p><strong class="text-primary-600">Horario:</strong> ' . $dayOfWeek . ' ' . $startTime . ' - ' . $endTime . '</p>';
-                                                $summary .= '<p><strong class="text-primary-600">Detalles:</strong> Clases: ' . $classCount . ' / Tarifa: S/. ' . number_format($classRate, 2) . ' / Lugar: ' .$place . '</p>';
-                                                $summary .= '</div>';
-                                            }
-                                            $summary .= '</div>';
-                                            return new \Illuminate\Support\HtmlString($summary); // Importante para renderizar HTML
-                                        }),
-                                ]),
+                                ]),                            
                             Section::make('Firma y Huella Digital')
                                 ->relationship('affidavit')
                                 ->schema([
@@ -569,16 +471,10 @@ class InstructorResource extends Resource
                 TextColumn::make('first_names')->label('Nombres')->searchable(),
                 TextColumn::make('last_names')->label('Apellidos')->searchable(),
                 TextColumn::make('document_number')->label('DNI')->searchable(),
-                TextColumn::make('cell_phone')->label('Teléfono'),
-                BadgeColumn::make('instructor_type')
-                    ->label('Tipo')
-                    ->colors([
-                        'success' => 'VOLUNTARIO',
-                        'info' => 'POR HORAS',
-                    ]),
-                TextColumn::make('instructorWorkshops.workshop.name') // Accede a los nombres de los talleres a través de la relación
+                TextColumn::make('cell_phone')->label('Teléfono'),                
+                TextColumn::make('instructorWorkshops.workshop.name') 
                     ->label('Talleres que Imparte')
-                    ->listWithLineBreaks() // Muestra cada taller en una nueva línea
+                    ->listWithLineBreaks() 
                     ->limit(50)
                     ->tooltip(function (Instructor $record) {
                         return $record->instructorWorkshops->map(function ($iw) {
@@ -592,30 +488,14 @@ class InstructorResource extends Resource
                     }),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('instructor_type')
-                    ->label('Modalidad')
-                    ->options([
-                        'VOLUNTARIO' => 'VOLUNTARIO',
-                        'POR HORAS' => 'POR HORAS',
-                    ]),
-                // Filtro para talleres, ahora basado en la relación a través de instructorWorkshops
-                Tables\Filters\SelectFilter::make('workshops')
-                    ->label('Taller')
-                    // Utiliza la relación BelongsToMany que definimos en Workshop, o puedes usar 'instructorWorkshops.workshop'
-                    // Aquí usamos la relación `instructors` en el modelo `Workshop` (asumiendo que la has añadido para el filtro)
-                    // Si no, la relación directa a través de la tabla pivote es Tables\Filters\SelectFilter::make('instructorWorkshops.workshop_id')
-                    // Lo más robusto para un filtro de relación es:
-                    ->relationship('instructorWorkshops.workshop', 'name', fn (Builder $query) => $query->distinct())
-                    ->searchable(),
+                
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                
             ]);
     }
 
@@ -632,6 +512,16 @@ class InstructorResource extends Resource
             'edit' => Pages\EditInstructor::route('/{record}/edit'),
             'import' => Pages\ImportInstructors::route('/import'),
         ];
+    }
+
+    public static function getBadgeCount(): int
+    {
+        return Instructor::count();
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return self::getBadgeCount();
     }
 }
 

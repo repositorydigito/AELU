@@ -5,19 +5,12 @@ namespace App\Imports;
 use App\Models\Instructor;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithValidation; // Añade esto
+use Maatwebsite\Excel\Concerns\WithValidation; 
 
-class InstructorsImport implements ToModel, WithHeadingRow, WithValidation
-{
-    /**
-     * @param array $row
-     *
-     * @return \Illuminate\Database\Eloquent\Model|null
-     */
+class InstructorsImport implements ToModel, WithHeadingRow
+{    
     public function model(array $row)
     {
-        //dd($row);
-        // Accede a las claves del array $row en MAYÚSCULAS para que coincidan con los encabezados del Excel
         return new Instructor([
             'first_names' => $row['nombres'],
             'last_names' => $row['apellidos'],
@@ -33,14 +26,8 @@ class InstructorsImport implements ToModel, WithHeadingRow, WithValidation
             'address' => $row['direccion'] ?? null, 
         ]);
     }
-
-    /**
-     * Define las reglas de validación. Las claves aquí también deben coincidir
-     * con los encabezados en MAYÚSCULAS de tu archivo Excel.
-     *
-     * @return array
-     */
-    public function rules(): array
+    
+    /* public function rules(): array
     {
         return [
             'nombres' => ['required', 'string', 'max:255'],
@@ -56,5 +43,5 @@ class InstructorsImport implements ToModel, WithHeadingRow, WithValidation
             'distrito' => ['nullable', 'string', 'max:255'],
             'direccion' => ['nullable', 'string', 'max:255'], 
         ];
-    }
+    } */
 }

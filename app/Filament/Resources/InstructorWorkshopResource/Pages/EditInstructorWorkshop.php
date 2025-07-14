@@ -10,6 +10,11 @@ class EditInstructorWorkshop extends EditRecord
 {
     protected static string $resource = InstructorWorkshopResource::class;
 
+    public function getRedirectUrl(): string
+    {        
+        return InstructorWorkshopResource::getUrl('index');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
