@@ -1,62 +1,37 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\Resources\WorkshopResource\RelationManagers;
 
-use App\Filament\Resources\InstructorWorkshopResource\Pages;
-use App\Filament\Resources\InstructorWorkshopResource\RelationManagers;
-use App\Models\Workshop;
-use App\Models\InstructorWorkshop;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\ColorEntry;
-use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
-use Filament\Notifications\Notification;
 use Filament\Support\Enums\FontWeight;
+use App\Models\Instructor;
 
-class InstructorWorkshopResource extends Resource
+class InstructorWorkshopsRelationManager extends RelationManager
 {
-    protected static ?string $model = InstructorWorkshop::class;
+    protected static string $relationship = 'instructorWorkshops';
 
-    // Ocultar de la navegación - funcionalidad movida a WorkshopResource
-    protected static bool $shouldRegisterNavigation = false;
+    protected static ?string $title = 'Horarios del Taller';
 
-    protected static ?string $navigationLabel = 'Horarios (Obsoleto)';
-    protected static ?string $pluralModelLabel = 'Horarios';
-    protected static ?string $modelLabel = 'Horario';
-    protected static ?int $navigationSort = 6;
-    protected static ?string $navigationGroup = 'Talleres';
+    protected static ?string $label = 'Horario';
 
-    public static function getTableQuery(): Builder
-    {
-        return parent::getTableQuery();
-    }
-        
-    public static function form(Form $form): Form
+    protected static ?string $pluralLabel = 'Horarios';
+
+    public function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Select::make('instructor_id')
-                    ->relationship(
-                        'instructor',
-                        titleAttribute: 'last_names',
-                        modifyQueryUsing: fn ($query) => $query->orderBy('first_names')->orderBy('last_names')
-                    )
+                    ->relationship('instructor', 'first_names')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}")
-                    //->searchable(['first_names', 'last_names'])
-                    ->label('Instructor') 
-                    ->required(),                
-                Forms\Components\Select::make('workshop_id')
-                    ->relationship('workshop', 'name') 
-                    ->label('Taller')
+                    ->searchable(['first_names', 'last_names'])
+                    ->preload()
+                    ->label('Instructor')
                     ->required(),
                 Forms\Components\Select::make('day_of_week')
                     ->label('Día de la Semana')
@@ -94,38 +69,17 @@ class InstructorWorkshopResource extends Resource
             ]);
     }
 
-    public static function infolist(Infolist $infolist): Infolist
-    {
-        return $infolist
-            ->schema([
-                TextEntry::make('workshop.name')
-                    ->label('Nombre del Taller'),                    
-                TextEntry::make('instructor.full_name')
-                    ->label('Nombre del Instructor'),                                   
-                TextEntry::make('day_of_week')
-                    ->label('Día de la Semana'),
-                TextEntry::make('time_range')
-                    ->label('Hora'),                  
-                TextEntry::make('place')
-                    ->label('Lugar'),
-            ]);
-    }
-
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
+            ->recordTitleAttribute('day_of_week')
             ->columns([
                 Tables\Columns\Layout\Stack::make([                   
                     Tables\Columns\Layout\Stack::make([                        
-                        Tables\Columns\TextColumn::make('workshop.name')
-                            ->label('Taller')                            
-                            ->size('lg')
-                            ->weight(FontWeight::Bold)
-                            ->sortable(),                                                    
                         Tables\Columns\TextColumn::make('instructor.full_name')
                             ->label('Instructor')                            
-                            ->size('sm')
-                            ->weight(FontWeight::SemiBold)
+                            ->size('lg')
+                            ->weight(FontWeight::Bold)
                             ->sortable(query: function (Builder $query, string $direction): Builder {
                                 return $query->orderBy(
                                     \Illuminate\Support\Facades\DB::raw("(SELECT CONCAT(last_names, ' ', first_names) FROM instructors WHERE instructors.id = instructor_workshops.instructor_id)"),
@@ -133,7 +87,9 @@ class InstructorWorkshopResource extends Resource
                                 );
                             }),                                                    
                         Tables\Columns\TextColumn::make('day_of_week')
-                            ->label('Día'),
+                            ->label('Día')
+                            ->size('sm')
+                            ->weight(FontWeight::SemiBold),
                         Tables\Columns\TextColumn::make('time_range') 
                             ->label('Hora'),                                                                           
                         Tables\Columns\TextColumn::make('place')
@@ -147,10 +103,7 @@ class InstructorWorkshopResource extends Resource
                     ]),                                        
                 ])->space(0), 
             ])
-            ->filters([                
-                Tables\Filters\SelectFilter::make('workshop_id')
-                    ->relationship('workshop', 'name')
-                    ->label('Filtrar por Taller'),
+            ->filters([
                 Tables\Filters\SelectFilter::make('instructor_id')
                     ->relationship('instructor', 'last_names')
                     ->label('Filtrar por Instructor'),
@@ -178,36 +131,18 @@ class InstructorWorkshopResource extends Resource
                 48,
                 'all',
             ])
+            ->headerActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Agregar Horario'),
+            ])
             ->actions([
-                Tables\Actions\Action::make('inscribe')
-                    ->label('Inscribir')
-                    ->icon('heroicon-o-user-plus') 
-                    ->color('primary') 
-                    ->url(fn (InstructorWorkshop $record): string => InstructorWorkshopResource::getUrl('inscribe-student', ['record' => $record])),
-                Tables\Actions\EditAction::make(), 
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
-    }
-
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\ListInstructorWorkshops::route('/'),
-            'create' => Pages\CreateInstructorWorkshop::route('/create'),
-            'edit' => Pages\EditInstructorWorkshop::route('/{record}/edit'),
-            'view' => Pages\ViewInstructorWorkshop::route('/{record}'),
-            'inscribe-student' => Pages\InscribeStudent::route('/{record}/inscribe-student'),
-        ];
     }
 }

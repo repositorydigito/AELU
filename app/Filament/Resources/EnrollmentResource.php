@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class EnrollmentResource extends Resource
 {
     protected static ?string $model = Enrollment::class;
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Inscripciones'; 
     protected static ?string $pluralModelLabel = 'Inscripciones'; 
     protected static ?string $modelLabel = 'Inscripción';    
