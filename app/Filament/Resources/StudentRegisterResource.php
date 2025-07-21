@@ -137,14 +137,54 @@ class StudentRegisterResource extends Resource
                                                 ])
                                                 ->live()
                                                 ->afterStateUpdated(function (callable $get, callable $set, $state) {
-                                                    static::updatePricingFields($get, $set);
+                                                    // Categorías exentas de pago (sin pago)
+                                                    $exemptCategories = [
+                                                        'Transitorio Exonerado',
+                                                        'Hijo de Fundador',
+                                                        'Vitalicios'
+                                                    ];
+                                                    
+                                                    // Si es una categoría exenta, marcar mantenimiento como pagado
+                                                    if (in_array($state, $exemptCategories)) {
+                                                        $set('monthly_maintenance_paid', true);
+                                                    }
                                                 }),
                                         ]),
-                                    Hidden::make('has_payment_exemption')
-                                        ->default(false),
-                                    
-                                    Hidden::make('pricing_multiplier')
-                                        ->default(1.00),
+                                    Grid::make(1)
+                                        ->schema([
+                                            Toggle::make('monthly_maintenance_paid')
+                                                ->label('Mantenimiento Mensual')
+                                                ->helperText(function (callable $get) {
+                                                    $category = $get('category_partner');
+                                                    $exemptCategories = [
+                                                        'Transitorio Exonerado',
+                                                        'Hijo de Fundador',
+                                                        'Vitalicios'
+                                                    ];
+                                                    
+                                                    if (in_array($category, $exemptCategories)) {
+                                                        return 'Categoría exenta de pago - Siempre al día';
+                                                    }
+                                                    
+                                                    return 'Indica si el alumno ha pagado el mantenimiento mensual';
+                                                })
+                                                ->onColor('success')
+                                                ->offColor('danger')
+                                                ->onIcon('heroicon-m-check')
+                                                ->offIcon('heroicon-m-x-mark')
+                                                ->default(false)
+                                                ->disabled(function (callable $get) {
+                                                    $category = $get('category_partner');
+                                                    $exemptCategories = [
+                                                        'Transitorio Exonerado',
+                                                        'Hijo de Fundador',
+                                                        'Vitalicios'
+                                                    ];
+                                                    
+                                                    return in_array($category, $exemptCategories);
+                                                })
+                                                ->live(),
+                                        ]),
                                     Grid::make(2)
                                         ->schema([
                                             TextInput::make('cell_phone')
@@ -172,17 +212,14 @@ class StudentRegisterResource extends Resource
                                     Grid::make(3)
                                         ->schema([
                                             TextInput::make('emergency_contact_name')
-                                                ->label('Nombre del familiar responsable')                                                
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->label('Nombre del familiar responsable')
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_relationship')
-                                                ->label('Parentesco o relación')                                                
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->label('Parentesco o relación')
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_phone')
                                                 ->label('Teléfono del familiar responsable')
-                                                ->tel()                                                
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->tel()
                                                 ->maxLength(20),
                                         ]),
                                 ]),
@@ -283,7 +320,7 @@ class StudentRegisterResource extends Resource
                                                         'Medicinas' => 'Medicinas',
                                                         'Otros' => 'Otros',
                                                     ])
-                                                    ->columns(1)
+                                                    ->columns(3)
                                                     ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []))
                                                     ->reactive(),
 
@@ -393,6 +430,9 @@ class StudentRegisterResource extends Resource
                                             Placeholder::make('address_summary')
                                                 ->label('Domicilio')
                                                 ->content(fn (callable $get) => $get('address')),
+                                            Placeholder::make('monthly_maintenance_paid_summary')
+                                                ->label('Mantenimiento Mensual')
+                                                ->content(fn (callable $get) => $get('monthly_maintenance_paid') ? 'Al día' : 'No pagado'),
                                         ]),
                                 ]),
                             Section::make('Ficha Médica Resumen')
@@ -512,34 +552,7 @@ class StudentRegisterResource extends Resource
             ]);
     }
 
-    protected static function updatePricingFields(callable $get, callable $set): void
-    {
-        $category = $get('category_partner');
-        $birthDate = $get('birth_date');
-        
-        if (!$category) {
-            return;
-        }
 
-        $age = $birthDate ? \Carbon\Carbon::parse($birthDate)->age : 0;
-        
-        // Categorías exentas de pago
-        $exemptCategories = ['Hijo de Fundador', 'Vitalicios', 'Transitorio Exonerado'];
-        $isExempt = in_array($category, $exemptCategories);
-        
-        $set('has_payment_exemption', $isExempt);
-        
-        // Calcular multiplicador según la lógica del modelo Student
-        $multiplier = 1.00; // Tarifa normal por defecto
-        
-        if ($isExempt) {
-            $multiplier = 0.00; // Exento
-        } elseif ($category === 'Individual PRE-PAMA' || ($category === 'Individual' && $age < 60)) {
-            $multiplier = 1.50; // 150% = tarifa normal + 50%
-        }
-        
-        $set('pricing_multiplier', $multiplier);
-    }
 
     public static function table(Table $table): Table
     {
@@ -595,24 +608,36 @@ class StudentRegisterResource extends Resource
                 TextColumn::make('pricing_info')
                     ->label('Tarifa')
                     ->getStateUsing(function (Student $record) {
-                        $multiplier = $record->pricing_multiplier;
-                        
-                        if ($multiplier == 0.00) {
+                        if ($record->isPaymentExempt()) {
                             return 'Exento';
                         }
                         
-                        if ($multiplier == 1.50) {
+                        if ($record->category_partner === 'Individual PRE-PAMA' || 
+                            ($record->category_partner === 'Individual' && $record->age < 60)) {
                             return '+50%';
                         }
                         
                         return 'Normal';
                     })
                     ->badge()
-                    ->color(fn (Student $record) => match ($record->pricing_multiplier) {
-                        0.00 => 'success',
-                        1.50 => 'warning',
-                        default => 'info'
+                    ->color(function (Student $record) {
+                        if ($record->isPaymentExempt()) {
+                            return 'success';
+                        }
+                        
+                        if ($record->category_partner === 'Individual PRE-PAMA' || 
+                            ($record->category_partner === 'Individual' && $record->age < 60)) {
+                            return 'warning';
+                        }
+                        
+                        return 'info';
                     }),
+                TextColumn::make('monthly_maintenance_paid')
+                    ->label('Mantenimiento')
+                    ->getStateUsing(fn (Student $record) => $record->monthly_maintenance_paid ? 'Al día' : 'No pagado')
+                    ->badge()
+                    ->color(fn (Student $record) => $record->monthly_maintenance_paid ? 'success' : 'danger')
+                    ->icon(fn (Student $record) => $record->monthly_maintenance_paid ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle'),
                 TextColumn::make('cell_phone')
                     ->label('Teléfono')
                     ->searchable(),
@@ -641,6 +666,12 @@ class StudentRegisterResource extends Resource
                         'Transitorio Exonerado' => 'Transitorio Exonerado',
                         'Hijo de Fundador' => 'Hijo de Fundador',
                         'Vitalicios' => 'Vitalicios',
+                    ]),
+                Tables\Filters\SelectFilter::make('monthly_maintenance_paid')
+                    ->label('Mantenimiento Mensual')
+                    ->options([
+                        '1' => 'Al día',
+                        '0' => 'No pagado',
                     ]),
             ])
             ->headerActions([

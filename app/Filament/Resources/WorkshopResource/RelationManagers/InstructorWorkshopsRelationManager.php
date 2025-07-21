@@ -16,56 +16,82 @@ class InstructorWorkshopsRelationManager extends RelationManager
 {
     protected static string $relationship = 'instructorWorkshops';
 
-    protected static ?string $title = 'Horarios del Taller';
+    protected static ?string $title = 'Instructores Asignados';
 
-    protected static ?string $label = 'Horario';
+    protected static ?string $label = 'Instructor';
 
-    protected static ?string $pluralLabel = 'Horarios';
+    protected static ?string $pluralLabel = 'Instructores';
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('instructor_id')
-                    ->relationship('instructor', 'first_names')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}")
-                    ->searchable(['first_names', 'last_names'])
-                    ->preload()
-                    ->label('Instructor')
-                    ->required(),
-                Forms\Components\Select::make('day_of_week')
-                    ->label('Día de la Semana')
-                    ->options([
-                        'Lunes' => 'Lunes',
-                        'Martes' => 'Martes',
-                        'Miércoles' => 'Miércoles',
-                        'Jueves' => 'Jueves',
-                        'Viernes' => 'Viernes',
-                        'Sábado' => 'Sábado',
-                        'Domingo' => 'Domingo',
-                    ])
-                    ->required(),
-                Forms\Components\TimePicker::make('start_time')
-                    ->label('Hora de Inicio')
-                    ->required()
-                    ->seconds(false),
-                Forms\Components\TimePicker::make('end_time')
-                    ->label('Hora de Fin')
-                    ->required()
-                    ->seconds(false),
-                Forms\Components\TextInput::make('class_count')
-                    ->label('Cantidad de Clases')
-                    ->numeric()
-                    ->nullable(),
-                Forms\Components\TextInput::make('class_rate')
-                    ->label('Costo por Clase')
-                    ->numeric()
-                    ->prefix('S/.')
-                    ->nullable(),
-                Forms\Components\TextInput::make('place')
-                    ->label('Lugar')
-                    ->maxLength(255)
-                    ->required(),
+                Forms\Components\DatePicker::make('start_date')
+    ->label('Fecha de Inicio')
+    ->required(),
+Forms\Components\Select::make('day_of_week')
+    ->label('Día de la Semana')
+    ->options([
+        'Lunes' => 'Lunes',
+        'Martes' => 'Martes',
+        'Miércoles' => 'Miércoles',
+        'Jueves' => 'Jueves',
+        'Viernes' => 'Viernes',
+        'Sábado' => 'Sábado',
+        'Domingo' => 'Domingo',
+    ])
+    ->required(),
+Forms\Components\TimePicker::make('start_time')
+    ->label('Hora de Inicio')
+    ->required()
+    ->seconds(false),
+Forms\Components\TextInput::make('number_of_classes')
+    ->label('Nro. de Clases')
+    ->numeric()
+    ->required(),
+Forms\Components\Actions::make([
+    Forms\Components\Actions\Action::make('calcular_horarios')
+        ->label('Calcular Horarios')
+        ->action(function ($state, $livewire) {
+            // Lógica para calcular fechas automáticamente
+            $startDate = $state['start_date'];
+            $dayOfWeek = $state['day_of_week'];
+            $startTime = $state['start_time'];
+            $numberOfClasses = (int) $state['number_of_classes'];
+            $dates = [];
+            if ($startDate && $dayOfWeek && $startTime && $numberOfClasses > 0) {
+                $date = \Carbon\Carbon::parse($startDate);
+                // Asegura que la fecha inicial sea el día correcto
+                while ($date->format('l') !== $dayOfWeek) {
+                    $date->addDay();
+                }
+                for ($i = 0; $i < $numberOfClasses; $i++) {
+                    $dates[] = [
+                        'date' => $date->format('Y-m-d'),
+                        'start_time' => $startTime,
+                        'feriado' => false,
+                        'nota' => null,
+                    ];
+                    $date->addWeek();
+                }
+                $livewire->form->fill(array_merge($state, ['clases_generadas' => $dates]));
+            }
+        })
+        ->color('primary'),
+]),
+Forms\Components\Repeater::make('clases_generadas')
+    ->label('Clases')
+    ->schema([
+        Forms\Components\DatePicker::make('date')
+            ->label(fn ($state, $record) => 'Clase ' . ($record ? ($record["index"] + 1) : '')),
+        Forms\Components\Toggle::make('feriado')
+            ->label('Feriado'),
+        Forms\Components\TextInput::make('nota')
+            ->label('Notas'),
+    ])
+    ->columnSpanFull()
+    ->visible(fn ($state) => !empty($state)),
+
             ]);
     }
 

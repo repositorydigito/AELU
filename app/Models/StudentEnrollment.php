@@ -12,6 +12,7 @@ class StudentEnrollment extends Model
         'instructor_workshop_id',
         'monthly_period_id',
         'previous_enrollment_id',
+        'enrollment_batch_id',
         'enrollment_type',
         'number_of_classes',
         'price_per_quantity',
@@ -63,6 +64,10 @@ class StudentEnrollment extends Model
     public function movements(): MorphMany
     {
         return $this->morphMany(Movement::class, 'movable');
+    }
+    public function enrollmentBatch()
+    {
+        return $this->belongsTo(EnrollmentBatch::class);
     }
     
     // Relaciones indirectas

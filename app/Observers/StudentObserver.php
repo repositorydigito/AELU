@@ -30,11 +30,13 @@ class StudentObserver
      */
     protected function calculatePricingFields(Student $student): void
     {
-        // Calcular si está exento de pago
-        $student->has_payment_exemption = $this->isPaymentExempt($student);
+        // Los campos de tarifa ahora se calculan dinámicamente en el modelo
+        // No necesitamos guardar nada en la base de datos
         
-        // Calcular multiplicador de precio
-        $student->pricing_multiplier = $this->calculatePricingMultiplier($student);
+        // Si es una categoría exenta, asegurar que el mantenimiento esté marcado como pagado
+        if ($this->isPaymentExempt($student)) {
+            $student->monthly_maintenance_paid = true;
+        }
     }
 
     /**

@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+
+class EnrollmentBatch extends Model
+{
+    protected $fillable = [
+        'student_id',
+        'batch_code',
+        'total_amount',
+        'payment_status',
+        'payment_method',
+        'enrollment_date',
+        'notes',
+    ];
+
+    protected $casts = [
+        'total_amount' => 'decimal:2',
+        'enrollment_date' => 'date',
+    ];
+
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($batch) {
+            if (empty($batch->batch_code)) {
+                $batch->batch_code = 'INS-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+            }
+        });
+    }
+
+    // Relaciones
+    public function student()
+    {
+        return $this->belongsTo(Student::class);
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(StudentEnrollment::class, 'enrollment_batch_id');
+    }
+
+    // Métodos auxiliares
+    public function getWorkshopsCountAttribute()
+    {
+        return $this->enrollments()->count();
+    }
+
+    public function getWorkshopsListAttribute()
+    {
+        return $this->enrollments()
+            ->with(['instructorWorkshop.workshop'])
+            ->get()
+            ->pluck('instructorWorkshop.workshop.name')
+            ->join(', ');
+    }
+
+    public function getTotalClassesAttribute()
+    {
+        return $this->enrollments()->sum('number_of_classes');
+    }
+
+    public function getFormattedPaymentStatusAttribute()
+    {
+        return match ($this->payment_status) {
+            'pending' => 'En Proceso',
+            'partial' => 'Parcial',
+            'completed' => 'Inscrito',
+            default => $this->payment_status,
+        };
+    }
+
+    public function getFormattedPaymentMethodAttribute()
+    {
+        return match ($this->payment_method) {
+            'cash' => 'Efectivo',
+            'link' => 'Link de Pago',
+            default => $this->payment_method,
+        };
+    }
+}

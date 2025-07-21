@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EnrollmentResource\Pages;
 use App\Filament\Resources\EnrollmentResource\RelationManagers;
-use App\Models\Enrollment;
+use App\Models\StudentEnrollment;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -15,125 +15,603 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class EnrollmentResource extends Resource
 {
-    protected static ?string $model = Enrollment::class;
+    protected static ?string $model = StudentEnrollment::class;
     protected static ?string $navigationLabel = 'Inscripciones'; 
     protected static ?string $pluralModelLabel = 'Inscripciones'; 
-    protected static ?string $modelLabel = 'Inscripción';    
-    protected static ?int $navigationSort = 6; 
-    protected static ?string $navigationGroup = 'Talleres'; 
-
-    
+    protected static ?string $modelLabel = 'Inscripción';
+    protected static bool $shouldRegisterNavigation = false; // Ocultar de la navegación 
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('student_id')
-                    ->label('Estudiante')
-                    ->relationship('student', 'first_names')
-                    ->searchable()
-                    ->preload()
-                    ->required(),
-                Forms\Components\Select::make('instructor_workshop_id')
-                    ->label('Taller')
-                    ->relationship(
-                        'instructorWorkshop',
-                        'id',
-                        fn ($query) => $query->with(['workshop', 'instructor'])
-                    )
-                    ->getOptionLabelFromRecordUsing(fn ($record) => 
-                        "{$record->workshop->name} - {$record->instructor->first_names} {$record->instructor->last_names}" . 
-                        " ({$record->day_of_week} de " . 
-                        \Carbon\Carbon::parse($record->start_time)->format('H:i') . 
-                        " a " . 
-                        \Carbon\Carbon::parse($record->end_time)->format('H:i') . ")"
-                    )
-                    ->searchable()
-                    ->preload()
-                    ->required(),
-                Forms\Components\DatePicker::make('enrollment_date')
-                    ->label('Fecha de Inscripción')
-                    ->default(now())
-                    ->required(),
-                Forms\Components\Select::make('status')
-                    ->label('Estado')
-                    ->options([
-                        'enrolled' => 'Inscrito',
-                        'completed' => 'Completado',
-                        'dropped' => 'Abandonado',
-                        'pending' => 'Pendiente',
-                    ])
-                    ->default('enrolled')
-                    ->required(),
-                Forms\Components\Select::make('payment_status')
-                    ->label('Estado de Pago')
-                    ->options([
-                        'pending' => 'Pendiente',
-                        'partial' => 'Parcial',
-                        'paid' => 'Pagado',
-                        'overdue' => 'Vencido',
-                    ])
-                    ->default('pending')
-                    ->required(),
-                Forms\Components\TextInput::make('total_amount')
-                    ->label('Monto Total')
-                    ->required()
-                    ->numeric()
-                    ->prefix('S/.')
-                    ->default(0.00),
-                Forms\Components\TextInput::make('paid_amount')
-                    ->label('Monto Pagado')
-                    ->required()
-                    ->numeric()
-                    ->prefix('S/.')
-                    ->default(0.00),
-                Forms\Components\Textarea::make('notes')
-                    ->label('Notas')
-                    ->columnSpanFull(),
-            ]);
+                Forms\Components\Wizard::make([
+                    // Paso 1: Selección de Estudiante y Talleres
+                    Forms\Components\Wizard\Step::make('Seleccionar Estudiante y Talleres')
+                        ->icon('heroicon-o-user-plus')
+                        ->schema([
+                            // Selección del estudiante
+                            Forms\Components\Select::make('student_id')
+                                ->label('Estudiante')
+                                ->relationship('student', 'first_names')
+                                ->getOptionLabelFromRecordUsing(fn ($record) => 
+                                    "{$record->first_names} {$record->last_names} - {$record->student_code}"
+                                )
+                                ->searchable(['first_names', 'last_names', 'student_code'])
+                                ->preload()
+                                ->required()
+                                ->placeholder('Buscar estudiante...')
+                                ->helperText(function (Forms\Get $get) {
+                                    $studentId = $get('student_id');
+                                    if (!$studentId) {
+                                        return 'Selecciona el estudiante que se inscribirá';
+                                    }
+                                    
+                                    $student = \App\Models\Student::find($studentId);
+                                    if (!$student) {
+                                        return 'Estudiante no encontrado';
+                                    }
+                                    
+                                    if (!$student->monthly_maintenance_paid) {
+                                        return '⚠️ Este estudiante NO está al día con el mantenimiento mensual';
+                                    }
+                                    
+                                    return '✅ Estudiante al día con el mantenimiento mensual';
+                                })
+                                ->live()
+                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                    if (!$state) {
+                                        $set('selected_workshops', '[]');
+                                        return;
+                                    }
+                                    
+                                    $student = \App\Models\Student::find($state);
+                                    if (!$student) {
+                                        $set('selected_workshops', '[]');
+                                        return;
+                                    }
+                                    
+                                    // Si el estudiante no está al día con el mantenimiento, mostrar notificación
+                                    if (!$student->monthly_maintenance_paid) {
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Estudiante no al día')
+                                            ->body("El estudiante {$student->first_names} {$student->last_names} no está al día con el pago del mantenimiento mensual. No se puede proceder con la inscripción.")
+                                            ->danger()
+                                            ->persistent()
+                                            ->send();
+                                        
+                                        // Limpiar talleres seleccionados
+                                        $set('selected_workshops', '[]');
+                                    } else {
+                                        // Si está al día, mostrar notificación de éxito
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Estudiante verificado')
+                                            ->body("El estudiante {$student->first_names} {$student->last_names} está al día con el mantenimiento mensual. Puede proceder con la inscripción.")
+                                            ->success()
+                                            ->send();
+                                    }
+                                })
+                                ->columnSpanFull(),
+                            
+                            // Separador visual
+                            Forms\Components\Section::make('Catálogo de Talleres')
+                                ->description('Selecciona los talleres en los que deseas inscribir al estudiante')
+                                ->schema([
+                                    // Campo oculto para almacenar los talleres seleccionados
+                                    Forms\Components\Hidden::make('selected_workshops')
+                                        ->default('[]')
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                            // Sincronizar los talleres seleccionados con el paso 2
+                                            $selectedWorkshops = json_decode($state ?? '[]', true);
+                                            $workshopDetails = [];
+                                            
+                                            foreach ($selectedWorkshops as $workshopId) {
+                                                $workshopDetails[] = [
+                                                    'instructor_workshop_id' => $workshopId,
+                                                    'enrollment_type' => 'specific_classes',
+                                                    'number_of_classes' => 1,
+                                                    'enrollment_date' => now()->format('Y-m-d'),
+                                                ];
+                                            }
+                                            
+                                            $set('workshop_details', $workshopDetails);
+                                        }),
+                                    
+                                    // Vista personalizada de talleres en cards
+                                    Forms\Components\ViewField::make('workshop_cards')
+                                        ->label('')
+                                        ->view('filament.forms.components.workshop-cards')
+                                        ->viewData(function (Forms\Get $get) {
+                                            $studentId = $get('student_id');
+                                            $selectedWorkshops = json_decode($get('selected_workshops') ?? '[]', true);
+                                            
+                                            // Obtener todos los talleres disponibles
+                                            $workshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                                                ->get()
+                                                ->map(function ($instructorWorkshop) use ($selectedWorkshops) {
+                                                    // Convertir día de la semana (número) a texto en español
+                                                    $dayNames = [
+                                                        1 => 'Lunes',
+                                                        2 => 'Martes',
+                                                        3 => 'Miércoles',
+                                                        4 => 'Jueves',
+                                                        5 => 'Viernes',
+                                                        6 => 'Sábado',
+                                                        7 => 'Domingo',
+                                                        0 => 'Domingo', // Por si usan 0 para domingo
+                                                    ];
+                                                    
+                                                    $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día ' . $instructorWorkshop->day_of_week;
+                                                    
+                                                    return [
+                                                        'id' => $instructorWorkshop->id,
+                                                        'name' => $instructorWorkshop->workshop->name,
+                                                        'instructor' => $instructorWorkshop->instructor->first_names . ' ' . $instructorWorkshop->instructor->last_names,
+                                                        'day' => $dayInSpanish,
+                                                        'start_time' => \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i'),
+                                                        'end_time' => \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i'),
+                                                        'price' => $instructorWorkshop->workshop->standard_monthly_fee,
+                                                        'max_classes' => $instructorWorkshop->workshop->number_of_classes,
+                                                        'selected' => in_array($instructorWorkshop->id, $selectedWorkshops),
+                                                    ];
+                                                });
+                                            
+                                            return [
+                                                'workshops' => $workshops,
+                                                'student_id' => $studentId,
+                                            ];
+                                        })
+                                        ->live()
+                                        ->columnSpanFull(),
+                                ])
+                                ->columnSpanFull(),
+                        ]),
+                    
+                    // Paso 2: Configuración de Detalles
+                    Forms\Components\Wizard\Step::make('Configurar Detalles')
+                        ->icon('heroicon-o-cog-6-tooth')
+                        ->beforeValidation(function (Forms\Get $get) {
+                            $studentId = $get('student_id');
+                            if (!$studentId) {
+                                throw new \Filament\Forms\ValidationException(['student_id' => 'Debe seleccionar un estudiante']);
+                            }
+                            
+                            $student = \App\Models\Student::find($studentId);
+                            if (!$student || !$student->monthly_maintenance_paid) {
+                                throw new \Filament\Forms\ValidationException(['student_id' => 'El estudiante seleccionado no está al día con el mantenimiento mensual']);
+                            }
+                            
+                            $selectedWorkshops = json_decode($get('selected_workshops') ?? '[]', true);
+                            if (empty($selectedWorkshops)) {
+                                throw new \Filament\Forms\ValidationException(['selected_workshops' => 'Debe seleccionar al menos un taller']);
+                            }
+                        })
+                        ->schema([
+                            Forms\Components\Repeater::make('workshop_details')
+                                ->label('Detalles de los Talleres Seleccionados')
+                                ->schema([
+                                    Forms\Components\Hidden::make('instructor_workshop_id'),
+                                    
+                                    Forms\Components\Placeholder::make('workshop_info')
+                                        ->label('')
+                                        ->content(function (Forms\Get $get) {
+                                            $workshopId = $get('instructor_workshop_id');
+                                            if (!$workshopId) return 'Taller no seleccionado';
+                                            
+                                            $workshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                                                ->find($workshopId);
+                                            
+                                            if (!$workshop) return 'Taller no encontrado';
+                                            
+                                            // Convertir día de la semana (número) a texto en español
+                                            $dayNames = [
+                                                1 => 'Lunes',
+                                                2 => 'Martes',
+                                                3 => 'Miércoles',
+                                                4 => 'Jueves',
+                                                5 => 'Viernes',
+                                                6 => 'Sábado',
+                                                7 => 'Domingo',
+                                                0 => 'Domingo', // Por si usan 0 para domingo
+                                            ];
+                                            
+                                            $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día ' . $workshop->day_of_week;
+                                            
+                                            return new \Illuminate\Support\HtmlString("
+                                                <div class='bg-gray-50 p-4 rounded-lg'>
+                                                    <h3 class='font-semibold text-lg text-gray-900'>{$workshop->workshop->name}</h3>
+                                                    <div class='mt-2 space-y-1 text-sm text-gray-600'>
+                                                        <p><strong>Profesor:</strong> {$workshop->instructor->first_names} {$workshop->instructor->last_names}</p>
+                                                        <p><strong>Día:</strong> {$dayInSpanish}</p>
+                                                        <p><strong>Hora:</strong> " . \Carbon\Carbon::parse($workshop->start_time)->format('H:i') . " - " . \Carbon\Carbon::parse($workshop->end_time)->format('H:i') . "</p>
+                                                        <p><strong>Precio:</strong> S/ {$workshop->workshop->standard_monthly_fee}</p>
+                                                    </div>
+                                                </div>
+                                            ");
+                                        })
+                                        ->columnSpanFull(),
+                                    
+                                    Forms\Components\Grid::make(3)
+                                        ->schema([
+                                            Forms\Components\Radio::make('enrollment_type')
+                                                ->label('Tipo de Clase')
+                                                ->options([
+                                                    'full_month' => 'Regular',
+                                                    'specific_classes' => 'Recuperación',
+                                                ])
+                                                ->required(),
+                                            
+                                            Forms\Components\Select::make('number_of_classes')
+                                                ->label('Cantidad de Clases')
+                                                ->options(function (Forms\Get $get) {
+                                                    $workshopId = $get('instructor_workshop_id');
+                                                    if (!$workshopId) return [];
+                                                    
+                                                    $workshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+                                                    if (!$workshop) return [];
+                                                    
+                                                    $maxClasses = $workshop->workshop->number_of_classes;
+                                                    $options = [];
+                                                    
+                                                    for ($i = 1; $i <= $maxClasses; $i++) {
+                                                        $options[$i] = $i . ($i === 1 ? ' Clase' : ' Clases');
+                                                    }
+                                                    
+                                                    return $options;
+                                                })
+                                                ->required()
+                                                ->placeholder('Seleccionar cantidad'),
+                                            
+                                            Forms\Components\DatePicker::make('enrollment_date')
+                                                ->label('Fecha de Inicio')
+                                                ->default(now())
+                                                ->required()
+                                                ->helperText('Fecha de la primera clase'),
+                                        ]),
+                                ])
+                                ->addable(false)
+                                ->deletable(false)
+                                ->reorderable(false)
+                                ->columnSpanFull(),
+                            
+                            // Notas generales
+                            Forms\Components\Textarea::make('notes')
+                                ->label('Notas Generales')
+                                ->placeholder('Agregar comentarios generales sobre las inscripciones...')
+                                ->rows(3)
+                                ->columnSpanFull(),
+                        ]),
+                    
+                    // Paso 3: Pago y Finalización
+                    Forms\Components\Wizard\Step::make('Pago y Finalización')
+                        ->icon('heroicon-o-credit-card')
+                        ->beforeValidation(function (Forms\Get $get) {
+                            $workshopDetails = $get('workshop_details');
+                            if (empty($workshopDetails)) {
+                                throw new \Filament\Forms\ValidationException(['workshop_details' => 'Debe configurar al menos un taller']);
+                            }
+                        })
+                        ->schema([
+                            // Resumen de talleres y cálculo de precios
+                            Forms\Components\Section::make('Resumen de Inscripciones')
+                                ->description('Revisa los talleres seleccionados y sus precios')
+                                ->schema([
+                                    Forms\Components\Placeholder::make('enrollment_summary')
+                                        ->label('')
+                                        ->content(function (Forms\Get $get) {
+                                            $workshopDetails = $get('workshop_details') ?? [];
+                                            if (empty($workshopDetails)) {
+                                                return 'No hay talleres seleccionados';
+                                            }
+                                            
+                                            $html = '<div class="space-y-4">';
+                                            $subtotal = 0;
+                                            
+                                            foreach ($workshopDetails as $detail) {
+                                                $workshopId = $detail['instructor_workshop_id'] ?? null;
+                                                $numberOfClasses = $detail['number_of_classes'] ?? 1;
+                                                $enrollmentType = $detail['enrollment_type'] ?? 'specific_classes';
+                                                
+                                                if (!$workshopId) continue;
+                                                
+                                                $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                                                    ->find($workshopId);
+                                                
+                                                if (!$instructorWorkshop) continue;
+                                                
+                                                // Obtener el precio desde workshop_pricings
+                                                $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
+                                                    ->where('number_of_classes', $numberOfClasses)
+                                                    ->where('for_volunteer_workshop', false) // Asumiendo que no es voluntario por defecto
+                                                    ->first();
+                                                
+                                                $price = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
+                                                $subtotal += $price;
+                                                
+                                                // Convertir día de la semana
+                                                $dayNames = [
+                                                    1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
+                                                    4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
+                                                    7 => 'Domingo', 0 => 'Domingo'
+                                                ];
+                                                $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día ' . $instructorWorkshop->day_of_week;
+                                                
+                                                $typeLabel = $enrollmentType === 'full_month' ? 'Regular' : 'Recuperación';
+                                                $classesLabel = $numberOfClasses . ($numberOfClasses === 1 ? ' clase' : ' clases');
+                                                
+                                                $html .= "
+                                                    <div class='bg-green-50 border border-green-200 rounded-lg p-4'>
+                                                        <div class='flex justify-between items-start'>
+                                                            <div>
+                                                                <h4 class='font-semibold text-green-800'>{$instructorWorkshop->workshop->name}</h4>
+                                                                <p class='text-sm text-green-600 mt-1'>
+                                                                    <span class='inline-block bg-green-100 px-2 py-1 rounded text-xs mr-2'>{$typeLabel}</span>
+                                                                    {$dayInSpanish} • " . \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i') . " • {$classesLabel}
+                                                                </p>
+                                                            </div>
+                                                            <div class='text-right'>
+                                                                <p class='font-bold text-green-800'>S/ " . number_format($price, 2) . "</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ";
+                                            }
+                                            
+                                            $html .= "
+                                                <div class='border-t pt-4 mt-4'>
+                                                    <div class='bg-gray-50 p-4 rounded-lg'>
+                                                        <div class='space-y-2'>
+                                                            <div class='flex justify-between'>
+                                                                <span>Sub Total Ventas</span>
+                                                                <span>S/ " . number_format($subtotal, 2) . "</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                                <span>Recargo PRE-PAMA 50%</span>
+                                                                <span>0.00</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                                <span>Anticipos</span>
+                                                                <span>0.00</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                                <span>Descuentos</span>
+                                                                <span>0.00</span>
+                                                            </div>
+                                                            <div class='flex justify-between font-semibold border-t pt-2'>
+                                                                <span>Valor Venta</span>
+                                                                <span>S/ " . number_format($subtotal, 2) . "</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                                <span>IGV</span>
+                                                                <span>0.00</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                                <span>Otros Cargos</span>
+                                                                <span>0.00</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                                <span>Otros Tributos</span>
+                                                                <span>0.00</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                                <span>Monto de Redondeo</span>
+                                                                <span>0.00</span>
+                                                            </div>
+                                                            <div class='flex justify-between text-lg font-bold border-t pt-2 text-blue-800'>
+                                                                <span>Importe Total</span>
+                                                                <span>S/ " . number_format($subtotal, 2) . "</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ";
+                                            
+                                            $html .= '</div>';
+                                            
+                                            return new \Illuminate\Support\HtmlString($html);
+                                        })
+                                        ->columnSpanFull(),
+                                ])
+                                ->columnSpanFull(),
+                            
+                            // Selección de método de pago
+                            Forms\Components\Section::make('Seleccionar medio de pago')
+                                ->schema([
+                                    Forms\Components\Radio::make('payment_method')
+                                        ->label('')
+                                        ->options([
+                                            'cash' => 'Pago en Efectivo',
+                                            'link' => 'Pago con Link',
+                                        ])
+                                        ->descriptions([
+                                            'cash' => 'De forma presencial en la secretaría de PAMA',
+                                            'link' => 'Tesorería genera enlace de pago con tarjeta',
+                                        ])
+                                        ->required()
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                            // Actualizar el estado de pago según el método seleccionado
+                                            if ($state === 'cash') {
+                                                $set('payment_status', 'completed');
+                                            } elseif ($state === 'link') {
+                                                $set('payment_status', 'pending');
+                                            }
+                                        })
+                                        ->columnSpanFull(),
+                                    
+                                    // Campo oculto para el estado de pago
+                                    Forms\Components\Hidden::make('payment_status')
+                                        ->default('pending'),
+                                ])
+                                ->columnSpanFull(),
+                        ]),
+                ])
+                ->columnSpanFull()
+                ->skippable()
+                ->persistStepInQueryString()
+                ->submitAction(new \Illuminate\Support\HtmlString('
+                    <x-filament::button
+                        type="submit"
+                        size="sm"
+                        color="primary"
+                    >
+                        Finalizar Inscripciones
+                    </x-filament::button>
+                ')),
+            ])
+            ->columns(1);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('student.id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('student.full_name')
+                    ->label('Estudiante')
+                    ->searchable(['student.first_names', 'student.last_names'])
+                    ->sortable()
+                    ->formatStateUsing(fn ($record) => 
+                        $record->student->first_names . ' ' . $record->student->last_names
+                    ),
+                
+                Tables\Columns\TextColumn::make('instructorWorkshop.workshop.name')
+                    ->label('Taller')
+                    ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('instructorWorkshop.id')
-                    ->numeric()
+                
+                Tables\Columns\TextColumn::make('enrollment_type')
+                    ->label('Tipo de Inscripción')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'full_month' => 'Regular',
+                        'specific_classes' => 'Recuperación',
+                        default => $state,
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'full_month' => 'success',
+                        'specific_classes' => 'info',
+                        default => 'gray',
+                    })
                     ->sortable(),
+                
+                Tables\Columns\TextColumn::make('number_of_classes')
+                    ->label('Cantidad de Clases')
+                    ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Clase' : ' Clases'))
+                    ->sortable(),
+                
                 Tables\Columns\TextColumn::make('enrollment_date')
-                    ->date()
+                    ->label('Fecha de Inscripción')
+                    ->date('d/m/Y')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status'),
-                Tables\Columns\TextColumn::make('payment_status'),
-                Tables\Columns\TextColumn::make('total_amount')
-                    ->numeric()
+                
+                Tables\Columns\TextColumn::make('payment_status')
+                    ->label('Estado de Pago')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'En Proceso',
+                        'partial' => 'Parcial',
+                        'completed' => 'Inscrito',
+                        default => $state,
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'partial' => 'info',
+                        'completed' => 'success',
+                        default => 'gray',
+                    })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('paid_amount')
-                    ->numeric()
+                
+                Tables\Columns\TextColumn::make('payment_method')
+                    ->label('Método de Pago')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'cash' => 'Efectivo',
+                        'link' => 'Link de Pago',
+                        default => $state,
+                    })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('enrollment_type')
+                    ->label('Tipo de Inscripción')
+                    ->options([
+                        'full_month' => 'Regular',
+                        'specific_classes' => 'Recuperación',
+                    ]),
+                
+                Tables\Filters\SelectFilter::make('payment_status')
+                    ->label('Estado de Pago')
+                    ->options([
+                        'pending' => 'En Proceso',
+                        'partial' => 'Parcial',
+                        'completed' => 'Inscrito',
+                    ]),
+                
+                Tables\Filters\SelectFilter::make('payment_method')
+                    ->label('Método de Pago')
+                    ->options([
+                        'cash' => 'Efectivo',
+                        'link' => 'Link de Pago',
+                    ]),
+                
+                Tables\Filters\SelectFilter::make('number_of_classes')
+                    ->label('Cantidad de Clases')
+                    ->options([
+                        1 => '1 Clase',
+                        2 => '2 Clases',
+                        3 => '3 Clases',
+                        4 => '4 Clases',
+                        5 => '5 Clases',
+                        6 => '6 Clases',
+                        7 => '7 Clases',
+                        8 => '8 Clases',
+                    ]),
+                
+                Tables\Filters\Filter::make('enrollment_date')
+                    ->label('Fecha de Inscripción')
+                    ->form([
+                        Forms\Components\DatePicker::make('enrollment_from')
+                            ->label('Desde'),
+                        Forms\Components\DatePicker::make('enrollment_until')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['enrollment_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('enrollment_date', '>=', $date),
+                            )
+                            ->when(
+                                $data['enrollment_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('enrollment_date', '<=', $date),
+                            );
+                    }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Editar'),
+                Tables\Actions\Action::make('download_ticket')
+                    ->label('Descargar Ticket')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn (StudentEnrollment $record): string => route('enrollment.ticket', ['enrollmentId' => $record->id]))
+                    ->openUrlInNewTab()
+                    ->visible(fn (StudentEnrollment $record): bool => $record->payment_status === 'completed')
+                    ->color('success'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('Eliminar')
+                    ->requiresConfirmation()
+                    ->modalHeading('Eliminar Inscripción')
+                    ->modalDescription('¿Estás seguro de que deseas eliminar esta inscripción? Esta acción no se puede deshacer.')
+                    ->modalSubmitActionLabel('Sí, eliminar')
+                    ->modalCancelActionLabel('Cancelar'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Eliminar seleccionados'),
                 ]),
-            ]);
+            ])
+            ->defaultSort('enrollment_date', 'desc');
     }
 
     public static function getRelations(): array

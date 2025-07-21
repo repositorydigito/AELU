@@ -112,7 +112,15 @@ class InstructorResource extends Resource
                                                 ->label('Código de Profesor')
                                                 ->required()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                ->maxLength(20),                                            
+                                                ->maxLength(20),
+                                            Select::make('instructor_type')
+                                                ->label('Modalidad de Profesor')
+                                                ->options([
+                                                    'Por horas' => 'Por horas',
+                                                    'Voluntario' => 'Voluntario',
+                                                ])
+                                                ->required()
+                                                ->validationMessages(['required' => 'Este campo es obligatorio']),
                                         ]),
                                     Grid::make(2)
                                         ->schema([

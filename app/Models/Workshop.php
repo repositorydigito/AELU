@@ -7,11 +7,22 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Workshop extends Model
 {
+    public function instructor()
+    {
+        return $this->belongsTo(\App\Models\Instructor::class);
+    }
     protected $fillable = [
         'name',
         'description',
         'standard_monthly_fee',
         'pricing_surcharge_percentage',
+        'instructor_id',
+        'icon',
+        'day_of_week',
+        'start_time',
+        'duration',
+        'capacity',
+        'number_of_classes',
     ];
 
     protected $casts = [
@@ -36,6 +47,11 @@ class Workshop extends Model
     public function enrollments()
     {
         return $this->hasManyThrough(StudentEnrollment::class, InstructorWorkshop::class);
+    }
+
+    public function workshopClasses()
+    {
+        return $this->hasManyThrough(WorkshopClass::class, InstructorWorkshop::class);
     }    
 
     /**

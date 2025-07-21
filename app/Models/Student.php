@@ -28,14 +28,12 @@ class Student extends Model
         'emergency_contact_name',
         'emergency_contact_relationship',
         'emergency_contact_phone',
-        'has_payment_exemption',
-        'pricing_multiplier',
+        'monthly_maintenance_paid',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
-        'has_payment_exemption' => 'boolean',
-        'pricing_multiplier' => 'decimal:2',
+        'monthly_maintenance_paid' => 'boolean',
     ];
 
     public function medicalRecord()
@@ -87,16 +85,11 @@ class Student extends Model
             'Hijo de Fundador',
             'Vitalicios',
             'Transitorio Exonerado'
-        ]) || $this->has_payment_exemption;
+        ]);
     }    
     // Calcula el multiplicador de precio según la categoría y edad    
     public function getPricingMultiplierAttribute(): float
     {
-        // Si ya tiene un multiplicador definido manualmente, usarlo
-        if (isset($this->attributes['pricing_multiplier']) && $this->attributes['pricing_multiplier'] > 0) {
-            return (float) $this->attributes['pricing_multiplier'];
-        }
-
         // Calcular automáticamente según categoría y edad
         return $this->calculatePricingMultiplier();
     }    
@@ -186,8 +179,7 @@ class Student extends Model
     // Actualiza automáticamente los campos de tarifa según la categoría
     public function updatePricingFields(): void
     {
-        $this->has_payment_exemption = $this->isPaymentExempt();
-        $this->pricing_multiplier = $this->calculatePricingMultiplier();
-        $this->save();
+        // Este método ahora solo calcula valores dinámicamente
+        // No guarda campos que no existen en la base de datos
     }
 }

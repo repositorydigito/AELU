@@ -74,7 +74,7 @@ class StudentEnrollmentObserver
                 ->where('student_enrollments.instructor_workshop_id', $instructorWorkshopId)
                 ->where('student_enrollments.monthly_period_id', $monthlyPeriodId)
                 ->where('student_enrollments.total_amount', '>', 0) // Solo inscripciones con pago > 0
-                ->where('students.has_payment_exemption', false) // Excluir estudiantes exentos
+                ->whereNotIn('students.category_partner', ['Hijo de Fundador', 'Vitalicios', 'Transitorio Exonerado']) // Excluir estudiantes exentos
                 ->sum('student_enrollments.total_amount');
 
             // Contar TODOS los estudiantes (incluyendo exentos) para estadísticas generales
@@ -90,7 +90,7 @@ class StudentEnrollmentObserver
                 ->where('student_enrollments.instructor_workshop_id', $instructorWorkshopId)
                 ->where('student_enrollments.monthly_period_id', $monthlyPeriodId)
                 ->where('student_enrollments.total_amount', '>', 0)
-                ->where('students.has_payment_exemption', false)
+                ->whereNotIn('students.category_partner', ['Hijo de Fundador', 'Vitalicios', 'Transitorio Exonerado'])
                 ->distinct('student_enrollments.student_id')
                 ->count('student_enrollments.student_id');
 

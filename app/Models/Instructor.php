@@ -19,6 +19,7 @@ class Instructor extends Model
         'birth_date',
         'nationality',
         'instructor_code',
+        'instructor_type',
         'cell_phone',
         'home_phone',
         'district',
