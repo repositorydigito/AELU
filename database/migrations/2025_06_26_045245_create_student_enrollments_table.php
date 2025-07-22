@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{    
+{
     public function up(): void
     {
         Schema::create('student_enrollments', function (Blueprint $table) {
@@ -18,19 +18,25 @@ return new class extends Migration
             $table->decimal('price_per_quantity', 8, 2);
             $table->decimal('total_amount', 8, 2);
             $table->text('pricing_notes')->nullable();
-            $table->enum('payment_status', ['pending', 'partial', 'completed'])->default('pending');
+            $table->enum('payment_status', ['pending', 'to_pay', 'completed','credit_favor', 'refunded'])->default('pending');
             $table->string('payment_method');
+            $table->date('payment_due_date')->nullable();
+            $table->date('payment_date')->nullable();
+            $table->string('payment_document')->nullable();
             $table->date('enrollment_date');
-            $table->enum('renewal_status', ['pending', 'confirmed', 'cancelled', 'not_applicable'])->default('not_applicable');                  
+            $table->enum('renewal_status', ['pending', 'confirmed', 'cancelled', 'not_applicable'])->default('not_applicable');
             $table->date('renewal_deadline')->nullable();
             $table->boolean('is_renewal')->default(false);
             $table->foreignId('previous_enrollment_id')->nullable()->constrained('student_enrollments');
+            $table->foreignId('enrollment_batch_id')->nullable()->constrained()->onDelete('cascade');
+            $table->index('enrollment_batch_id');
+
             $table->timestamps();
-            
+
             $table->unique(['student_id', 'instructor_workshop_id', 'monthly_period_id'], 'unique_enrollment');
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('student_enrollments');
