@@ -18,11 +18,12 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class WorkshopResource extends Resource
 {
     protected static ?string $model = Workshop::class;
+    protected static ?string $navigationIcon = 'heroicon-o-paint-brush';
     protected static ?string $navigationLabel = 'Talleres';
     protected static ?string $pluralModelLabel = 'Talleres';
     protected static ?string $modelLabel = 'Taller';
-    protected static ?int $navigationSort = 6;
-    protected static ?string $navigationGroup = 'Talleres';
+    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationGroup = 'Gestión';
 
     public static function form(Form $form): Form
     {

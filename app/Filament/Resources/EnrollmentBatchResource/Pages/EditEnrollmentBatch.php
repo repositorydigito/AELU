@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\EnrollmentBatchResource\Pages;
 
 use App\Filament\Resources\EnrollmentBatchResource;
+use App\Models\StudentEnrollment;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
 
 class EditEnrollmentBatch extends EditRecord
 {
@@ -15,5 +17,34 @@ class EditEnrollmentBatch extends EditRecord
         return [
             Actions\DeleteAction::make(),
         ];
+    }
+
+    protected function handleRecordUpdate($record, array $data): \Illuminate\Database\Eloquent\Model
+    {
+        // Actualizar el lote de inscripciones
+        $record->update($data);
+        
+        // Sincronizar el estado de pago con todas las inscripciones individuales del lote
+        if (isset($data['payment_status'])) {
+            $updatedCount = StudentEnrollment::where('enrollment_batch_id', $record->id)
+                ->update([
+                    'payment_status' => $data['payment_status'],
+                    'payment_method' => $data['payment_method'] ?? $record->payment_method,
+                    'payment_due_date' => $data['payment_due_date'] ?? null,
+                    'payment_date' => $data['payment_date'] ?? null,
+                    'payment_document' => $data['payment_document'] ?? null,
+                ]);
+            
+            // Mostrar notificación de sincronización
+            if ($updatedCount > 0) {
+                Notification::make()
+                    ->title('Estado sincronizado')
+                    ->body("Se actualizó el estado de {$updatedCount} inscripción" . ($updatedCount > 1 ? 'es' : '') . " individual" . ($updatedCount > 1 ? 'es' : '') . " asociada" . ($updatedCount > 1 ? 's' : '') . " a este lote.")
+                    ->success()
+                    ->send();
+            }
+        }
+        
+        return $record;
     }
 }

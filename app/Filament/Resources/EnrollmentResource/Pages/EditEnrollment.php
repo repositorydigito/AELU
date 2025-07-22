@@ -116,6 +116,58 @@ class EditEnrollment extends EditRecord
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
+                
+                Forms\Components\Section::make('Información de Pago')
+                    ->description('Gestiona la información de pago de esta inscripción')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                // Estado de pago
+                                Forms\Components\Select::make('payment_status')
+                                    ->label('Estado de Pago')
+                                    ->options([
+                                        'pending' => 'En Proceso',
+                                        'to_pay' => 'Por Pagar',
+                                        'completed' => 'Inscrito',
+                                        'credit_favor' => 'Crédito a Favor',
+                                        'refunded' => 'Devuelto',
+                                    ])
+                                    ->required(),
+                                
+                                // Método de pago
+                                Forms\Components\Select::make('payment_method')
+                                    ->label('Método de Pago')
+                                    ->options([
+                                        'cash' => 'Efectivo',
+                                        'link' => 'Link de Pago',
+                                    ])
+                                    ->required(),
+                            ]),
+                        
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                // Fecha límite de pago
+                                Forms\Components\DatePicker::make('payment_due_date')
+                                    ->label('Fecha Límite de Pago')
+                                    ->helperText('Fecha límite para realizar el pago'),
+                                
+                                // Fecha de pago
+                                Forms\Components\DatePicker::make('payment_date')
+                                    ->label('Fecha de Pago')
+                                    ->helperText('Fecha en que se realizó el pago'),
+                            ]),
+                        
+                        // Documento de pago
+                        Forms\Components\FileUpload::make('payment_document')
+                            ->label('Documento de Pago')
+                            ->helperText('Subir comprobante de pago (PDF o imagen)')
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
+                            ->maxSize(5120) // 5MB
+                            ->directory('payment-documents')
+                            ->visibility('private')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
             ])
             ->columns(1);
     }

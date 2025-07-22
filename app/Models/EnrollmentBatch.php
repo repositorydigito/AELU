@@ -13,6 +13,9 @@ class EnrollmentBatch extends Model
         'total_amount',
         'payment_status',
         'payment_method',
+        'payment_due_date',
+        'payment_date',
+        'payment_document',
         'enrollment_date',
         'notes',
     ];
@@ -20,6 +23,8 @@ class EnrollmentBatch extends Model
     protected $casts = [
         'total_amount' => 'decimal:2',
         'enrollment_date' => 'date',
+        'payment_due_date' => 'date',
+        'payment_date' => 'date',
     ];
 
     protected static function boot()
@@ -68,8 +73,10 @@ class EnrollmentBatch extends Model
     {
         return match ($this->payment_status) {
             'pending' => 'En Proceso',
-            'partial' => 'Parcial',
+            'to_pay' => 'Por Pagar',
             'completed' => 'Inscrito',
+            'credit_favor' => 'Crédito a Favor',
+            'refunded' => 'Devuelto',
             default => $this->payment_status,
         };
     }

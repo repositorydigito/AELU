@@ -445,6 +445,34 @@ class EnrollmentResource extends Resource
                                         ->default('pending'),
                                 ])
                                 ->columnSpanFull(),
+                            
+                            // Información de pago adicional
+                            Forms\Components\Section::make('Información de Pago')
+                                ->description('Información adicional sobre fechas y documentos de pago')
+                                ->schema([
+                                    Forms\Components\Grid::make(2)
+                                        ->schema([
+                                            Forms\Components\DatePicker::make('payment_due_date')
+                                                ->label('Fecha Límite de Pago')
+                                                ->helperText('Fecha límite para realizar el pago')
+                                                ->placeholder('Seleccionar fecha límite'),
+                                            
+                                            Forms\Components\DatePicker::make('payment_date')
+                                                ->label('Fecha de Pago')
+                                                ->helperText('Fecha en que se realizó el pago')
+                                                ->placeholder('Seleccionar fecha de pago'),
+                                        ]),
+                                    
+                                    Forms\Components\FileUpload::make('payment_document')
+                                        ->label('Documento de Pago')
+                                        ->helperText('Subir comprobante de pago (PDF o imagen)')
+                                        ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
+                                        ->maxSize(5120) // 5MB
+                                        ->directory('payment-documents')
+                                        ->visibility('private')
+                                        ->columnSpanFull(),
+                                ])
+                                ->columnSpanFull(),
                         ]),
                 ])
                 ->columnSpanFull()
@@ -509,15 +537,19 @@ class EnrollmentResource extends Resource
                     ->label('Estado de Pago')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending' => 'En Proceso',
-                        'partial' => 'Parcial',
+                        'to_pay' => 'Por Pagar',
                         'completed' => 'Inscrito',
+                        'credit_favor' => 'Crédito a Favor',
+                        'refunded' => 'Devuelto',
                         default => $state,
                     })
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'warning',
-                        'partial' => 'info',
+                        'to_pay' => 'danger',
                         'completed' => 'success',
+                        'credit_favor' => 'info',
+                        'refunded' => 'gray',
                         default => 'gray',
                     })
                     ->sortable(),
@@ -529,6 +561,18 @@ class EnrollmentResource extends Resource
                         'link' => 'Link de Pago',
                         default => $state,
                     })
+                    ->sortable(),
+                
+                Tables\Columns\TextColumn::make('payment_due_date')
+                    ->label('Fecha Límite')
+                    ->date('d/m/Y')
+                    ->placeholder('No definida')
+                    ->sortable(),
+                
+                Tables\Columns\TextColumn::make('payment_date')
+                    ->label('Fecha de Pago')
+                    ->date('d/m/Y')
+                    ->placeholder('No pagado')
                     ->sortable(),
             ])
             ->filters([
@@ -543,8 +587,10 @@ class EnrollmentResource extends Resource
                     ->label('Estado de Pago')
                     ->options([
                         'pending' => 'En Proceso',
-                        'partial' => 'Parcial',
+                        'to_pay' => 'Por Pagar',
                         'completed' => 'Inscrito',
+                        'credit_favor' => 'Crédito a Favor',
+                        'refunded' => 'Devuelto',
                     ]),
                 
                 Tables\Filters\SelectFilter::make('payment_method')
