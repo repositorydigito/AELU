@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\Auth;
 
 class StudentEnrollment extends Model
 {
     protected $fillable = [
         'student_id',
+        'created_by',
         'instructor_workshop_id',
         'monthly_period_id',
         'previous_enrollment_id',
@@ -41,10 +42,26 @@ class StudentEnrollment extends Model
         'previous_enrollment_id' => 'integer',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($enrollment) {
+            // Guardar el usuario que está creando la inscripción individual
+            if (Auth::check() && empty($enrollment->created_by)) {
+                $enrollment->created_by = Auth::id();
+            }
+        });
+    }
+
     // Relaciones
     public function student()
     {
         return $this->belongsTo(Student::class);
+    }
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
     public function instructorWorkshop()
     {
@@ -65,11 +82,7 @@ class StudentEnrollment extends Model
     public function nextEnrollment()
     {
         return $this->hasOne(StudentEnrollment::class, 'previous_enrollment_id');
-    }
-    public function movements(): MorphMany
-    {
-        return $this->morphMany(Movement::class, 'movable');
-    }
+    }    
     public function enrollmentBatch()
     {
         return $this->belongsTo(EnrollmentBatch::class);
@@ -97,5 +110,14 @@ class StudentEnrollment extends Model
             'instructor_workshop_id',
             'workshop_id'
         );
+    }
+
+    public function getCreatedByNameAttribute()
+    {
+        if ($this->creator) {
+            return $this->creator->name;
+        }
+        
+        return 'Sistema';
     }
 }

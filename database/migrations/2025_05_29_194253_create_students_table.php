@@ -5,37 +5,39 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{    
+{
     public function up(): void
     {
         Schema::create('students', function (Blueprint $table) {
             $table->id();
-            $table->string('last_names'); 
-            $table->string('first_names'); 
-            $table->string('photo')->nullable(); 
-            $table->string('document_type'); 
-            $table->string('document_number')->unique(); 
-            $table->date('birth_date'); 
-            $table->string('nationality'); 
-            $table->string('student_code')->nullable(); 
-            $table->string('category_partner')->nullable(); 
-            $table->string('cell_phone')->nullable(); 
-            $table->string('home_phone')->nullable(); 
-            $table->string('district')->nullable(); 
-            $table->string('address')->nullable(); 
+            $table->string('last_names');
+            $table->string('first_names');
+            $table->string('photo')->nullable();
+            $table->string('document_type');
+            $table->string('document_number')->unique();
+            $table->date('birth_date');
+            $table->string('nationality')->nullable();
+            $table->string('student_code')->nullable();
+            $table->string('category_partner')->nullable();
+            $table->string('cell_phone')->nullable();
+            $table->string('home_phone')->nullable();
+            $table->string('district')->nullable();
+            $table->string('address')->nullable();
 
             // Contacto de emergencia
-            $table->string('emergency_contact_name')->nullable(); 
-            $table->string('emergency_contact_relationship')->nullable(); 
-            $table->string('emergency_contact_phone')->nullable(); 
+            $table->string('emergency_contact_name')->nullable();
+            $table->string('emergency_contact_relationship')->nullable();
+            $table->string('emergency_contact_phone')->nullable();
             $table->timestamps();
 
             // Tarifas
             $table->boolean('has_payment_exemption')->default(false);
             $table->decimal('pricing_multiplier', 5, 2)->default(1.00); // Multiplicador para el precio (1.5 para PRE-PAMA, 1.0 para otros, 0.0 para exentos)
+
+            $table->boolean('monthly_maintenance_paid')->default(false);
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('students');

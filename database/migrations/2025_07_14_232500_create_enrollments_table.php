@@ -16,11 +16,9 @@ return new class extends Migration
             $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
             $table->foreignId('instructor_workshop_id')->constrained('instructor_workshops')->cascadeOnDelete();
             $table->date('enrollment_date');
-            $table->string('status')->default('enrolled');
-            $table->string('payment_status')->default('pending');
-            $table->decimal('total_amount', 8, 2);
-            $table->decimal('paid_amount', 8, 2)->default(0.00);
             $table->text('notes')->nullable();
+            $table->enum('class_type', ['regular', 'makeup'])->default('regular');
+            $table->integer('number_of_classes')->unsigned()->default(1);
             $table->timestamps();
         });
     }

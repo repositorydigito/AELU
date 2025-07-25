@@ -14,14 +14,18 @@ return new class extends Migration
         Schema::create('enrollment_batches', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->string('batch_code')->unique(); // Código único del lote
             $table->decimal('total_amount', 10, 2); // Monto total de todas las inscripciones
-            $table->enum('payment_status', ['pending', 'partial', 'completed'])->default('pending');
+            $table->enum('payment_status', ['pending', 'to_pay', 'completed','credit_favor', 'refunded'])->default('pending');
             $table->string('payment_method'); // cash, link
+            $table->date('payment_due_date')->nullable();
+            $table->date('payment_date')->nullable();
+            $table->string('payment_document')->nullable();
             $table->date('enrollment_date'); // Fecha de la inscripción
             $table->text('notes')->nullable(); // Notas generales
             $table->timestamps();
-            
+
             $table->index(['student_id', 'enrollment_date']);
         });
     }

@@ -97,12 +97,12 @@ class InstructorResource extends Resource
                                         ->schema([
                                             DatePicker::make('birth_date')
                                                 ->label('Fecha de Nacimiento')
-                                                ->required()
+                                                ->nullable()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxDate(now()),
                                             TextInput::make('nationality')
                                                 ->label('Nacionalidad')
-                                                ->required()
+                                                ->nullable()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(20),
                                         ]),
@@ -119,7 +119,7 @@ class InstructorResource extends Resource
                                                     'Por horas' => 'Por horas',
                                                     'Voluntario' => 'Voluntario',
                                                 ])
-                                                ->required()
+                                                ->nullable()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio']),
                                         ]),
                                     Grid::make(2)

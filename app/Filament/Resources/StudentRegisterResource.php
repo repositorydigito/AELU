@@ -23,12 +23,12 @@ use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Toggle; 
-use Filament\Forms\Components\Textarea; 
-use Filament\Forms\Components\Placeholder; 
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Placeholder;
 //use Filament\Forms\Components\Actions\Action;
-use Filament\Tables\Actions\Action; 
-use Filament\Notifications\Notification; 
+use Filament\Tables\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Hidden;
 use Filament\Tables\Columns\TextColumn;
@@ -37,13 +37,13 @@ class StudentRegisterResource extends Resource
 {
     protected static ?string $model = Student::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';    
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Alumnos';
     protected static ?string $pluralModelLabel = 'Alumnos';
-    protected static ?string $modelLabel = 'Alumno';    
-    protected static ?string $navigationGroup = 'Gestión'; 
-    protected static ?int $navigationSort = 1;  
-    
+    protected static ?string $modelLabel = 'Alumno';
+    protected static ?string $navigationGroup = 'Gestión';
+    protected static ?int $navigationSort = 1;
+
     public static function form(Form $form): Form
     {
         return $form
@@ -109,8 +109,7 @@ class StudentRegisterResource extends Resource
                                                 ->maxDate(now()),
                                             TextInput::make('nationality')
                                                 ->label('Nacionalidad')
-                                                ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                ->nullable()
                                                 ->maxLength(20),
                                         ]),
                                     Grid::make(2)
@@ -143,7 +142,7 @@ class StudentRegisterResource extends Resource
                                                         'Hijo de Fundador',
                                                         'Vitalicios'
                                                     ];
-                                                    
+
                                                     // Si es una categoría exenta, marcar mantenimiento como pagado
                                                     if (in_array($state, $exemptCategories)) {
                                                         $set('monthly_maintenance_paid', true);
@@ -161,11 +160,11 @@ class StudentRegisterResource extends Resource
                                                         'Hijo de Fundador',
                                                         'Vitalicios'
                                                     ];
-                                                    
+
                                                     if (in_array($category, $exemptCategories)) {
                                                         return 'Categoría exenta de pago - Siempre al día';
                                                     }
-                                                    
+
                                                     return 'Indica si el alumno ha pagado el mantenimiento mensual';
                                                 })
                                                 ->onColor('success')
@@ -180,7 +179,7 @@ class StudentRegisterResource extends Resource
                                                         'Hijo de Fundador',
                                                         'Vitalicios'
                                                     ];
-                                                    
+
                                                     return in_array($category, $exemptCategories);
                                                 })
                                                 ->live(),
@@ -327,10 +326,10 @@ class StudentRegisterResource extends Resource
                                                 Textarea::make('allergy_details')
                                                     ->label('Detalle el tipo de alergia')
                                                     ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
-                                                
+
                                                 TextInput::make('medical_conditions')
                                                     ->label('Especifique otra condición médica')
-                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('medical_conditions') ?? []))  
+                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('medical_conditions') ?? []))
                                                     ->reactive(),
                                             ]),
 
@@ -356,7 +355,7 @@ class StudentRegisterResource extends Resource
                                                     ->hidden(fn (callable $get) => !in_array('Otros', $get('surgical_operations') ?? [])),
                                             ]),
                                         ]),
-                            
+
                                     Repeater::make('medications')
                                         ->relationship('medications')
                                         ->label('Medicamentos que toma')
@@ -370,7 +369,7 @@ class StudentRegisterResource extends Resource
                                                     TextInput::make('dose')
                                                         ->label('Dosis'),
                                                 ])
-                                                ->columnSpan(1),                                            
+                                                ->columnSpan(1),
                                             Radio::make('schedule')
                                                 ->label('Horario')
                                                 ->options([
@@ -382,9 +381,9 @@ class StudentRegisterResource extends Resource
                                                     'Tarde-Noche' => 'Tarde-Noche',
                                                     'Mañana-Tarde-Noche' => 'Mañana-Tarde-Noche',
                                                 ])
-                                                ->required()  
+                                                ->required()
                                                 ->validationMessages(['required' => 'Seleccione al menos un horario'])
-                                                ->columnSpan(1),                                            
+                                                ->columnSpan(1),
                                         ])
                                         ->columns(2)
                                         ->addActionLabel('Registrar Medicamento')
@@ -392,7 +391,7 @@ class StudentRegisterResource extends Resource
                                         ->itemLabel(fn (array $state): ?string => $state['medicine'] ?? null),
                                 ]),
                         ]),
-                    
+
                     Step::make('Declaración jurada y resumen')
                         ->schema([
                             Section::make('Resumen de Ficha Personal')
@@ -438,7 +437,7 @@ class StudentRegisterResource extends Resource
                             Section::make('Ficha Médica Resumen')
                                 ->schema([
                                     Grid::make(2)
-                                        ->schema([                                            
+                                        ->schema([
                                             Placeholder::make('weight_summary')
                                                 ->label('Peso')
                                                 ->content(fn (callable $get) => $get('medicalRecord.weight') ? $get('medicalRecord.weight') . ' kg' : 'N/A'),
@@ -460,7 +459,7 @@ class StudentRegisterResource extends Resource
                                             Placeholder::make('medical_conditions_summary')
                                                 ->label('Condiciones Médicas')
                                                 ->content(fn (callable $get) => implode(', ', (array) $get('medicalRecord.medical_conditions')) ?: 'Ninguna'),
-                                            Placeholder::make('allergies_summary') 
+                                            Placeholder::make('allergies_summary')
                                                 ->label('Alergias')
                                                 ->content(fn (callable $get) => implode(', ', (array) $get('medicalRecord.allergies')) ?: 'Ninguna'),
                                             Placeholder::make('allergy_details_summary')
@@ -474,7 +473,7 @@ class StudentRegisterResource extends Resource
                                                 ->label('Especificar Operación')
                                                 ->content(fn (callable $get) => in_array('Otros', $get('medicalRecord.surgical_operations') ?? []) ? ($get('medicalRecord.surgical_operation_details') ?? 'N/A') : 'No aplica')
                                                 ->hidden(fn (callable $get) => !in_array('Otros', $get('medicalRecord.surgical_operations') ?? [])),
-                                                                                        
+
                                             Placeholder::make('medications_summary_text')
                                                 ->label('Medicamentos que toma')
                                                 ->content(function (callable $get) {
@@ -482,7 +481,7 @@ class StudentRegisterResource extends Resource
                                                     if (empty($medications)) {
                                                         return 'Ninguno';
                                                     }
-                                                    
+
                                                     $formattedMedications = collect($medications)->map(function ($med) {
                                                         $details = [];
                                                         if (!empty($med['medicine'])) {
@@ -495,20 +494,20 @@ class StudentRegisterResource extends Resource
                                                             $details[] = ' - ' . $med['schedule'];
                                                         }
                                                         return implode(' ', $details);
-                                                    })->implode('<br>'); 
+                                                    })->implode('<br>');
 
                                                     return new \Illuminate\Support\HtmlString($formattedMedications);
                                                 })
-                                                ->columns(3)                                                                                                
+                                                ->columns(3)
                                                 ->hidden(fn (callable $get) => empty($get('medicalRecord.medications'))),
                                         ]),
                                 ]),
-                            Section::make('Firma y Huella Digital')                                
-                                ->relationship('affidavit') 
+                            Section::make('Firma y Huella Digital')
+                                ->relationship('affidavit')
                                 ->schema([
-                                    FileUpload::make('digital_signature_and_fingerprint_path') 
+                                    FileUpload::make('digital_signature_and_fingerprint_path')
                                         ->label('Arrastra y suelta tus archivos o subelos de tu computadora')
-                                        ->image() 
+                                        ->image()
                                         ->nullable()
                                         ->directory('firmas-huellas')
                                         ->columnSpanFull()
@@ -524,7 +523,7 @@ class StudentRegisterResource extends Resource
                                     Forms\Components\Hidden::make('firma_huella_adjuntada')
                                         ->default(false)
                                         ->dehydrated(false),
-                                    
+
                                     Forms\Components\Actions::make([
                                         Forms\Components\Actions\Action::make('generate_affidavit_pdf')
                                             ->label('Generar Declaración Jurada')
@@ -544,11 +543,11 @@ class StudentRegisterResource extends Resource
                                                         ->send();
                                                 }
                                             })
-                                        ])                                    
+                                        ])
                                 ]),
                         ]),
-                ])                
-                ->columnSpanFull(),                 
+                ])
+                ->columnSpanFull(),
             ]);
     }
 
@@ -611,12 +610,12 @@ class StudentRegisterResource extends Resource
                         if ($record->isPaymentExempt()) {
                             return 'Exento';
                         }
-                        
-                        if ($record->category_partner === 'Individual PRE-PAMA' || 
+
+                        if ($record->category_partner === 'Individual PRE-PAMA' ||
                             ($record->category_partner === 'Individual' && $record->age < 60)) {
                             return '+50%';
                         }
-                        
+
                         return 'Normal';
                     })
                     ->badge()
@@ -624,12 +623,12 @@ class StudentRegisterResource extends Resource
                         if ($record->isPaymentExempt()) {
                             return 'success';
                         }
-                        
-                        if ($record->category_partner === 'Individual PRE-PAMA' || 
+
+                        if ($record->category_partner === 'Individual PRE-PAMA' ||
                             ($record->category_partner === 'Individual' && $record->age < 60)) {
                             return 'warning';
                         }
-                        
+
                         return 'info';
                     }),
                 TextColumn::make('monthly_maintenance_paid')
@@ -652,9 +651,9 @@ class StudentRegisterResource extends Resource
                     }),
                 TextColumn::make('enrollments.instructorWorkshop.workshop.name')
                     ->label('Talleres Inscritos')
-                    ->badge()                    
+                    ->badge()
                     ->colors(['info'])
-                    ->wrap(),                   
+                    ->wrap(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_partner')
@@ -696,15 +695,15 @@ class StudentRegisterResource extends Resource
                             ->success()
                             ->send();
                     })
-                    ->visible(fn (Student $record) => $record->shouldUpdateCategory()), */                
+                    ->visible(fn (Student $record) => $record->shouldUpdateCategory()), */
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }  
-    
+    }
+
     public static function getRelations(): array
     {
         return [
