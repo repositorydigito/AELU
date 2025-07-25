@@ -3,20 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\StudentEnrollment;
+use App\Helpers\NumberToWordsHelper;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Illuminate\Support\Facades\View; 
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Auth;
 
 class StudentEnrollmentController extends Controller
-{    
+{
     public function generateTicket($enrollmentId)
     {
         // 1. Cargar relaciones necesarias para el ticket
-        // Aseguramos que todas las relaciones estén cargadas para evitar N+1 queries en la vista.
         $enrollment = StudentEnrollment::with([
             'student',
+            'creator', // Cargar la relación con el usuario
             'instructorWorkshop.workshop',
             'instructorWorkshop.instructor',
             'instructorWorkshop.classes',
@@ -37,12 +39,6 @@ class StudentEnrollmentController extends Controller
         $daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
         // 4. Inicializar la estructura de datos del calendario
-        // Esto creará un array como:
-        // [
-        //     'Lunes' => ['08' => [], '09' => [], ...],
-        //     'Martes' => ['08' => [], '09' => [], ...],
-        //     ...
-        // ]
         $calendarData = [];
         foreach ($daysOfWeek as $day) {
             $calendarData[$day] = [];
@@ -52,12 +48,8 @@ class StudentEnrollmentController extends Controller
         }
 
         // 5. Rellenar el calendario con las clases inscritas
-        // Iteramos sobre las clases específicas a las que el alumno se inscribió.
         foreach ($enrollment->enrollmentClasses as $enrollmentClass) {
             $workshopClass = $enrollmentClass->workshopClass;
-
-            // Depuración temporal
-            //dump($workshopClass->class_date, $workshopClass->start_time, $workshopClass->end_time);
 
             // Asegurarse de que la clase pertenece al periodo mensual de la inscripción
             if ($workshopClass->monthly_period_id !== $enrollment->monthly_period_id) {
@@ -68,8 +60,6 @@ class StudentEnrollmentController extends Controller
             $dayOfWeek = ucfirst($classDate->translatedFormat('l')); 
             $startHour = Carbon::parse($workshopClass->start_time)->format('H'); // Obtiene la hora de inicio (ej. "08")
 
-            //dump($dayOfWeek, $startHour);
-
             // Si el día y la hora están dentro de nuestro rango de calendario, añadimos la clase.
             if (in_array($dayOfWeek, $daysOfWeek) && in_array($startHour, $timeSlots)) {
                 $calendarData[$dayOfWeek][$startHour][] = [
@@ -77,37 +67,50 @@ class StudentEnrollmentController extends Controller
                     'end_time' => $workshopClass->end_time,
                     'workshop_name' => $enrollment->instructorWorkshop->workshop->name,
                     'class_date' => $workshopClass->class_date,
-                    // Puedes añadir más detalles aquí si los necesitas en la visualización
                 ];
             }
         }
 
-        // 6. Configurar Dompdf
+        // 6. Obtener información del usuario que creó la inscripción
+        // Asumiendo que hay un campo created_by o similar en el modelo
+        $created_by_user = 'Mayra'; // Por defecto
+        
+        // Si tienes un campo created_by en la tabla enrollment_batches:
+        // $created_by_user = $enrollmentBatch->creator ? $enrollmentBatch->creator->name : Auth::user()->name ?? 'Mayra';
+        
+        // O si quieres usar el usuario autenticado:
+        // $created_by_user = Auth::user() ? Auth::user()->name : 'Mayra';
+
+        // 7. Convertir el monto total a palabras
+        $totalInWords = NumberToWordsHelper::convert($enrollment->total_amount);
+
+        // 8. Configurar Dompdf
         $options = new Options();
         $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true); // Permitir cargar recursos remotos (fonts, si usas)
+        $options->set('isRemoteEnabled', true);
 
         $dompdf = new Dompdf($options);
 
-        // 7. Renderizar la vista Blade a HTML
+        // 9. Renderizar la vista Blade a HTML con el nuevo formato
         $html = View::make('pdfs.enrollment_ticket', compact(
             'enrollment',
             'student',
             'timeSlots',
             'daysOfWeek',
-            'calendarData'
+            'calendarData',
+            'created_by_user',
+            'totalInWords'
         ))->render();
 
         $dompdf->loadHtml($html);
 
-        // 8. Opcional: Establecer el tamaño del papel y la orientación (A4 por defecto, puedes cambiar a 'landscape' si el calendario es muy ancho)
+        // 10. Establecer el tamaño del papel
         $dompdf->setPaper('A4', 'portrait');
 
-        // 9. Renderizar el PDF
+        // 11. Renderizar el PDF
         $dompdf->render();
 
-        // 10. Devolver el PDF al navegador
-        // "Attachment" => false hará que el navegador lo muestre en lugar de descargarlo directamente
+        // 12. Devolver el PDF al navegador
         return $dompdf->stream('ticket_inscripcion_' . ($student->student_code ?? 'N/A') . '.pdf', ["Attachment" => false]);
     }
 
@@ -116,6 +119,7 @@ class StudentEnrollmentController extends Controller
         // 1. Cargar el lote de inscripciones con todas las relaciones necesarias
         $enrollmentBatch = \App\Models\EnrollmentBatch::with([
             'student',
+            'creator', // Cargar la relación con el usuario
             'enrollments.instructorWorkshop.workshop',
             'enrollments.instructorWorkshop.instructor',
             'enrollments.instructorWorkshop.classes',
@@ -170,31 +174,39 @@ class StudentEnrollmentController extends Controller
             }
         }
 
-        // 6. Configurar Dompdf
-        $options = new \Dompdf\Options();
+        // 6. Obtener información del usuario que creó la inscripción
+        $created_by_user = $enrollment->created_by_name;
+
+        // 7. Convertir el monto total a palabras
+        $totalInWords = NumberToWordsHelper::convert($enrollmentBatch->total_amount);
+
+        // 8. Configurar Dompdf
+        $options = new Options();
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
 
-        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf = new Dompdf($options);
 
-        // 7. Renderizar la vista Blade a HTML (usando la misma vista pero con datos del lote)
-        $html = \Illuminate\Support\Facades\View::make('pdfs.enrollment_batch_ticket', compact(
+        // 9. Renderizar la vista Blade a HTML con el nuevo formato
+        $html = View::make('pdfs.enrollment_batch_ticket', compact(
             'enrollmentBatch',
             'student',
             'timeSlots',
             'daysOfWeek',
-            'calendarData'
+            'calendarData',
+            'created_by_user',
+            'totalInWords'
         ))->render();
 
         $dompdf->loadHtml($html);
 
-        // 8. Establecer el tamaño del papel y la orientación
+        // 10. Establecer el tamaño del papel
         $dompdf->setPaper('A4', 'portrait');
 
-        // 9. Renderizar el PDF
+        // 11. Renderizar el PDF
         $dompdf->render();
 
-        // 10. Devolver el PDF al navegador
+        // 12. Devolver el PDF al navegador
         return $dompdf->stream('ticket_lote_' . $enrollmentBatch->batch_code . '.pdf', ["Attachment" => false]);
     }
 }

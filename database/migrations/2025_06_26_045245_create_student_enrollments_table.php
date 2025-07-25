@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->foreignId('instructor_workshop_id')->constrained()->onDelete('cascade');
             $table->foreignId('monthly_period_id')->constrained()->onDelete('cascade');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->enum('enrollment_type', ['full_month', 'specific_classes'])->default('full_month');
             $table->tinyInteger('number_of_classes');
             $table->decimal('price_per_quantity', 8, 2);
