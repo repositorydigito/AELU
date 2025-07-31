@@ -10,19 +10,19 @@ use Filament\Notifications\Notification;
 class CreateEnrollment extends CreateRecord
 {
     protected static string $resource = EnrollmentResource::class;
-    
+
     protected static ?string $title = 'Crear Inscripción';
-    
+
     public function getTitle(): string
     {
         return 'Crear Inscripción';
     }
-    
+
     public function getBreadcrumb(): string
     {
         return 'Crear';
     }
-    
+
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
         // Obtener los talleres seleccionados
@@ -30,118 +30,133 @@ class CreateEnrollment extends CreateRecord
         $workshopDetails = $data['workshop_details'] ?? [];
         $paymentMethod = $data['payment_method'] ?? 'cash';
         $paymentStatus = $data['payment_status'] ?? 'pending';
-        
+
+        // 🔥 VALIDAR QUE SE HAYA SELECCIONADO UN PERÍODO (CAMPO GLOBAL)
+        if (empty($data['selected_monthly_period_id'])) {
+            Notification::make()
+                ->title('Error')
+                ->body('Debes seleccionar un período mensual.')
+                ->danger()
+                ->send();
+
+            throw new \Exception('No se seleccionó período mensual');
+        }
+
         if (empty($selectedWorkshops)) {
             Notification::make()
                 ->title('Error')
                 ->body('Debes seleccionar al menos un taller.')
                 ->danger()
                 ->send();
-            
+
             throw new \Exception('No se seleccionaron talleres');
         }
-        
+
+        // 🔥 OBTENER EL PERÍODO SELECCIONADO (CAMPO GLOBAL)
+        $selectedMonthlyPeriodId = $data['selected_monthly_period_id'];
+        $monthlyPeriod = \App\Models\MonthlyPeriod::find($selectedMonthlyPeriodId);
+
+        if (!$monthlyPeriod) {
+            Notification::make()
+                ->title('Error')
+                ->body('El período mensual seleccionado no es válido.')
+                ->danger()
+                ->send();
+
+            throw new \Exception('Período mensual no válido');
+        }
+
         // Determinar el estado de pago final
         $finalPaymentStatus = $paymentMethod === 'cash' ? 'completed' : 'pending';
-        
+
         // Calcular el total de todas las inscripciones
         $totalAmount = 0;
         $validWorkshopDetails = [];
         $skippedWorkshops = [];
-        
+
         foreach ($workshopDetails as $detail) {
             if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
                 $skippedWorkshops[] = "Taller no válido o no seleccionado";
                 continue;
             }
-            
-            // Validación específica: No permitir el mismo taller para la misma persona
+
+            // 🔥 VALIDACIÓN DE DUPLICADOS USANDO EL PERÍODO SELECCIONADO
             $existingEnrollment = \App\Models\StudentEnrollment::where('student_id', $data['student_id'])
                 ->where('instructor_workshop_id', $detail['instructor_workshop_id'])
-                ->where('payment_status', 'completed') // Solo considerar inscripciones completadas
-                ->whereDate('enrollment_date', '>=', now()->subMonths(6)) // Últimos 6 meses
+                ->where('monthly_period_id', $selectedMonthlyPeriodId) // Usar el período seleccionado
+                ->where('payment_status', 'completed')
                 ->first();
-            
+
             if ($existingEnrollment) {
                 $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                     ->find($detail['instructor_workshop_id']);
-                
+
+                $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
+
                 if ($instructorWorkshop) {
                     $workshopName = $instructorWorkshop->workshop->name;
                     $instructorName = $instructorWorkshop->instructor->first_names . ' ' . $instructorWorkshop->instructor->last_names;
-                    
+
                     Notification::make()
                         ->title('Taller ya inscrito')
-                        ->body("El estudiante ya está inscrito en '{$workshopName}' con {$instructorName}. Este taller se omitirá de la inscripción.")
+                        ->body("El estudiante ya está inscrito en '{$workshopName}' con {$instructorName} para {$monthName}. Este taller se omitirá de la inscripción.")
                         ->warning()
                         ->send();
-                    
-                    $skippedWorkshops[] = "Duplicado: {$workshopName}";
+
+                    $skippedWorkshops[] = "Duplicado: {$workshopName} - {$monthName}";
                     continue; // Saltar este taller pero continuar con los demás
                 }
             }
-            
+
             // Obtener el precio desde workshop_pricings
             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($detail['instructor_workshop_id']);
             $numberOfClasses = $detail['number_of_classes'];
-            
+
             // Buscar el precio en la tabla workshop_pricings
             $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
                 ->where('number_of_classes', $numberOfClasses)
                 ->where('for_volunteer_workshop', false) // Asumiendo que no es voluntario por defecto
                 ->first();
-            
+
             // Si no existe el pricing, calcular basado en el precio estándar
             $workshopTotal = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
             $totalAmount += $workshopTotal;
-            
+
             $detail['calculated_total'] = $workshopTotal;
             $detail['price_per_class'] = $workshopTotal / $numberOfClasses;
+            $detail['monthly_period_id'] = $selectedMonthlyPeriodId; // 🔥 ASIGNAR EL PERÍODO SELECCIONADO
             $validWorkshopDetails[] = $detail;
         }
-        
+
         if (empty($validWorkshopDetails)) {
             Notification::make()
                 ->title('Error')
                 ->body('No se pudo crear ninguna inscripción.')
                 ->danger()
                 ->send();
-            
+
             throw new \Exception('No se crearon inscripciones');
         }
-        
+
         // Crear el lote de inscripciones
         $enrollmentBatch = \App\Models\EnrollmentBatch::create([
             'student_id' => $data['student_id'],
             'total_amount' => $totalAmount,
             'payment_status' => $finalPaymentStatus,
             'payment_method' => $paymentMethod,
-            'enrollment_date' => $validWorkshopDetails[0]['enrollment_date'], // Usar la fecha del primer taller
+            'enrollment_date' => $validWorkshopDetails[0]['enrollment_date'],
             'notes' => $data['notes'] ?? null,
         ]);
-        
+
         $createdEnrollments = [];
-        
+
         // Crear las inscripciones individuales asociadas al lote
         foreach ($validWorkshopDetails as $index => $detail) {
-            // Para evitar la restricción de unicidad, generar un monthly_period_id único
-            // Buscar el próximo monthly_period_id disponible para este estudiante y taller
-            $existingPeriods = \App\Models\StudentEnrollment::where('student_id', $data['student_id'])
-                ->where('instructor_workshop_id', $detail['instructor_workshop_id'])
-                ->pluck('monthly_period_id')
-                ->toArray();
-            
-            // Encontrar el primer ID disponible
-            $monthlyPeriodId = 1;
-            while (in_array($monthlyPeriodId, $existingPeriods)) {
-                $monthlyPeriodId++;
-            }
-            
             $enrollment = StudentEnrollment::create([
                 'student_id' => $data['student_id'],
                 'instructor_workshop_id' => $detail['instructor_workshop_id'],
                 'enrollment_batch_id' => $enrollmentBatch->id,
-                'monthly_period_id' => $monthlyPeriodId,
+                'monthly_period_id' => $detail['monthly_period_id'], // 🔥 USAR EL PERÍODO SELECCIONADO
                 'enrollment_type' => $detail['enrollment_type'] ?? 'specific_classes',
                 'number_of_classes' => $detail['number_of_classes'],
                 'price_per_quantity' => $detail['price_per_class'],
@@ -151,17 +166,17 @@ class CreateEnrollment extends CreateRecord
                 'enrollment_date' => $detail['enrollment_date'],
                 'pricing_notes' => $data['notes'] ?? null,
             ]);
-            
+
             $createdEnrollments[] = $enrollment;
-            
+
             // Crear registros en enrollment_classes
             $this->createEnrollmentClasses($enrollment);
         }
-        
+
         // Mostrar notificación de éxito
         $count = count($createdEnrollments);
         $student = \App\Models\Student::find($data['student_id']);
-        
+
         if ($paymentMethod === 'cash') {
             // Pago en efectivo - Estado: Inscrito - Generar PDF
             Notification::make()
@@ -185,27 +200,27 @@ class CreateEnrollment extends CreateRecord
                 ->warning()
                 ->send();
         }
-        
+
         // Retornar el lote creado (requerido por Filament)
         return $enrollmentBatch;
     }
-    
+
     protected function createEnrollmentClasses($enrollment): void
     {
         // Obtener el número de clases seleccionado
         $numberOfClasses = $enrollment->number_of_classes;
-        
+
         if (!$numberOfClasses) {
             return;
         }
-        
+
         // Obtener las próximas clases del taller
         $workshopClasses = \App\Models\WorkshopClass::where('instructor_workshop_id', $enrollment->instructor_workshop_id)
             ->where('class_date', '>=', now()->format('Y-m-d'))
             ->orderBy('class_date', 'asc')
             ->limit($numberOfClasses)
             ->get();
-        
+
         // Si no hay suficientes clases futuras, obtener las clases más recientes
         if ($workshopClasses->count() < $numberOfClasses) {
             $remainingClasses = $numberOfClasses - $workshopClasses->count();
@@ -214,14 +229,14 @@ class CreateEnrollment extends CreateRecord
                 ->orderBy('class_date', 'desc')
                 ->limit($remainingClasses)
                 ->get();
-            
+
             $workshopClasses = $workshopClasses->merge($pastClasses)->sortBy('class_date');
         }
-        
+
         // Obtener el precio por clase del taller
         $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($enrollment->instructor_workshop_id);
         $classFee = $instructorWorkshop ? $instructorWorkshop->workshop->standard_monthly_fee : 0;
-        
+
         // Crear los registros en enrollment_classes
         foreach ($workshopClasses as $workshopClass) {
             \App\Models\EnrollmentClass::create([
@@ -231,7 +246,7 @@ class CreateEnrollment extends CreateRecord
             ]);
         }
     }
-    
+
     protected function getRedirectUrl(): string
     {
         return \App\Filament\Resources\EnrollmentBatchResource::getUrl('index');

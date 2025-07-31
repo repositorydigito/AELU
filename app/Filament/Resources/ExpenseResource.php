@@ -8,7 +8,6 @@ use App\Models\Expense;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DecimalOrFloat;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,7 +15,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Card;
 use Filament\Forms\Components\Placeholder;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -116,7 +114,7 @@ class ExpenseResource extends Resource
                                             ->minValue(0.01)
                                             ->placeholder('0.00')
                                             ->prefixIcon('heroicon-o-banknotes')
-                                            ->live(onBlur: true)
+                                            ->live()
                                             ->afterStateUpdated(function ($state, $set) {
                                                 if ($state) {
                                                     $set('amount', number_format((float)$state, 2, '.', ''));
@@ -131,8 +129,8 @@ class ExpenseResource extends Resource
                                             ->columnSpanFull(),
                                     ]),
                             ])
-                            ->itemLabel(fn (array $state): ?string => 
-                                !empty($state['razon_social']) && !empty($state['amount']) 
+                            ->itemLabel(fn (array $state): ?string =>
+                                !empty($state['razon_social']) && !empty($state['amount'])
                                     ? $state['razon_social'] . ' - S/. ' . number_format((float)$state['amount'], 2)
                                     : 'Nuevo Gasto'
                             )
@@ -152,6 +150,7 @@ class ExpenseResource extends Resource
                                 $total = collect($details)->sum('amount');
                                 return 'S/. ' . number_format($total, 2);
                             })
+                            ->live()
                             ->extraAttributes(['class' => 'text-lg font-bold text-primary-600']),
                     ])
                     ->collapsible(),
@@ -168,7 +167,6 @@ class ExpenseResource extends Resource
                             ->directory('vouchers')
                             ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'])
                             ->maxSize(2048)
-                            ->multiple()
                             ->reorderable()
                             ->downloadable()
                             ->previewable()

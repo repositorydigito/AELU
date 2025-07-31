@@ -35,7 +35,7 @@
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                     </svg>
                     Instructores Voluntarios
-                </h4>                
+                </h4>
             </div>
             <div class="p-4 space-y-3">
                 @foreach($record->workshopPricings->where('for_volunteer_workshop', true)->sortBy('number_of_classes') as $pricing)
@@ -43,10 +43,10 @@
                         <div class="flex items-center">
                             <span class="font-medium text-gray-900">{{ $pricing->number_of_classes }}</span>
                             <span class="text-gray-600 ml-1">{{ $pricing->number_of_classes == 1 ? 'clase' : 'clases' }}</span>
-                            
-                            @if($pricing->is_default)
+
+                            {{-- @if($pricing->is_default)
                                 <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Estándar</span>
-                            @endif
+                            @endif --}}
                         </div>
                         <span class="font-bold text-green-600 text-lg">S/ {{ number_format($pricing->price, 2) }}</span>
                     </div>
@@ -62,7 +62,7 @@
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
                     </svg>
                     Instructores No Voluntarios
-                </h4>                
+                </h4>
             </div>
             <div class="p-4 space-y-3">
                 @foreach($record->workshopPricings->where('for_volunteer_workshop', false)->sortBy('number_of_classes') as $pricing)
@@ -70,9 +70,9 @@
                         <div class="flex items-center">
                             <span class="font-medium text-gray-900">{{ $pricing->number_of_classes }}</span>
                             <span class="text-gray-600 ml-1">{{ $pricing->number_of_classes == 1 ? 'clase' : 'clases' }}</span>
-                            @if($pricing->is_default)
+                            {{-- @if($pricing->is_default)
                                 <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Estándar</span>
-                            @endif
+                            @endif --}}
                         </div>
                         <span class="font-bold text-blue-600 text-lg">S/ {{ number_format($pricing->price, 2) }}</span>
                     </div>
@@ -88,9 +88,8 @@
             <li>• Las tarifas de 1, 2 y 3 clases incluyen un recargo del {{ $record->pricing_surcharge_percentage }}%</li>
             <li>• La tarifa de 4 clases es el precio estándar mensual (sin recargo)</li>
             <li>• Para instructores voluntarios: la 5ta clase tiene 25% adicional sobre la tarifa mensual</li>
-            <li>• Para instructores no voluntarios: la 5ta clase tiene el mismo precio que 4 clases</li>
             <li>• Estas tarifas se actualizan automáticamente al cambiar la tarifa mensual o el porcentaje de recargo</li>
         </ul>
     </div>
-    
+
 </div>

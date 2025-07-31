@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Carbon\Carbon;
 
 class Workshop extends Model
 {
@@ -51,7 +53,7 @@ class Workshop extends Model
     public function workshopClasses()
     {
         return $this->hasManyThrough(WorkshopClass::class, InstructorWorkshop::class);
-    }    
+    }
 
     /**
      * Obtiene el multiplicador de recargo
@@ -104,12 +106,12 @@ class Workshop extends Model
     /**
      * Regenera las tarifas del taller
      */
-    public function regeneratePricings(): void
+    /* public function regeneratePricings(): void
     {
         // Disparar el observer manualmente
         $observer = new \App\Observers\WorkshopObserver();
         $observer->syncPricing($this);
-    }
+    } */
 
     /**
      * Obtiene la tarifa por cantidad de clases y tipo de instructor
@@ -120,5 +122,19 @@ class Workshop extends Model
             ->where('number_of_classes', $numberOfClasses)
             ->where('for_volunteer_workshop', $isVolunteerWorkshop)
             ->first();
+    }
+
+    protected function endTime(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                if (!$this->start_time || !$this->duration) {
+                    return null;
+                }
+
+                $startTime = Carbon::parse($this->start_time);
+                return $startTime->addMinutes($this->duration)->format('H:i:s');
+            }
+        );
     }
 }

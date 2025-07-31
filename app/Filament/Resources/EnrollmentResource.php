@@ -16,10 +16,10 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class EnrollmentResource extends Resource
 {
     protected static ?string $model = StudentEnrollment::class;
-    protected static ?string $navigationLabel = 'Inscripciones'; 
-    protected static ?string $pluralModelLabel = 'Inscripciones'; 
+    protected static ?string $navigationLabel = 'Inscripciones';
+    protected static ?string $pluralModelLabel = 'Inscripciones';
     protected static ?string $modelLabel = 'Inscripción';
-    protected static bool $shouldRegisterNavigation = false; // Ocultar de la navegación 
+    protected static bool $shouldRegisterNavigation = false; // Ocultar de la navegación
 
     public static function form(Form $form): Form
     {
@@ -34,7 +34,7 @@ class EnrollmentResource extends Resource
                             Forms\Components\Select::make('student_id')
                                 ->label('Estudiante')
                                 ->relationship('student', 'first_names')
-                                ->getOptionLabelFromRecordUsing(fn ($record) => 
+                                ->getOptionLabelFromRecordUsing(fn ($record) =>
                                     "{$record->first_names} {$record->last_names} - {$record->student_code}"
                                 )
                                 ->searchable(['first_names', 'last_names', 'student_code'])
@@ -46,16 +46,16 @@ class EnrollmentResource extends Resource
                                     if (!$studentId) {
                                         return 'Selecciona el estudiante que se inscribirá';
                                     }
-                                    
+
                                     $student = \App\Models\Student::find($studentId);
                                     if (!$student) {
                                         return 'Estudiante no encontrado';
                                     }
-                                    
+
                                     if (!$student->monthly_maintenance_paid) {
                                         return '⚠️ Este estudiante NO está al día con el mantenimiento mensual';
                                     }
-                                    
+
                                     return '✅ Estudiante al día con el mantenimiento mensual';
                                 })
                                 ->live()
@@ -64,13 +64,13 @@ class EnrollmentResource extends Resource
                                         $set('selected_workshops', '[]');
                                         return;
                                     }
-                                    
+
                                     $student = \App\Models\Student::find($state);
                                     if (!$student) {
                                         $set('selected_workshops', '[]');
                                         return;
                                     }
-                                    
+
                                     // Si el estudiante no está al día con el mantenimiento, mostrar notificación
                                     if (!$student->monthly_maintenance_paid) {
                                         \Filament\Notifications\Notification::make()
@@ -79,7 +79,7 @@ class EnrollmentResource extends Resource
                                             ->danger()
                                             ->persistent()
                                             ->send();
-                                        
+
                                         // Limpiar talleres seleccionados
                                         $set('selected_workshops', '[]');
                                     } else {
@@ -92,7 +92,7 @@ class EnrollmentResource extends Resource
                                     }
                                 })
                                 ->columnSpanFull(),
-                            
+
                             // Separador visual
                             Forms\Components\Section::make('Catálogo de Talleres')
                                 ->description('Selecciona los talleres en los que deseas inscribir al estudiante')
@@ -105,7 +105,7 @@ class EnrollmentResource extends Resource
                                             // Sincronizar los talleres seleccionados con el paso 2
                                             $selectedWorkshops = json_decode($state ?? '[]', true);
                                             $workshopDetails = [];
-                                            
+
                                             foreach ($selectedWorkshops as $workshopId) {
                                                 $workshopDetails[] = [
                                                     'instructor_workshop_id' => $workshopId,
@@ -114,10 +114,10 @@ class EnrollmentResource extends Resource
                                                     'enrollment_date' => now()->format('Y-m-d'),
                                                 ];
                                             }
-                                            
+
                                             $set('workshop_details', $workshopDetails);
                                         }),
-                                    
+
                                     // Vista personalizada de talleres en cards
                                     Forms\Components\ViewField::make('workshop_cards')
                                         ->label('')
@@ -125,7 +125,7 @@ class EnrollmentResource extends Resource
                                         ->viewData(function (Forms\Get $get) {
                                             $studentId = $get('student_id');
                                             $selectedWorkshops = json_decode($get('selected_workshops') ?? '[]', true);
-                                            
+
                                             // Obtener todos los talleres disponibles
                                             $workshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                 ->get()
@@ -141,22 +141,22 @@ class EnrollmentResource extends Resource
                                                         7 => 'Domingo',
                                                         0 => 'Domingo', // Por si usan 0 para domingo
                                                     ];
-                                                    
+
                                                     $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día ' . $instructorWorkshop->day_of_week;
-                                                    
+
                                                     return [
                                                         'id' => $instructorWorkshop->id,
                                                         'name' => $instructorWorkshop->workshop->name,
                                                         'instructor' => $instructorWorkshop->instructor->first_names . ' ' . $instructorWorkshop->instructor->last_names,
                                                         'day' => $dayInSpanish,
                                                         'start_time' => \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i'),
-                                                        'end_time' => \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i'),
+                                                        'end_time' => $instructorWorkshop->workshop->end_time ? \Carbon\Carbon::parse($instructorWorkshop->workshop->end_time)->format('H:i') : 'N/A',
                                                         'price' => $instructorWorkshop->workshop->standard_monthly_fee,
                                                         'max_classes' => $instructorWorkshop->workshop->number_of_classes,
                                                         'selected' => in_array($instructorWorkshop->id, $selectedWorkshops),
                                                     ];
                                                 });
-                                            
+
                                             return [
                                                 'workshops' => $workshops,
                                                 'student_id' => $studentId,
@@ -167,7 +167,7 @@ class EnrollmentResource extends Resource
                                 ])
                                 ->columnSpanFull(),
                         ]),
-                    
+
                     // Paso 2: Configuración de Detalles
                     Forms\Components\Wizard\Step::make('Configurar Detalles')
                         ->icon('heroicon-o-cog-6-tooth')
@@ -176,34 +176,73 @@ class EnrollmentResource extends Resource
                             if (!$studentId) {
                                 throw new \Filament\Forms\ValidationException(['student_id' => 'Debe seleccionar un estudiante']);
                             }
-                            
+
                             $student = \App\Models\Student::find($studentId);
                             if (!$student || !$student->monthly_maintenance_paid) {
                                 throw new \Filament\Forms\ValidationException(['student_id' => 'El estudiante seleccionado no está al día con el mantenimiento mensual']);
                             }
-                            
+
                             $selectedWorkshops = json_decode($get('selected_workshops') ?? '[]', true);
                             if (empty($selectedWorkshops)) {
                                 throw new \Filament\Forms\ValidationException(['selected_workshops' => 'Debe seleccionar al menos un taller']);
                             }
                         })
                         ->schema([
+                            Forms\Components\Select::make('selected_monthly_period_id')
+                                ->label('Período Mensual')
+                                ->options(function () {
+                                    $currentDate = now();
+                                    $nextDate = now()->addMonth();
+
+                                    $options = [];
+
+                                    // Buscar período del mes actual
+                                    $currentPeriod = \App\Models\MonthlyPeriod::where('year', $currentDate->year)
+                                        ->where('month', $currentDate->month)
+                                        ->first();
+
+                                    if ($currentPeriod) {
+                                        $options[$currentPeriod->id] = $currentDate->translatedFormat('F Y');
+                                    }
+
+                                    // Buscar período del próximo mes
+                                    $nextPeriod = \App\Models\MonthlyPeriod::where('year', $nextDate->year)
+                                        ->where('month', $nextDate->month)
+                                        ->first();
+
+                                    if ($nextPeriod) {
+                                        $options[$nextPeriod->id] = $nextDate->translatedFormat('F Y');
+                                    }
+
+                                    return $options;
+                                })
+                                /* ->default(function () {
+                                    // Pre-seleccionar el próximo mes
+                                    $nextDate = now()->addMonth();
+                                    $nextPeriod = \App\Models\MonthlyPeriod::where('year', $nextDate->year)
+                                        ->where('month', $nextDate->month)
+                                        ->first();
+                                    return $nextPeriod?->id;
+                                }) */
+                                ->required()
+                                ->columnSpanFull(),
+
                             Forms\Components\Repeater::make('workshop_details')
                                 ->label('Detalles de los Talleres Seleccionados')
                                 ->schema([
                                     Forms\Components\Hidden::make('instructor_workshop_id'),
-                                    
+
                                     Forms\Components\Placeholder::make('workshop_info')
                                         ->label('')
                                         ->content(function (Forms\Get $get) {
                                             $workshopId = $get('instructor_workshop_id');
                                             if (!$workshopId) return 'Taller no seleccionado';
-                                            
+
                                             $workshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                 ->find($workshopId);
-                                            
+
                                             if (!$workshop) return 'Taller no encontrado';
-                                            
+
                                             // Convertir día de la semana (número) a texto en español
                                             $dayNames = [
                                                 1 => 'Lunes',
@@ -215,9 +254,9 @@ class EnrollmentResource extends Resource
                                                 7 => 'Domingo',
                                                 0 => 'Domingo', // Por si usan 0 para domingo
                                             ];
-                                            
+
                                             $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día ' . $workshop->day_of_week;
-                                            
+
                                             return new \Illuminate\Support\HtmlString("
                                                 <div class='bg-gray-50 p-4 rounded-lg'>
                                                     <h3 class='font-semibold text-lg text-gray-900'>{$workshop->workshop->name}</h3>
@@ -231,7 +270,7 @@ class EnrollmentResource extends Resource
                                             ");
                                         })
                                         ->columnSpanFull(),
-                                    
+
                                     Forms\Components\Grid::make(3)
                                         ->schema([
                                             Forms\Components\Radio::make('enrollment_type')
@@ -240,29 +279,30 @@ class EnrollmentResource extends Resource
                                                     'full_month' => 'Regular',
                                                     'specific_classes' => 'Recuperación',
                                                 ])
+                                                ->default('full_month')
                                                 ->required(),
-                                            
+
                                             Forms\Components\Select::make('number_of_classes')
                                                 ->label('Cantidad de Clases')
                                                 ->options(function (Forms\Get $get) {
                                                     $workshopId = $get('instructor_workshop_id');
                                                     if (!$workshopId) return [];
-                                                    
+
                                                     $workshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
                                                     if (!$workshop) return [];
-                                                    
+
                                                     $maxClasses = $workshop->workshop->number_of_classes;
                                                     $options = [];
-                                                    
+
                                                     for ($i = 1; $i <= $maxClasses; $i++) {
                                                         $options[$i] = $i . ($i === 1 ? ' Clase' : ' Clases');
                                                     }
-                                                    
+
                                                     return $options;
                                                 })
                                                 ->required()
                                                 ->placeholder('Seleccionar cantidad'),
-                                            
+
                                             Forms\Components\DatePicker::make('enrollment_date')
                                                 ->label('Fecha de Inicio')
                                                 ->default(now())
@@ -274,7 +314,7 @@ class EnrollmentResource extends Resource
                                 ->deletable(false)
                                 ->reorderable(false)
                                 ->columnSpanFull(),
-                            
+
                             // Notas generales
                             Forms\Components\Textarea::make('notes')
                                 ->label('Notas Generales')
@@ -282,7 +322,7 @@ class EnrollmentResource extends Resource
                                 ->rows(3)
                                 ->columnSpanFull(),
                         ]),
-                    
+
                     // Paso 3: Pago y Finalización
                     Forms\Components\Wizard\Step::make('Pago y Finalización')
                         ->icon('heroicon-o-credit-card')
@@ -304,31 +344,31 @@ class EnrollmentResource extends Resource
                                             if (empty($workshopDetails)) {
                                                 return 'No hay talleres seleccionados';
                                             }
-                                            
+
                                             $html = '<div class="space-y-4">';
                                             $subtotal = 0;
-                                            
+
                                             foreach ($workshopDetails as $detail) {
                                                 $workshopId = $detail['instructor_workshop_id'] ?? null;
                                                 $numberOfClasses = $detail['number_of_classes'] ?? 1;
                                                 $enrollmentType = $detail['enrollment_type'] ?? 'specific_classes';
-                                                
+
                                                 if (!$workshopId) continue;
-                                                
+
                                                 $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                     ->find($workshopId);
-                                                
+
                                                 if (!$instructorWorkshop) continue;
-                                                
+
                                                 // Obtener el precio desde workshop_pricings
                                                 $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
                                                     ->where('number_of_classes', $numberOfClasses)
                                                     ->where('for_volunteer_workshop', false) // Asumiendo que no es voluntario por defecto
                                                     ->first();
-                                                
+
                                                 $price = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
                                                 $subtotal += $price;
-                                                
+
                                                 // Convertir día de la semana
                                                 $dayNames = [
                                                     1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
@@ -336,10 +376,10 @@ class EnrollmentResource extends Resource
                                                     7 => 'Domingo', 0 => 'Domingo'
                                                 ];
                                                 $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día ' . $instructorWorkshop->day_of_week;
-                                                
+
                                                 $typeLabel = $enrollmentType === 'full_month' ? 'Regular' : 'Recuperación';
                                                 $classesLabel = $numberOfClasses . ($numberOfClasses === 1 ? ' clase' : ' clases');
-                                                
+
                                                 $html .= "
                                                     <div class='bg-green-50 border border-green-200 rounded-lg p-4'>
                                                         <div class='flex justify-between items-start'>
@@ -357,7 +397,7 @@ class EnrollmentResource extends Resource
                                                     </div>
                                                 ";
                                             }
-                                            
+
                                             $html .= "
                                                 <div class='border-t pt-4 mt-4'>
                                                     <div class='bg-gray-50 p-4 rounded-lg'>
@@ -406,15 +446,15 @@ class EnrollmentResource extends Resource
                                                     </div>
                                                 </div>
                                             ";
-                                            
+
                                             $html .= '</div>';
-                                            
+
                                             return new \Illuminate\Support\HtmlString($html);
                                         })
                                         ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
-                            
+
                             // Selección de método de pago
                             Forms\Components\Section::make('Seleccionar medio de pago')
                                 ->schema([
@@ -439,13 +479,13 @@ class EnrollmentResource extends Resource
                                             }
                                         })
                                         ->columnSpanFull(),
-                                    
+
                                     // Campo oculto para el estado de pago
                                     Forms\Components\Hidden::make('payment_status')
                                         ->default('pending'),
                                 ])
                                 ->columnSpanFull(),
-                            
+
                             // Información de pago adicional
                             Forms\Components\Section::make('Información de Pago')
                                 ->description('Información adicional sobre fechas y documentos de pago')
@@ -456,13 +496,13 @@ class EnrollmentResource extends Resource
                                                 ->label('Fecha Límite de Pago')
                                                 ->helperText('Fecha límite para realizar el pago')
                                                 ->placeholder('Seleccionar fecha límite'),
-                                            
+
                                             Forms\Components\DatePicker::make('payment_date')
                                                 ->label('Fecha de Pago')
                                                 ->helperText('Fecha en que se realizó el pago')
                                                 ->placeholder('Seleccionar fecha de pago'),
                                         ]),
-                                    
+
                                     Forms\Components\FileUpload::make('payment_document')
                                         ->label('Documento de Pago')
                                         ->helperText('Subir comprobante de pago (PDF o imagen)')
@@ -499,15 +539,15 @@ class EnrollmentResource extends Resource
                     ->label('Estudiante')
                     ->searchable(['student.first_names', 'student.last_names'])
                     ->sortable()
-                    ->formatStateUsing(fn ($record) => 
+                    ->formatStateUsing(fn ($record) =>
                         $record->student->first_names . ' ' . $record->student->last_names
                     ),
-                
+
                 Tables\Columns\TextColumn::make('instructorWorkshop.workshop.name')
                     ->label('Taller')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('enrollment_type')
                     ->label('Tipo de Inscripción')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -522,17 +562,17 @@ class EnrollmentResource extends Resource
                         default => 'gray',
                     })
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('number_of_classes')
                     ->label('Cantidad de Clases')
                     ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Clase' : ' Clases'))
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('enrollment_date')
                     ->label('Fecha de Inscripción')
                     ->date('d/m/Y')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_status')
                     ->label('Estado de Pago')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -553,7 +593,7 @@ class EnrollmentResource extends Resource
                         default => 'gray',
                     })
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_method')
                     ->label('Método de Pago')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -562,13 +602,13 @@ class EnrollmentResource extends Resource
                         default => $state,
                     })
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_due_date')
                     ->label('Fecha Límite')
                     ->date('d/m/Y')
                     ->placeholder('No definida')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_date')
                     ->label('Fecha de Pago')
                     ->date('d/m/Y')
@@ -582,7 +622,7 @@ class EnrollmentResource extends Resource
                         'full_month' => 'Regular',
                         'specific_classes' => 'Recuperación',
                     ]),
-                
+
                 Tables\Filters\SelectFilter::make('payment_status')
                     ->label('Estado de Pago')
                     ->options([
@@ -592,14 +632,14 @@ class EnrollmentResource extends Resource
                         'credit_favor' => 'Crédito a Favor',
                         'refunded' => 'Devuelto',
                     ]),
-                
+
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->label('Método de Pago')
                     ->options([
                         'cash' => 'Efectivo',
                         'link' => 'Link de Pago',
                     ]),
-                
+
                 Tables\Filters\SelectFilter::make('number_of_classes')
                     ->label('Cantidad de Clases')
                     ->options([
@@ -612,7 +652,7 @@ class EnrollmentResource extends Resource
                         7 => '7 Clases',
                         8 => '8 Clases',
                     ]),
-                
+
                 Tables\Filters\Filter::make('enrollment_date')
                     ->label('Fecha de Inscripción')
                     ->form([

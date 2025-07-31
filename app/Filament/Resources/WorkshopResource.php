@@ -40,7 +40,7 @@ class WorkshopResource extends Resource
                             ->label('Profesor')
                             ->options(\App\Models\Instructor::all()->pluck('full_name', 'id'))
                             ->searchable()
-                            ->required(),                        
+                            ->required(),
                         Forms\Components\Select::make('day_of_week')
                             ->label('Día del taller')
                             ->options([
@@ -147,7 +147,7 @@ class WorkshopResource extends Resource
                                         }),
                                 ])->extraAttributes(['class' => 'flex items-end justify-end']),
                             ]),
-                        
+
                         Forms\Components\Placeholder::make('schedule_table')
                             ->label('Clases')
                             ->content(function (Get $get) {
@@ -155,7 +155,7 @@ class WorkshopResource extends Resource
                             })
                             ->columnSpanFull()
                             ->live(),
-                        
+
                         Forms\Components\Actions::make([
                             Forms\Components\Actions\Action::make('ajustar_fechas')
                                 ->label('Ajustes')
@@ -168,34 +168,34 @@ class WorkshopResource extends Resource
                                 ->form(function (Get $get) {
                                     $scheduleData = $get('schedule_data') ?? [];
                                     $fields = [];
-                                    
+
                                     foreach ($scheduleData as $index => $class) {
                                         $fields[] = Forms\Components\DatePicker::make("class_date_{$index}")
                                             ->label('Clase ' . ($index + 1) . ' *')
                                             ->default($class['raw_date'])
                                             ->required();
                                     }
-                                    
+
                                     return $fields;
                                 })
                                 ->fillForm(function (Get $get): array {
                                     $scheduleData = $get('schedule_data') ?? [];
                                     $formData = [];
-                                    
+
                                     foreach ($scheduleData as $index => $class) {
                                         $formData["class_date_{$index}"] = $class['raw_date'];
                                     }
-                                    
+
                                     return $formData;
                                 })
                                 ->action(function (array $data, Set $set, Get $get, $livewire) {
                                     $scheduleData = $get('schedule_data') ?? [];
                                     $updatedScheduleData = [];
-                                    
+
                                     foreach ($scheduleData as $index => $class) {
                                         $newDate = $data["class_date_{$index}"];
                                         $carbonDate = \Carbon\Carbon::parse($newDate);
-                                        
+
                                         $updatedScheduleData[] = [
                                             'class_number' => $class['class_number'],
                                             'date' => $carbonDate->format('d/m/Y'),
@@ -204,10 +204,10 @@ class WorkshopResource extends Resource
                                             'is_holiday' => $class['is_holiday'],
                                         ];
                                     }
-                                    
+
                                     // Actualizar schedule_data
                                     $set('schedule_data', $updatedScheduleData);
-                                    
+
                                     // Actualizar en la base de datos si estamos editando
                                     if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
                                         self::updateWorkshopClassesInDatabase($livewire->record, $updatedScheduleData);
@@ -215,7 +215,7 @@ class WorkshopResource extends Resource
                                 }),
                         ])
                         ->extraAttributes(['class' => 'flex justify-center mt-4']),
-                        
+
                         Forms\Components\Hidden::make('schedule_data')
                             ->default([])
                             ->dehydrated(false), // No se guarda en la base de datos
@@ -255,7 +255,7 @@ class WorkshopResource extends Resource
             2 => round($basePerClass * $surchargeMultiplier * 2, 2),
             3 => round($basePerClass * $surchargeMultiplier * 3, 2),
             4 => $standardFee,
-            5 => $standardFee,  // Mismo precio que 4 clases
+            // 5 => $standardFee,  // Mismo precio que 4 clases
         ];
 
         $html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
@@ -269,7 +269,7 @@ class WorkshopResource extends Resource
             $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
             $html .= "<span>{$classes} " . ($classes === 1 ? 'clase' : 'clases') . ':</span>';
-            $html .= "<span class='font-medium'>S/ " . number_format($price, 2) . " {$badge}</span>";
+            $html .= "<span class='font-medium'>S/ " . number_format($price, 2) . " </span>";
             $html .= '</div>';
         }
         $html .= '</div></div>';
@@ -283,7 +283,7 @@ class WorkshopResource extends Resource
             $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
             $html .= "<span>{$classes} " . ($classes === 1 ? 'clase' : 'clases') . ':</span>';
-            $html .= "<span class='font-medium'>S/ " . number_format($price, 2) . " {$badge}</span>";
+            $html .= "<span class='font-medium'>S/ " . number_format($price, 2) . " </span>";
             $html .= '</div>';
         }
         /* $html .= '</div></div>';
@@ -390,7 +390,7 @@ class WorkshopResource extends Resource
 
         $dates = [];
         $start = \Carbon\Carbon::parse($startDate);
-        
+
         // Ajustar al primer día correcto
         $targetDayOfWeek = $dias[$dayOfWeek];
         if ($start->dayOfWeek !== $targetDayOfWeek) {
@@ -398,7 +398,7 @@ class WorkshopResource extends Resource
         }
 
         $current = $start->copy();
-        
+
         // Generar las fechas basándose en el número de clases
         for ($i = 0; $i < $numberOfClasses; $i++) {
             $dates[] = [
@@ -419,7 +419,7 @@ class WorkshopResource extends Resource
     {
         $scheduleData = $get('schedule_data') ?? [];
         $dayOfWeek = $get('day_of_week') ?? 'Lunes';
-        
+
         if (empty($scheduleData)) {
             return '<div class="text-gray-500 italic p-4">Configure la fecha de inicio para generar el horario automáticamente</div>';
         }
@@ -428,28 +428,28 @@ class WorkshopResource extends Resource
         $totalColumns = 2 + $totalClasses; // Día + Nro. de Clases + todas las clases
 
         $html = '<div class="border rounded-lg overflow-hidden">';
-        
+
         // Header de la tabla
         $html .= '<div class="bg-gray-50 border-b">';
         $html .= '<div class="grid gap-px" style="grid-template-columns: repeat(' . $totalColumns . ', minmax(0, 1fr));">';
         $html .= '<div class="p-3 font-semibold text-sm">Día</div>';
         $html .= '<div class="p-3 font-semibold text-sm">Nro. de Clases</div>';
-        
+
         // Generar headers dinámicamente para todas las clases
         for ($i = 1; $i <= $totalClasses; $i++) {
             $html .= '<div class="p-3 font-semibold text-sm">Clase ' . $i . '</div>';
         }
-        
+
         $html .= '</div>';
         $html .= '</div>';
 
         // Fila de datos
         $html .= '<div class="bg-white">';
         $html .= '<div class="grid gap-px border-b" style="grid-template-columns: repeat(' . $totalColumns . ', minmax(0, 1fr));">';
-        
+
         // Día
         $html .= '<div class="p-3 text-sm">' . $dayOfWeek . '</div>';
-        
+
         // Número de clases (con botón de ajustes)
         $html .= '<div class="p-3 text-sm">';
         $html .= '<div class="flex items-center gap-2">';
@@ -495,7 +495,7 @@ class WorkshopResource extends Resource
     {
         $html = '<div id="adjustments-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">';
         $html .= '<div class="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">';
-        
+
         // Header del modal
         $html .= '<div class="flex justify-between items-center mb-4">';
         $html .= '<h3 class="text-lg font-semibold">Ajustes</h3>';
@@ -508,7 +508,7 @@ class WorkshopResource extends Resource
 
         // Contenido del modal
         $html .= '<div class="space-y-4">';
-        
+
         foreach ($scheduleData as $index => $class) {
             $html .= '<div>';
             $html .= '<label class="block text-sm font-medium text-gray-700 mb-1">Clase ' . ($index + 1) . ' *</label>';
@@ -544,12 +544,12 @@ class WorkshopResource extends Resource
             if (isset($workshopClasses[$index])) {
                 $workshopClass = $workshopClasses[$index];
                 $newDate = \Carbon\Carbon::parse($classData['raw_date']);
-                
+
                 // Encontrar el período mensual correcto para la nueva fecha
                 $monthlyPeriod = \App\Models\MonthlyPeriod::where('start_date', '<=', $newDate)
                     ->where('end_date', '>=', $newDate)
                     ->first();
-                
+
                 // Si no existe un período mensual, crear uno para ese mes
                 if (!$monthlyPeriod) {
                     $monthlyPeriod = \App\Models\MonthlyPeriod::create([
