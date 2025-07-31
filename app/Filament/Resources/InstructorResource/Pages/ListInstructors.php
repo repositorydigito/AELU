@@ -15,7 +15,7 @@ class ListInstructors extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->label('Nuevo Profesor'),
-            Actions\Action::make('import')
+            /* Actions\Action::make('import')
                 ->label('Importar Profesores')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->url(fn () => static::$resource::getUrl('import'))
@@ -24,7 +24,7 @@ class ListInstructors extends ListRecords
                 ->label('Descargar Plantilla') 
                 ->icon('heroicon-o-document-arrow-down') 
                 ->url(route('instructors.download-template'))
-                ->color('primary'),            
+                ->color('primary'), */            
         ];
     }
 }

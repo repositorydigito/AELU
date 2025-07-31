@@ -40,15 +40,7 @@ class WorkshopResource extends Resource
                             ->label('Profesor')
                             ->options(\App\Models\Instructor::all()->pluck('full_name', 'id'))
                             ->searchable()
-                            ->required(),
-                        Forms\Components\Select::make('icon')
-                            ->label('Imagen referencial')
-                            ->options([
-                                'icon1' => '🎨 Icono 1',
-                                'icon2' => '🏀 Icono 2',
-                                'icon3' => '🎸 Icono 3',
-                            ])
-                            ->required(),
+                            ->required(),                        
                         Forms\Components\Select::make('day_of_week')
                             ->label('Día del taller')
                             ->options([
@@ -325,6 +317,7 @@ class WorkshopResource extends Resource
                     ->sortable()
                     ->color('info'),
             ])
+            ->defaultSort('name', 'asc')
             ->filters([
                 //
             ])

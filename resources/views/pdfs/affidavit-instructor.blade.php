@@ -221,7 +221,6 @@
                         <p><strong>Nacionalidad:</strong> {{ $instructor->nationality ?? 'N/A' }}</p>
                         <p><strong>Fecha de nacimiento:</strong> {{ $instructor->birth_date->format('d/m/Y') }}</p>
                         <p><strong>DNI:</strong> {{ $instructor->document_number }}</p>
-                        <p><strong>Código de asociado:</strong> {{ $instructor->instructor_code ?? 'N/A' }}</p>
                         <p><strong>Categoría de socio:</strong> {{ $instructor->category_partner ?? 'N/A' }}</p>
                         <p><strong>Celular:</strong> {{ $instructor->cell_phone ?? 'N/A' }}</p>
                         <p><strong>Teléfono de casa:</strong> {{ $instructor->home_phone ?? 'N/A' }}</p>
@@ -296,7 +295,7 @@
 
         <div class="content">
             <div class="text-block">
-                <p>Yo, <strong>{{ $instructor->first_names }} {{ $instructor->last_names }}</strong>, identificado/a con <strong>{{ $instructor->document_type }} </strong> <strong>{{ $instructor->document_number }}</strong>, de nacionalidad <strong>{{ $instructor->nationality }}</strong>, con fecha de nacimiento <strong>{{ $instructor->birth_date ? $instructor->birth_date->format('d/m/Y') : 'N/A' }}</strong>, con domicilio en <strong>{{ $instructor->address ?? 'No especificado' }}</strong> y código de instructor <strong>{{ $instructor->instructor_code ?? 'N/A' }}</strong>, en pleno uso de mis facultades mentales, declaro bajo juramento lo siguiente:</p>
+                <p>Yo, <strong>{{ $instructor->first_names }} {{ $instructor->last_names }}</strong>, identificado/a con <strong>{{ $instructor->document_type }} </strong> <strong>{{ $instructor->document_number }}</strong>, de nacionalidad <strong>{{ $instructor->nationality }}</strong>, con fecha de nacimiento <strong>{{ $instructor->birth_date ? $instructor->birth_date->format('d/m/Y') : 'N/A' }}</strong>, con domicilio en <strong>{{ $instructor->address ?? 'No especificado' }}</strong>, en pleno uso de mis facultades mentales, declaro bajo juramento lo siguiente:</p>
             </div>
 
             <div class="text-block">

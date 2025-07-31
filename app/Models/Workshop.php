@@ -17,7 +17,6 @@ class Workshop extends Model
         'standard_monthly_fee',
         'pricing_surcharge_percentage',
         'instructor_id',
-        'icon',
         'day_of_week',
         'start_time',
         'duration',

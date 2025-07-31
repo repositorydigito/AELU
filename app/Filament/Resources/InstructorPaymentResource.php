@@ -48,7 +48,7 @@ class InstructorPaymentResource extends Resource
                                 
                                 Forms\Components\Select::make('instructor_id')
                                     ->relationship('instructor', 'first_names')
-                                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names} - {$record->instructor_code}")
+                                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}")
                                     ->label('Instructor')
                                     ->disabled()
                                     ->dehydrated(true),
@@ -181,7 +181,7 @@ class InstructorPaymentResource extends Resource
                     ->getStateUsing(fn (InstructorPayment $record) => 
                         "{$record->instructor->first_names} {$record->instructor->last_names}"
                     )                    
-                    ->searchable(['instructor.first_names', 'instructor.last_names', 'instructor.instructor_code'])
+                    ->searchable(['instructor.first_names', 'instructor.last_names'])
                     ->sortable(['instructor.first_names', 'instructor.last_names']),
 
                 Tables\Columns\TextColumn::make('workshop_schedule')

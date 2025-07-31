@@ -212,13 +212,16 @@ class StudentRegisterResource extends Resource
                                         ->schema([
                                             TextInput::make('emergency_contact_name')
                                                 ->label('Nombre del familiar responsable')
+                                                ->required()
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_relationship')
                                                 ->label('Parentesco o relación')
+                                                ->required()
                                                 ->maxLength(255),
                                             TextInput::make('emergency_contact_phone')
                                                 ->label('Teléfono del familiar responsable')
                                                 ->tel()
+                                                ->required()
                                                 ->maxLength(20),
                                         ]),
                                 ]),
@@ -294,7 +297,7 @@ class StudentRegisterResource extends Resource
                                             // Columna izquierda - Condiciones médicas
                                             Forms\Components\Group::make([
                                                 CheckboxList::make('medical_conditions')
-                                                    ->label('Condiciones médicas que padece *')
+                                                    ->label('Condiciones médicas que padece')
                                                     ->options([
                                                         'Ninguna' => 'Ninguna',
                                                         'Hipertension Arterial' => 'Hipertensión Arterial',
@@ -310,6 +313,10 @@ class StudentRegisterResource extends Resource
                                                         'Otros' => 'Otros',
                                                     ])
                                                     ->columns(1)
+                                                    ->disableOptionWhen(function (string $value, callable $get) {
+                                                        $selected = $get('medical_conditions') ?? [];
+                                                        return in_array('Ninguna', $selected) && $value !== 'Ninguna';
+                                                    })                                                    
                                                     ->reactive(),
 
                                                 CheckboxList::make('allergies')
@@ -327,7 +334,7 @@ class StudentRegisterResource extends Resource
                                                     ->label('Detalle el tipo de alergia')
                                                     ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
 
-                                                TextInput::make('medical_conditions')
+                                                TextInput::make('medical_conditions_other')
                                                     ->label('Especifique otra condición médica')
                                                     ->hidden(fn (callable $get) => !in_array('Otros', $get('medical_conditions') ?? []))
                                                     ->reactive(),
@@ -336,7 +343,7 @@ class StudentRegisterResource extends Resource
                                             // Columna derecha - Operaciones
                                             Forms\Components\Group::make([
                                                 CheckboxList::make('surgical_operations')
-                                                    ->label('Operaciones a las que se ha sometido *')
+                                                    ->label('Operaciones a las que se ha sometido')
                                                     ->options([
                                                         'Ninguna' => 'Ninguna',
                                                         'Al Corazón' => 'Al Corazón',
@@ -348,10 +355,14 @@ class StudentRegisterResource extends Resource
                                                         'Otros' => 'Otros',
                                                     ])
                                                     ->columns(1)
-                                                    ->reactive(),
+                                                    ->reactive()
+                                                    ->disableOptionWhen(function (string $value, callable $get) {
+                                                        $selected = $get('surgical_operations') ?? [];
+                                                        return in_array('Ninguna', $selected) && $value !== 'Ninguna';
+                                                    }),
 
                                                 TextInput::make('surgical_operation_details')
-                                                    ->label('Especificar *')
+                                                    ->label('Especificar')
                                                     ->hidden(fn (callable $get) => !in_array('Otros', $get('surgical_operations') ?? [])),
                                             ]),
                                         ]),
@@ -556,13 +567,13 @@ class StudentRegisterResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->columns([
-                TextColumn::make('first_names')
-                    ->label('Nombres')
-                    ->searchable()
-                    ->sortable(),
+            ->columns([                
                 TextColumn::make('last_names')
                     ->label('Apellidos')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('first_names')
+                    ->label('Nombres')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('student_code')
@@ -570,7 +581,7 @@ class StudentRegisterResource extends Resource
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('document_number')
-                    ->label('Documento')
+                    ->label('DNI')
                     ->searchable(),
                 TextColumn::make('age')
                     ->label('Edad')
@@ -603,57 +614,18 @@ class StudentRegisterResource extends Resource
                         'Hijo de Fundador' => 'H. Fundador',
                         'Vitalicios' => 'Vitalicio',
                         default => $state,
-                    }),
-                TextColumn::make('pricing_info')
-                    ->label('Tarifa')
-                    ->getStateUsing(function (Student $record) {
-                        if ($record->isPaymentExempt()) {
-                            return 'Exento';
-                        }
-
-                        if ($record->category_partner === 'Individual PRE-PAMA' ||
-                            ($record->category_partner === 'Individual' && $record->age < 60)) {
-                            return '+50%';
-                        }
-
-                        return 'Normal';
-                    })
-                    ->badge()
-                    ->color(function (Student $record) {
-                        if ($record->isPaymentExempt()) {
-                            return 'success';
-                        }
-
-                        if ($record->category_partner === 'Individual PRE-PAMA' ||
-                            ($record->category_partner === 'Individual' && $record->age < 60)) {
-                            return 'warning';
-                        }
-
-                        return 'info';
-                    }),
+                    }),                
                 TextColumn::make('monthly_maintenance_paid')
                     ->label('Mantenimiento')
                     ->getStateUsing(fn (Student $record) => $record->monthly_maintenance_paid ? 'Al día' : 'No pagado')
                     ->badge()
                     ->color(fn (Student $record) => $record->monthly_maintenance_paid ? 'success' : 'danger')
-                    ->icon(fn (Student $record) => $record->monthly_maintenance_paid ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle'),
-                TextColumn::make('cell_phone')
-                    ->label('Teléfono')
-                    ->searchable(),
-                TextColumn::make('status')
-                    ->label('Estado')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
-                        'inactive' => 'gray',
-                        'suspended' => 'danger',
-                        default => 'gray',
-                    }),
-                TextColumn::make('enrollments.instructorWorkshop.workshop.name')
+                    ->icon(fn (Student $record) => $record->monthly_maintenance_paid ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle'),                                
+                /* TextColumn::make('enrollments.instructorWorkshop.workshop.name')
                     ->label('Talleres Inscritos')
                     ->badge()
                     ->colors(['info'])
-                    ->wrap(),
+                    ->wrap(), */
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_partner')
@@ -674,11 +646,11 @@ class StudentRegisterResource extends Resource
                     ]),
             ])
             ->headerActions([
-                Action::make('import')
+                /* Action::make('import')
                     ->label('Importar Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn () => static::getUrl('import'))
-                    ->color('primary')
+                    ->color('primary') */
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

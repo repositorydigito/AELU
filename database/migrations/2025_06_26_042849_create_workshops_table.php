@@ -15,7 +15,6 @@ return new class extends Migration
             $table->decimal('standard_monthly_fee', 8, 2);
             $table->decimal('pricing_surcharge_percentage', 5, 2)->default(20.00);
             $table->unsignedBigInteger('instructor_id')->nullable();
-            $table->string('icon')->nullable();
             $table->string('day_of_week')->nullable();
             $table->string('start_time')->nullable();
             $table->integer('duration')->nullable();

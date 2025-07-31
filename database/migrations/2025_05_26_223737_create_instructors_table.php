@@ -5,10 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
+{    
     public function up(): void
     {
         Schema::create('instructors', function (Blueprint $table) {
@@ -19,7 +16,6 @@ return new class extends Migration
             $table->string('document_number')->unique(); 
             $table->date('birth_date')->nullable(); 
             $table->string('nationality')->nullable(); 
-            $table->string('instructor_code')->unique(); 
             $table->string('cell_phone')->nullable(); 
             $table->string('home_phone')->nullable(); 
             $table->string('district')->nullable(); 
@@ -28,10 +24,7 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
+    
     public function down(): void
     {
         Schema::dropIfExists('instructors');

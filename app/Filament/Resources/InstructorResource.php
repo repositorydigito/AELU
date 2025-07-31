@@ -19,13 +19,13 @@ use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Repeater; // Para la lista de talleres en el formulario
-use Filament\Forms\Components\Select; // Para el dropdown de talleres
-use Filament\Forms\Components\TimePicker; // Para la hora
-use Filament\Forms\Components\TextInput; // Importar TextInput para la tarifa
-use Filament\Forms\Components\Radio; // Para tipo de instructor
-use Filament\Forms\Components\Section; // Para organizar el formulario
-use Filament\Forms\Components\Grid; // Para organizar el formulario
+use Filament\Forms\Components\Repeater; 
+use Filament\Forms\Components\Select; 
+use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\TextInput; 
+use Filament\Forms\Components\Radio; 
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Grid; 
 use Filament\Support\RawJs;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Forms\Components\Placeholder;
@@ -106,13 +106,8 @@ class InstructorResource extends Resource
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxLength(20),
                                         ]),
-                                    Grid::make(2)
-                                        ->schema([
-                                            TextInput::make('instructor_code')
-                                                ->label('Código de Profesor')
-                                                ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                ->maxLength(20),
+                                    /* Grid::make(2)
+                                        ->schema([                                            
                                             Select::make('instructor_type')
                                                 ->label('Modalidad de Profesor')
                                                 ->options([
@@ -121,7 +116,7 @@ class InstructorResource extends Resource
                                                 ])
                                                 ->nullable()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio']),
-                                        ]),
+                                        ]), */
                                     Grid::make(2)
                                         ->schema([
                                             TextInput::make('cell_phone')
@@ -147,7 +142,6 @@ class InstructorResource extends Resource
                                         ]),
                                     ]),
                         ]),
-
                     Step::make('Ficha médica')
                         ->schema([
                             Section::make('Ficha Médica')
@@ -218,7 +212,7 @@ class InstructorResource extends Resource
                                             // Columna izquierda - Condiciones médicas
                                             Forms\Components\Group::make([
                                                 CheckboxList::make('medical_conditions')
-                                                    ->label('Condiciones médicas que padece *')
+                                                    ->label('Condiciones médicas que padece')
                                                     ->options([
                                                         'Ninguna' => 'Ninguna',
                                                         'Hipertension Arterial' => 'Hipertensión Arterial',
@@ -234,6 +228,10 @@ class InstructorResource extends Resource
                                                         'Otros' => 'Otros',
                                                     ])
                                                     ->columns(1)
+                                                    ->disableOptionWhen(function (string $value, callable $get) {
+                                                        $selected = $get('medical_conditions') ?? [];
+                                                        return in_array('Ninguna', $selected) && $value !== 'Ninguna';
+                                                    })
                                                     ->reactive(),
 
                                                 CheckboxList::make('allergies')
@@ -251,7 +249,7 @@ class InstructorResource extends Resource
                                                     ->label('Detalle el tipo de alergia')
                                                     ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
 
-                                                TextInput::make('medical_conditions')
+                                                TextInput::make('medical_conditions_other')
                                                     ->label('Especifique otra condición médica')
                                                     ->hidden(fn (callable $get) => !in_array('Otros', $get('medical_conditions') ?? []))
                                                     ->reactive(),
@@ -260,7 +258,7 @@ class InstructorResource extends Resource
                                             // Columna derecha - Operaciones
                                             Forms\Components\Group::make([
                                                 CheckboxList::make('surgical_operations')
-                                                    ->label('Operaciones a las que se ha sometido *')
+                                                    ->label('Operaciones a las que se ha sometido')
                                                     ->options([
                                                         'Ninguna' => 'Ninguna',
                                                         'Al Corazón' => 'Al Corazón',
@@ -272,10 +270,14 @@ class InstructorResource extends Resource
                                                         'Otros' => 'Otros',
                                                     ])
                                                     ->columns(1)
-                                                    ->reactive(),
+                                                    ->reactive()
+                                                    ->disableOptionWhen(function (string $value, callable $get) {
+                                                        $selected = $get('surgical_operations') ?? [];
+                                                        return in_array('Ninguna', $selected) && $value !== 'Ninguna';
+                                                    }),
 
                                                 TextInput::make('surgical_operation_details')
-                                                    ->label('Especificar *')
+                                                    ->label('Especificar')
                                                     ->hidden(fn (callable $get) => !in_array('Otros', $get('surgical_operations') ?? [])),
                                             ]),
                                         ]),
@@ -313,6 +315,125 @@ class InstructorResource extends Resource
                                         ->addActionLabel('Registrar Medicamento')
                                         ->defaultItems(0)
                                         ->itemLabel(fn (array $state): ?string => $state['medicine'] ?? null),
+                                ]),
+                        ]),
+                    Step::make('Talleres y Modalidad de Pago')
+                        ->schema([
+                            Section::make('Configuración de Talleres')
+                                ->description('Configura los talleres que dictará este instructor y su modalidad de pago')
+                                ->schema([
+                                    Repeater::make('instructorWorkshops')
+                                        ->relationship('instructorWorkshops')
+                                        ->label('Talleres')
+                                        ->schema([
+                                            Grid::make(2)
+                                                ->schema([
+                                                    // Columna izquierda - Información del Taller
+                                                    Grid::make(1)
+                                                        ->columnSpan(1)
+                                                        ->schema([
+                                                            Select::make('workshop_id')
+                                                                ->label('Taller')
+                                                                ->options(Workshop::all()->pluck('name', 'id'))
+                                                                ->required()
+                                                                ->searchable()
+                                                                ->reactive(),
+                                                                
+                                                            // Campo de solo lectura para mostrar horarios
+                                                            Placeholder::make('schedule_display')
+                                                                ->label('Horario')
+                                                                ->content(function (callable $get) {
+                                                                    $workshopId = $get('workshop_id');
+                                                                    if (!$workshopId) {
+                                                                        return 'Selecciona un taller para ver el horario';
+                                                                    }
+                                                                    
+                                                                    $workshop = Workshop::find($workshopId);
+                                                                    if (!$workshop) {
+                                                                        return 'Horario no disponible';
+                                                                    }
+                                                                    
+                                                                    // Aquí debes ajustar según la estructura de tu modelo Workshop
+                                                                    // Ejemplo asumiendo que tienes campos day_of_week y start_time
+                                                                    $dayNames = [
+                                                                        'monday' => 'Lunes',
+                                                                        'tuesday' => 'Martes', 
+                                                                        'wednesday' => 'Miércoles',
+                                                                        'thursday' => 'Jueves',
+                                                                        'friday' => 'Viernes',
+                                                                        'saturday' => 'Sábado',
+                                                                        'sunday' => 'Domingo'
+                                                                    ];
+                                                                    
+                                                                    // Opción 1: Si tienes campos day_of_week y start_time
+                                                                    if ($workshop->day_of_week && $workshop->start_time) {
+                                                                        $dayName = $dayNames[$workshop->day_of_week] ?? $workshop->day_of_week;
+                                                                        $time = \Carbon\Carbon::parse($workshop->start_time)->format('h:i A');
+                                                                        return "{$dayName} {$time}";
+                                                                    }                                                                   
+                                                                                                                                        
+                                                                    return 'Horario no configurado';
+                                                                })
+                                                                ->visible(fn (callable $get) => $get('workshop_id')),
+                                                        ]),
+                                                    
+                                                    // Columna derecha - Modalidad de Pago
+                                                    Grid::make(1)
+                                                        ->columnSpan(1)
+                                                        ->schema([
+                                                            Fieldset::make('Modalidad de Pago')
+                                                                ->schema([
+                                                                    Radio::make('payment_type')
+                                                                        ->label('Tipo de Pago')
+                                                                        ->options([
+                                                                            'volunteer' => 'Voluntario',
+                                                                            'hourly' => 'Por Horas',
+                                                                        ])
+                                                                        ->required()
+                                                                        ->reactive()
+                                                                        ->columnSpanFull(),
+                                                                    
+                                                                    // Campos para Modalidad Voluntario
+                                                                    TextInput::make('custom_volunteer_percentage')
+                                                                        ->label('Porcentaje de Pago (%)')
+                                                                        ->numeric()
+                                                                        ->minValue(0)
+                                                                        ->maxValue(100)
+                                                                        ->suffix('%')
+                                                                        ->visible(fn (callable $get) => $get('payment_type') === 'volunteer')
+                                                                        ->required(fn (callable $get) => $get('payment_type') === 'volunteer'),
+                                                                    
+                                                                    // Campos para Modalidad Por Horas
+                                                                    Grid::make(2)
+                                                                        ->schema([
+                                                                            TextInput::make('hourly_rate')
+                                                                                ->label('Tarifa por Hora')
+                                                                                ->prefix('S/')
+                                                                                ->numeric()
+                                                                                ->minValue(0)
+                                                                                ->visible(fn (callable $get) => $get('payment_type') === 'hourly')
+                                                                                ->required(fn (callable $get) => $get('payment_type') === 'hourly'),
+                                                                            
+                                                                            TextInput::make('duration_hours')
+                                                                                ->label('Duración (horas)')
+                                                                                ->numeric()
+                                                                                ->step(0.5)
+                                                                                ->minValue(0.5)
+                                                                                ->suffix('hrs')
+                                                                                ->visible(fn (callable $get) => $get('payment_type') === 'hourly')
+                                                                                ->required(fn (callable $get) => $get('payment_type') === 'hourly'),
+                                                                        ])
+                                                                        ->visible(fn (callable $get) => $get('payment_type') === 'hourly'),                                                                   
+                                                                ]),
+                                                        ]),
+                                                ]),                                           
+                                        ])
+                                        ->columns(2)
+                                        ->addActionLabel('Agregar Taller')
+                                        ->itemLabel(fn (array $state): ?string => 
+                                            Workshop::find($state['workshop_id'])?->name ?? 'Taller'
+                                        )
+                                        ->defaultItems(0),
                                 ]),
                         ]),                    
                     Step::make('Declaración jurada y resumen')
@@ -478,8 +599,8 @@ class InstructorResource extends Resource
             ->columns([
                 TextColumn::make('first_names')->label('Nombres')->searchable(),
                 TextColumn::make('last_names')->label('Apellidos')->searchable(),
-                TextColumn::make('document_number')->label('DNI')->searchable(),
-                TextColumn::make('cell_phone')->label('Teléfono'),                
+                // TextColumn::make('document_number')->label('DNI')->searchable(),
+                // TextColumn::make('cell_phone')->label('Teléfono'),                
                 TextColumn::make('instructorWorkshops.workshop.name') 
                     ->label('Talleres que Imparte')
                     ->listWithLineBreaks() 
