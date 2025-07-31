@@ -7,12 +7,12 @@ use App\Models\WorkshopPricing;
 use Illuminate\Support\Facades\DB;
 
 class WorkshopObserver
-{    
+{
     public function created(Workshop $workshop): void
     {
         $this->syncPricing($workshop);
-    }    
-    
+    }
+
     public function updated(Workshop $workshop): void
     {
         // Regenerar tarifas si cambia la tarifa mensual o el porcentaje de recargo
@@ -30,7 +30,7 @@ class WorkshopObserver
 
             $standardMonthlyFee = $workshop->standard_monthly_fee;
             $surchargePercentage = $workshop->pricing_surcharge_percentage ?? 20.00; // Fallback al 20% si es null
-            
+
             // Calcular el multiplicador de recargo
             $surchargeMultiplier = 1 + ($surchargePercentage / 100);
 
@@ -74,16 +74,6 @@ class WorkshopObserver
                     'for_volunteer_workshop' => false,
                 ]);
             }
-
-            // Log para debugging (opcional)
-            \Log::info("Tarifas generadas para taller: {$workshop->name}", [
-                'standard_monthly_fee' => $standardMonthlyFee,
-                'surcharge_percentage' => $surchargePercentage,
-                'surcharge_multiplier' => $surchargeMultiplier,
-                'base_per_class' => $basePerClass,
-                'volunteer_pricings' => $volunteerPricings,
-                'non_volunteer_pricings' => $nonVolunteerPricings,
-            ]);
         });
     }
 }

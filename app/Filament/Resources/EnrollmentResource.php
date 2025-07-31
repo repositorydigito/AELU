@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Validation\ValidationException;
 
 class EnrollmentResource extends Resource
 {
@@ -109,7 +110,7 @@ class EnrollmentResource extends Resource
                                             foreach ($selectedWorkshops as $workshopId) {
                                                 $workshopDetails[] = [
                                                     'instructor_workshop_id' => $workshopId,
-                                                    'enrollment_type' => 'specific_classes',
+                                                    'enrollment_type' => 'full_month',
                                                     'number_of_classes' => 1,
                                                     'enrollment_date' => now()->format('Y-m-d'),
                                                 ];
@@ -174,17 +175,17 @@ class EnrollmentResource extends Resource
                         ->beforeValidation(function (Forms\Get $get) {
                             $studentId = $get('student_id');
                             if (!$studentId) {
-                                throw new \Filament\Forms\ValidationException(['student_id' => 'Debe seleccionar un estudiante']);
+                                throw ValidationException::withMessages(['student_id' => 'Debe seleccionar un estudiante']);
                             }
 
                             $student = \App\Models\Student::find($studentId);
                             if (!$student || !$student->monthly_maintenance_paid) {
-                                throw new \Filament\Forms\ValidationException(['student_id' => 'El estudiante seleccionado no está al día con el mantenimiento mensual']);
+                                throw ValidationException::withMessages(['student_id' => 'El estudiante seleccionado no está al día con el mantenimiento mensual']);
                             }
 
                             $selectedWorkshops = json_decode($get('selected_workshops') ?? '[]', true);
                             if (empty($selectedWorkshops)) {
-                                throw new \Filament\Forms\ValidationException(['selected_workshops' => 'Debe seleccionar al menos un taller']);
+                                throw ValidationException::withMessages(['selected_workshops' => 'Debe seleccionar al menos un taller']);
                             }
                         })
                         ->schema([
@@ -329,7 +330,7 @@ class EnrollmentResource extends Resource
                         ->beforeValidation(function (Forms\Get $get) {
                             $workshopDetails = $get('workshop_details');
                             if (empty($workshopDetails)) {
-                                throw new \Filament\Forms\ValidationException(['workshop_details' => 'Debe configurar al menos un taller']);
+                                throw ValidationException::withMessages(['workshop_details' => 'Debe configurar al menos un taller']);
                             }
                         })
                         ->schema([
