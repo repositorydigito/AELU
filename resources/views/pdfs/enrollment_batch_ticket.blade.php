@@ -295,7 +295,7 @@
     </div>
     
     <!-- CALENDARIO - SEGUNDA PÁGINA -->
-    <div class="calendar-section">        
+    {{-- <div class="calendar-section">        
 
         <h3>Calendario de clases inscritas</h3>
 
@@ -342,6 +342,6 @@
                 {{ $enrollmentBatch->notes }}
             </div>
         @endif
-    </div>
+    </div> --}}
 </body>
 </html>

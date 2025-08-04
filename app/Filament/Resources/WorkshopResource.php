@@ -307,6 +307,12 @@ class WorkshopResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('start_time')
+                    ->label('Hora de Inicio')
+                    ->time('H:i A'),
+                Tables\Columns\TextColumn::make('end_time')
+                    ->label('Hora de Fin')
+                    ->time('H:i A'),
                 Tables\Columns\TextColumn::make('standard_monthly_fee')
                     ->label('Tarifa Mensual')
                     ->money('PEN')
@@ -322,7 +328,6 @@ class WorkshopResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
                 Tables\Actions\Action::make('view_pricings')

@@ -36,7 +36,7 @@ class EnrollmentResource extends Resource
                                 ->label('Estudiante')
                                 ->relationship('student', 'first_names')
                                 ->getOptionLabelFromRecordUsing(fn ($record) =>
-                                    "{$record->first_names} {$record->last_names} - {$record->student_code}"
+                                    "{$record->last_names} {$record->first_names} - {$record->student_code}"
                                 )
                                 ->searchable(['first_names', 'last_names', 'student_code'])
                                 ->preload()
