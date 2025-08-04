@@ -281,7 +281,7 @@ class EnrollmentBatchResource extends Resource
                     ->icon('heroicon-o-document-arrow-down')
                     ->url(fn (EnrollmentBatch $record): string => route('enrollment.batch.ticket', ['batchId' => $record->id]))
                     ->openUrlInNewTab()
-                    ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'completed')
+                    ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'completed' && $record->payment_method === 'cash')
                     ->color('success'),
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')

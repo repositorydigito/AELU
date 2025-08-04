@@ -205,7 +205,7 @@ class CreateEnrollment extends CreateRecord
             // Pago con link - Estado: En Proceso
             Notification::make()
                 ->title('¡Inscripciones en proceso!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: En Proceso. El ticket PDF se generará cuando se confirme el pago.")
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: En Proceso.")
                 ->warning()
                 ->send();
         }

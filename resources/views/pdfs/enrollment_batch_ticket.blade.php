@@ -260,10 +260,11 @@
                         ];
                         $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'día ' . $workshop->day_of_week;
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('g:i a.');
+                        $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('g:i a.');
                     @endphp
                     <tr>
                         <td style="text-align: left;">{{ strtoupper($workshop->workshop->name) }}</td>
-                        <td>{{ $dayInSpanish }}<br>{{ $startTime }}</td>
+                        <td>{{ $dayInSpanish }}<br>{{ $startTime }} - {{ $endTime }}</td>
                         <td>{{ $enrollment->number_of_classes }}</td>
                         <td>{{ number_format($enrollment->total_amount, 2) }}</td>
                     </tr>

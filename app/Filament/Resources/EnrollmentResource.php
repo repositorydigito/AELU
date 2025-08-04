@@ -496,11 +496,13 @@ class EnrollmentResource extends Resource
                                             Forms\Components\DatePicker::make('payment_due_date')
                                                 ->label('Fecha Límite de Pago')
                                                 ->helperText('Fecha límite para realizar el pago')
+                                                ->disabled(fn (Forms\Get $get): bool => $get('payment_method') === 'cash')
                                                 ->placeholder('Seleccionar fecha límite'),
 
                                             Forms\Components\DatePicker::make('payment_date')
                                                 ->label('Fecha de Pago')
                                                 ->helperText('Fecha en que se realizó el pago')
+                                                ->disabled(fn (Forms\Get $get): bool => $get('payment_method') === 'cash')
                                                 ->placeholder('Seleccionar fecha de pago'),
                                         ]),
 
@@ -511,6 +513,7 @@ class EnrollmentResource extends Resource
                                         ->maxSize(5120) // 5MB
                                         ->directory('payment-documents')
                                         ->visibility('private')
+                                        ->disabled(fn (Forms\Get $get): bool => $get('payment_method') === 'cash')
                                         ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
@@ -682,7 +685,7 @@ class EnrollmentResource extends Resource
                     ->icon('heroicon-o-document-arrow-down')
                     ->url(fn (StudentEnrollment $record): string => route('enrollment.ticket', ['enrollmentId' => $record->id]))
                     ->openUrlInNewTab()
-                    ->visible(fn (StudentEnrollment $record): bool => $record->payment_status === 'completed')
+                    ->visible(fn (StudentEnrollment $record): bool => $record->payment_status === 'completed' && $record->payment_method === 'cash')
                     ->color('success'),
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
