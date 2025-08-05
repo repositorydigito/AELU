@@ -84,6 +84,35 @@ class CreateEnrollment extends CreateRecord
                 continue;
             }
 
+            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($detail['instructor_workshop_id']);
+            if (!$instructorWorkshop) {
+                continue;
+            }
+
+            // Contar estudiantes ya inscritos en este taller para el período seleccionado
+            $currentEnrollments = \App\Models\StudentEnrollment::where('instructor_workshop_id', $detail['instructor_workshop_id'])
+                ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                ->where('payment_status', 'completed')
+                ->distinct('student_id')
+                ->count('student_id');
+
+            $capacity = $instructorWorkshop->workshop->capacity ?? 0;
+            $availableSpots = $capacity - $currentEnrollments;
+
+            // Si no hay cupos disponibles, mostrar error y saltar este taller
+            if ($availableSpots <= 0) {
+                $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
+                
+                Notification::make()
+                    ->title('Cupos agotados')
+                    ->body("El taller '{$instructorWorkshop->workshop->name}' ya no tiene cupos disponibles para {$monthName}. Cupos: {$currentEnrollments}/{$capacity}")
+                    ->danger()
+                    ->send();
+
+                $skippedWorkshops[] = "Sin cupos: {$instructorWorkshop->workshop->name} - {$monthName}";
+                continue; // Saltar este taller
+            }
+
             // 🔥 VALIDACIÓN DE DUPLICADOS USANDO EL PERÍODO SELECCIONADO
             $existingEnrollment = \App\Models\StudentEnrollment::where('student_id', $data['student_id'])
                 ->where('instructor_workshop_id', $detail['instructor_workshop_id'])

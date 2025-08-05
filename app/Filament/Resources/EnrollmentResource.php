@@ -94,6 +94,42 @@ class EnrollmentResource extends Resource
                                 })
                                 ->columnSpanFull(),
 
+                            Forms\Components\Select::make('selected_monthly_period_id')
+                                ->label('Período Mensual')
+                                ->options(function () {
+                                    $currentDate = now();
+                                    $nextDate = now()->addMonth();
+
+                                    $options = [];
+
+                                    // Buscar período del mes actual
+                                    $currentPeriod = \App\Models\MonthlyPeriod::where('year', $currentDate->year)
+                                        ->where('month', $currentDate->month)
+                                        ->first();
+
+                                    if ($currentPeriod) {
+                                        $options[$currentPeriod->id] = $currentDate->translatedFormat('F Y');
+                                    }
+
+                                    // Buscar período del próximo mes
+                                    $nextPeriod = \App\Models\MonthlyPeriod::where('year', $nextDate->year)
+                                        ->where('month', $nextDate->month)
+                                        ->first();
+
+                                    if ($nextPeriod) {
+                                        $options[$nextPeriod->id] = $nextDate->translatedFormat('F Y');
+                                    }
+
+                                    return $options;
+                                })                                
+                                ->required()
+                                ->live() 
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    // Limpiar talleres seleccionados cuando cambie el período
+                                    $set('selected_workshops', '[]');
+                                })
+                                ->columnSpanFull(),
+
                             // Separador visual
                             Forms\Components\Section::make('Catálogo de Talleres')
                                 ->description('Selecciona los talleres en los que deseas inscribir al estudiante')
@@ -126,11 +162,33 @@ class EnrollmentResource extends Resource
                                         ->viewData(function (Forms\Get $get) {
                                             $studentId = $get('student_id');
                                             $selectedWorkshops = json_decode($get('selected_workshops') ?? '[]', true);
+                                            $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
 
                                             // Obtener todos los talleres disponibles
                                             $workshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                 ->get()
-                                                ->map(function ($instructorWorkshop) use ($selectedWorkshops) {
+                                                ->map(function ($instructorWorkshop) use ($selectedWorkshops, $selectedMonthlyPeriodId) {
+
+                                                    // CALCULAR CUPOS DISPONIBLES
+                                                    $capacity = $instructorWorkshop->max_capacity ?? $instructorWorkshop->workshop->capacity ?? 0;
+                                                    $currentEnrollments = 0;
+                                                    $availableSpots = $capacity;
+
+                                                    // Si hay período seleccionado, calcular inscripciones actuales
+                                                    if ($selectedMonthlyPeriodId) {
+                                                        $currentEnrollments = \App\Models\StudentEnrollment::where('instructor_workshop_id', $instructorWorkshop->id)
+                                                            ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                                                            ->whereIn('payment_status', ['completed', 'pending'])
+                                                            ->distinct('student_id')
+                                                            ->count();
+
+                                                        \Log::info("Workshop {$instructorWorkshop->workshop->name} (ID: {$instructorWorkshop->id}): {$currentEnrollments}/{$capacity}");
+                                                        
+                                                        $availableSpots = $capacity - $currentEnrollments;
+                                                        
+                                                        \Log::info("Workshop Debug - {$instructorWorkshop->workshop->name}: {$currentEnrollments}/{$capacity} = {$availableSpots} disponibles");
+                                                    }
+
                                                     // Convertir día de la semana (número) a texto en español
                                                     $dayNames = [
                                                         1 => 'Lunes',
@@ -155,6 +213,10 @@ class EnrollmentResource extends Resource
                                                         'price' => $instructorWorkshop->workshop->standard_monthly_fee,
                                                         'max_classes' => $instructorWorkshop->workshop->number_of_classes,
                                                         'selected' => in_array($instructorWorkshop->id, $selectedWorkshops),
+                                                        'capacity' => $capacity,
+                                                        'current_enrollments' => $currentEnrollments,
+                                                        'available_spots' => $availableSpots,
+                                                        'is_full' => $availableSpots <= 0,
                                                     ];
                                                 });
 
@@ -164,6 +226,7 @@ class EnrollmentResource extends Resource
                                             ];
                                         })
                                         ->live()
+                                        ->key(fn (Forms\Get $get) => 'workshops_' . $get('selected_monthly_period_id') . '_' . now()->timestamp)
                                         ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
@@ -187,9 +250,14 @@ class EnrollmentResource extends Resource
                             if (empty($selectedWorkshops)) {
                                 throw ValidationException::withMessages(['selected_workshops' => 'Debe seleccionar al menos un taller']);
                             }
+
+                            $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
+                            if (!$selectedMonthlyPeriodId) {
+                                throw ValidationException::withMessages(['selected_monthly_period_id' => 'Debe seleccionar un período mensual']);
+                            }
                         })
                         ->schema([
-                            Forms\Components\Select::make('selected_monthly_period_id')
+                            /* Forms\Components\Select::make('selected_monthly_period_id')
                                 ->label('Período Mensual')
                                 ->options(function () {
                                     $currentDate = now();
@@ -216,17 +284,9 @@ class EnrollmentResource extends Resource
                                     }
 
                                     return $options;
-                                })
-                                /* ->default(function () {
-                                    // Pre-seleccionar el próximo mes
-                                    $nextDate = now()->addMonth();
-                                    $nextPeriod = \App\Models\MonthlyPeriod::where('year', $nextDate->year)
-                                        ->where('month', $nextDate->month)
-                                        ->first();
-                                    return $nextPeriod?->id;
-                                }) */
+                                })                                
                                 ->required()
-                                ->columnSpanFull(),
+                                ->columnSpanFull(), */
 
                             Forms\Components\Repeater::make('workshop_details')
                                 ->label('Detalles de los Talleres Seleccionados')
@@ -346,8 +406,14 @@ class EnrollmentResource extends Resource
                                                 return 'No hay talleres seleccionados';
                                             }
 
+                                            // 🔥 OBTENER INFORMACIÓN DEL ESTUDIANTE PARA VERIFICAR SI ES PRE-PAMA
+                                            $studentId = $get('student_id');
+                                            $student = \App\Models\Student::find($studentId);
+                                            $isPrepama = $student && $student->category_partner === 'Individual PRE-PAMA';
+
                                             $html = '<div class="space-y-4">';
                                             $subtotal = 0;
+                                            $prepamaTotal = 0; // 🔥 NUEVO: Total del recargo PRE-PAMA
 
                                             foreach ($workshopDetails as $detail) {
                                                 $workshopId = $detail['instructor_workshop_id'] ?? null;
@@ -361,14 +427,20 @@ class EnrollmentResource extends Resource
 
                                                 if (!$instructorWorkshop) continue;
 
-                                                // Obtener el precio desde workshop_pricings
+                                                // Obtener el precio base desde workshop_pricings
                                                 $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
                                                     ->where('number_of_classes', $numberOfClasses)
-                                                    ->where('for_volunteer_workshop', false) // Asumiendo que no es voluntario por defecto
+                                                    ->where('for_volunteer_workshop', false)
                                                     ->first();
 
-                                                $price = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
-                                                $subtotal += $price;
+                                                $basePrice = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
+                                                
+                                                // 🔥 CALCULAR RECARGO PRE-PAMA
+                                                $prepamaCharge = $isPrepama ? ($basePrice * 0.5) : 0;
+                                                $finalPrice = $basePrice + $prepamaCharge;
+                                                
+                                                $subtotal += $basePrice;
+                                                $prepamaTotal += $prepamaCharge;
 
                                                 // Convertir día de la semana
                                                 $dayNames = [
@@ -381,6 +453,12 @@ class EnrollmentResource extends Resource
                                                 $typeLabel = $enrollmentType === 'full_month' ? 'Regular' : 'Recuperación';
                                                 $classesLabel = $numberOfClasses . ($numberOfClasses === 1 ? ' clase' : ' clases');
 
+                                                // 🔥 MOSTRAR INFORMACIÓN DEL RECARGO SI APLICA
+                                                $priceInfo = "S/ " . number_format($basePrice, 2);
+                                                if ($isPrepama && $prepamaCharge > 0) {
+                                                    $priceInfo = "S/ " . number_format($basePrice, 2) . " + S/ " . number_format($prepamaCharge, 2) . " (PRE-PAMA) = S/ " . number_format($finalPrice, 2);
+                                                }
+
                                                 $html .= "
                                                     <div class='bg-green-50 border border-green-200 rounded-lg p-4'>
                                                         <div class='flex justify-between items-start'>
@@ -392,12 +470,14 @@ class EnrollmentResource extends Resource
                                                                 </p>
                                                             </div>
                                                             <div class='text-right'>
-                                                                <p class='font-bold text-green-800'>S/ " . number_format($price, 2) . "</p>
+                                                                <p class='font-bold text-green-800'>{$priceInfo}</p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 ";
                                             }
+
+                                            $totalFinal = $subtotal + $prepamaTotal;
 
                                             $html .= "
                                                 <div class='border-t pt-4 mt-4'>
@@ -407,55 +487,67 @@ class EnrollmentResource extends Resource
                                                                 <span>Sub Total Ventas</span>
                                                                 <span>S/ " . number_format($subtotal, 2) . "</span>
                                                             </div>
-                                                            <div class='flex justify-between text-sm text-gray-600'>
+                                                            <div class='flex justify-between text-sm " . ($prepamaTotal > 0 ? 'text-orange-600 font-medium' : 'text-gray-600') . "'>
                                                                 <span>Recargo PRE-PAMA 50%</span>
-                                                                <span>0.00</span>
+                                                                <span>S/ " . number_format($prepamaTotal, 2) . "</span>
                                                             </div>
                                                             <div class='flex justify-between text-sm text-gray-600'>
                                                                 <span>Anticipos</span>
-                                                                <span>0.00</span>
+                                                                <span>S/ 0.00</span>
                                                             </div>
                                                             <div class='flex justify-between text-sm text-gray-600'>
                                                                 <span>Descuentos</span>
-                                                                <span>0.00</span>
+                                                                <span>S/ 0.00</span>
                                                             </div>
                                                             <div class='flex justify-between font-semibold border-t pt-2'>
                                                                 <span>Valor Venta</span>
-                                                                <span>S/ " . number_format($subtotal, 2) . "</span>
+                                                                <span>S/ " . number_format($totalFinal, 2) . "</span>
                                                             </div>
                                                             <div class='flex justify-between text-sm text-gray-600'>
                                                                 <span>IGV</span>
-                                                                <span>0.00</span>
+                                                                <span>S/ 0.00</span>
                                                             </div>
                                                             <div class='flex justify-between text-sm text-gray-600'>
                                                                 <span>Otros Cargos</span>
-                                                                <span>0.00</span>
+                                                                <span>S/ 0.00</span>
                                                             </div>
                                                             <div class='flex justify-between text-sm text-gray-600'>
                                                                 <span>Otros Tributos</span>
-                                                                <span>0.00</span>
+                                                                <span>S/ 0.00</span>
                                                             </div>
                                                             <div class='flex justify-between text-sm text-gray-600'>
                                                                 <span>Monto de Redondeo</span>
-                                                                <span>0.00</span>
+                                                                <span>S/ 0.00</span>
                                                             </div>
                                                             <div class='flex justify-between text-lg font-bold border-t pt-2 text-blue-800'>
                                                                 <span>Importe Total</span>
-                                                                <span>S/ " . number_format($subtotal, 2) . "</span>
+                                                                <span>S/ " . number_format($totalFinal, 2) . "</span>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            ";
+                                                    </div>";
 
-                                            $html .= '</div>';
+                                            // 🔥 AGREGAR NOTA INFORMATIVA SI ES PRE-PAMA
+                                            if ($isPrepama && $prepamaTotal > 0) {
+                                                $html .= "
+                                                    <div class='mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg'>
+                                                        <div class='flex items-center'>
+                                                            <svg class='w-5 h-5 text-orange-500 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                                                <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'></path>
+                                                            </svg>
+                                                            <div>
+                                                                <p class='text-sm font-medium text-orange-800'>Estudiante PRE-PAMA</p>
+                                                                <p class='text-xs text-orange-700'>Se ha aplicado un recargo adicional del 50% según la categoría del estudiante.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>";
+                                            }
+
+                                            $html .= "</div></div>";
 
                                             return new \Illuminate\Support\HtmlString($html);
                                         })
                                         ->columnSpanFull(),
-                                ])
-                                ->columnSpanFull(),
-
+                                ]),                
                             // Selección de método de pago
                             Forms\Components\Section::make('Seleccionar medio de pago')
                                 ->schema([
