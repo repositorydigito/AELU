@@ -319,7 +319,6 @@
                 <p class="text-sm">Contacta al administrador para crear talleres</p>
             </div>
         @endif
-    @endif
 
     <input type="hidden" 
            name="selected_workshops" 
