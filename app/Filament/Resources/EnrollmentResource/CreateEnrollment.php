@@ -102,7 +102,7 @@ class CreateEnrollment extends CreateRecord
             // Si no hay cupos disponibles, mostrar error y saltar este taller
             if ($availableSpots <= 0) {
                 $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
-                
+
                 Notification::make()
                     ->title('Cupos agotados')
                     ->body("El taller '{$instructorWorkshop->workshop->name}' ya no tiene cupos disponibles para {$monthName}. Cupos: {$currentEnrollments}/{$capacity}")
@@ -165,7 +165,7 @@ class CreateEnrollment extends CreateRecord
             $validWorkshopDetails[] = $detail;
         }
 
-        if (empty($validWorkshopDetails)) {
+        /* if (empty($validWorkshopDetails)) {
             Notification::make()
                 ->title('Error')
                 ->body('No se pudo crear ninguna inscripción.')
@@ -173,7 +173,7 @@ class CreateEnrollment extends CreateRecord
                 ->send();
 
             throw new \Exception('No se crearon inscripciones');
-        }
+        } */
 
         // Crear el lote de inscripciones
         $enrollmentBatch = \App\Models\EnrollmentBatch::create([

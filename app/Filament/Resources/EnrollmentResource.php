@@ -121,13 +121,15 @@ class EnrollmentResource extends Resource
                                     }
 
                                     return $options;
-                                })                                
-                                ->required()
-                                ->live() 
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                    // Limpiar talleres seleccionados cuando cambie el período
-                                    $set('selected_workshops', '[]');
                                 })
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    // Limpiar talleres seleccionados y detalles cuando cambie el período
+                                    $set('selected_workshops', '[]');
+                                    $set('workshop_details', []);
+                                })
+                                ->validationMessages(['required' => 'El período mensual es obligatorio.'])
                                 ->columnSpanFull(),
 
                             // Separador visual
@@ -182,10 +184,8 @@ class EnrollmentResource extends Resource
                                                             ->distinct('student_id')
                                                             ->count();
 
-                                                        \Log::info("Workshop {$instructorWorkshop->workshop->name} (ID: {$instructorWorkshop->id}): {$currentEnrollments}/{$capacity}");
-                                                        
                                                         $availableSpots = $capacity - $currentEnrollments;
-                                                        
+
                                                         \Log::info("Workshop Debug - {$instructorWorkshop->workshop->name}: {$currentEnrollments}/{$capacity} = {$availableSpots} disponibles");
                                                     }
 
@@ -284,7 +284,7 @@ class EnrollmentResource extends Resource
                                     }
 
                                     return $options;
-                                })                                
+                                })
                                 ->required()
                                 ->columnSpanFull(), */
 
@@ -434,11 +434,11 @@ class EnrollmentResource extends Resource
                                                     ->first();
 
                                                 $basePrice = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
-                                                
+
                                                 // 🔥 CALCULAR RECARGO PRE-PAMA
                                                 $prepamaCharge = $isPrepama ? ($basePrice * 0.5) : 0;
                                                 $finalPrice = $basePrice + $prepamaCharge;
-                                                
+
                                                 $subtotal += $basePrice;
                                                 $prepamaTotal += $prepamaCharge;
 
@@ -547,7 +547,7 @@ class EnrollmentResource extends Resource
                                             return new \Illuminate\Support\HtmlString($html);
                                         })
                                         ->columnSpanFull(),
-                                ]),                
+                                ]),
                             // Selección de método de pago
                             Forms\Components\Section::make('Seleccionar medio de pago')
                                 ->schema([

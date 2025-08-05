@@ -79,6 +79,9 @@ class WorkshopResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->required(),
+                        Forms\Components\TextInput::make('place')
+                            ->label('Lugar')
+                            ->nullable(),
                     ])
                     ->columns(3),
                 Forms\Components\Section::make('Vista Previa de Tarifas')
@@ -322,6 +325,8 @@ class WorkshopResource extends Resource
                     ->formatStateUsing(fn($state) => $state . '%')
                     ->sortable()
                     ->color('info'),
+                Tables\Columns\TextColumn::make('place')
+                    ->label('Lugar'),
             ])
             ->defaultSort('name', 'asc')
             ->filters([

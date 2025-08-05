@@ -16,11 +16,11 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class EnrollmentBatchResource extends Resource
 {
     protected static ?string $model = EnrollmentBatch::class;
-    protected static ?string $navigationLabel = 'Inscripciones'; 
-    protected static ?string $pluralModelLabel = 'Inscripciones'; 
-    protected static ?string $modelLabel = 'Inscripción';    
-    protected static ?int $navigationSort = 4; 
-    protected static ?string $navigationGroup = 'Gestión'; 
+    protected static ?string $navigationLabel = 'Inscripciones';
+    protected static ?string $pluralModelLabel = 'Inscripciones';
+    protected static ?string $modelLabel = 'Inscripción';
+    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationGroup = 'Gestión';
     protected static ?string $navigationIcon = 'heroicon-o-pencil-square';
 
     public static function form(Form $form): Form
@@ -32,24 +32,24 @@ class EnrollmentBatchResource extends Resource
                         Forms\Components\Select::make('student_id')
                             ->label('Estudiante')
                             ->relationship('student', 'first_names')
-                            ->getOptionLabelFromRecordUsing(fn ($record) => 
+                            ->getOptionLabelFromRecordUsing(fn ($record) =>
                                 "{$record->first_names} {$record->last_names}"
                             )
                             ->searchable(['first_names', 'last_names'])
                             ->required()
                             ->disabled(),
-                        
+
                         Forms\Components\DatePicker::make('enrollment_date')
                             ->label('Fecha de Inscripción')
                             ->required()
                             ->disabled(),
-                        
+
                         Forms\Components\TextInput::make('total_amount')
                             ->label('Monto Total')
                             ->numeric()
                             ->prefix('S/')
                             ->disabled(),
-                        
+
                         Forms\Components\Select::make('payment_method')
                             ->label('Método de Pago')
                             ->options([
@@ -69,13 +69,13 @@ class EnrollmentBatchResource extends Resource
                                 'refunded' => 'Devuelto',
                             ])
                             ->required(),
-                        
+
                         Forms\Components\Textarea::make('notes')
                             ->label('Notas')
                             ->rows(3),
                     ])
                     ->columns(2),
-                
+
                 Forms\Components\Section::make('Información de Pago Adicional')
                     ->description('Gestiona fechas y documentos de pago')
                     ->schema([
@@ -84,12 +84,12 @@ class EnrollmentBatchResource extends Resource
                                 Forms\Components\DatePicker::make('payment_due_date')
                                     ->label('Fecha Límite de Pago')
                                     ->helperText('Fecha límite para realizar el pago'),
-                                
+
                                 Forms\Components\DatePicker::make('payment_date')
                                     ->label('Fecha de Pago')
                                     ->helperText('Fecha en que se realizó el pago'),
                             ]),
-                        
+
                         Forms\Components\FileUpload::make('payment_document')
                             ->label('Documento de Pago')
                             ->helperText('Subir comprobante de pago (PDF o imagen)')
@@ -100,7 +100,7 @@ class EnrollmentBatchResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                
+
                 Forms\Components\Section::make('Talleres Inscritos')
                     ->schema([
                         Forms\Components\Repeater::make('enrollments')
@@ -118,12 +118,12 @@ class EnrollmentBatchResource extends Resource
                                         ];
                                         $dayInSpanish = $dayNames[$record->day_of_week] ?? 'Día ' . $record->day_of_week;
                                         $startTime = \Carbon\Carbon::parse($record->start_time)->format('H:i');
-                                        
+
                                         return "{$record->workshop->name} - {$dayInSpanish} {$startTime}";
                                     })
                                     ->required()
                                     ->disabled(),
-                                
+
                                 Forms\Components\Select::make('enrollment_type')
                                     ->label('Tipo')
                                     ->options([
@@ -132,13 +132,13 @@ class EnrollmentBatchResource extends Resource
                                     ])
                                     ->required()
                                     ->disabled(),
-                                
+
                                 Forms\Components\TextInput::make('number_of_classes')
                                     ->label('Clases')
                                     ->numeric()
                                     ->required()
                                     ->disabled(),
-                                
+
                                 Forms\Components\TextInput::make('total_amount')
                                     ->label('Subtotal')
                                     ->numeric()
@@ -162,32 +162,32 @@ class EnrollmentBatchResource extends Resource
                     ->label('Estudiante')
                     ->searchable(['student.first_names', 'student.last_names'])
                     ->sortable()
-                    ->formatStateUsing(fn ($record) => 
+                    ->formatStateUsing(fn ($record) =>
                         $record->student->first_names . ' ' . $record->student->last_names
                     ),
-                
+
                 Tables\Columns\TextColumn::make('workshops_list')
                     ->label('Talleres')
                     ->limit(50)
                     ->tooltip(function (EnrollmentBatch $record): ?string {
                         return $record->workshops_list;
                     }),
-                
+
                 Tables\Columns\TextColumn::make('workshops_count')
                     ->label('Cantidad')
                     ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Taller' : ' Talleres'))
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('total_classes')
                     ->label('Total Clases')
                     ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Clase' : ' Clases'))
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('enrollment_date')
                     ->label('Fecha de Inscripción')
                     ->date('d/m/Y')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_status')
                     ->label('Estado de Pago')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -208,7 +208,7 @@ class EnrollmentBatchResource extends Resource
                         default => 'gray',
                     })
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_method')
                     ->label('Método de Pago')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -217,18 +217,18 @@ class EnrollmentBatchResource extends Resource
                         default => $state,
                     })
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Total')
-                    ->money('PEN')
+                    ->prefix('S/')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_due_date')
                     ->label('Fecha Límite')
                     ->date('d/m/Y')
                     ->placeholder('No definida')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('payment_date')
                     ->label('Fecha de Pago')
                     ->date('d/m/Y')
@@ -245,14 +245,14 @@ class EnrollmentBatchResource extends Resource
                         'credit_favor' => 'Crédito a Favor',
                         'refunded' => 'Devuelto',
                     ]),
-                
+
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->label('Método de Pago')
                     ->options([
                         'cash' => 'Efectivo',
                         'link' => 'Link de Pago',
                     ]),
-                
+
                 Tables\Filters\Filter::make('enrollment_date')
                     ->label('Fecha de Inscripción')
                     ->form([
