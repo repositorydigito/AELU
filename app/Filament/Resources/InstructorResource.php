@@ -355,7 +355,7 @@ class InstructorResource extends Resource
 
                                                                     // Aquí debes ajustar según la estructura de tu modelo Workshop
                                                                     // Ejemplo asumiendo que tienes campos day_of_week y start_time
-                                                                    $dayNames = [
+                                                                    /* $dayNames = [
                                                                         'monday' => 'Lunes',
                                                                         'tuesday' => 'Martes',
                                                                         'wednesday' => 'Miércoles',
@@ -370,6 +370,13 @@ class InstructorResource extends Resource
                                                                         $dayName = $dayNames[$workshop->day_of_week] ?? $workshop->day_of_week;
                                                                         $time = \Carbon\Carbon::parse($workshop->start_time)->format('h:i A');
                                                                         return "{$dayName} {$time}";
+                                                                    } */
+
+                                                                    if ($workshop->day_of_week && $workshop->start_time) {
+                                                                        $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i A');
+                                                                        $endTime = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i A') : 'N/A';
+                                                                        
+                                                                        return "{$workshop->day_of_week}: {$startTime} - {$endTime}";
                                                                     }
 
                                                                     return 'Horario no configurado';
@@ -598,22 +605,64 @@ class InstructorResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('last_names')->label('Apellidos')->searchable(),
-                TextColumn::make('first_names')->label('Nombres')->searchable(),
-                // TextColumn::make('document_number')->label('DNI')->searchable(),
-                // TextColumn::make('cell_phone')->label('Teléfono'),
-                TextColumn::make('instructorWorkshops.workshop.name')
-                    ->label('Talleres que Imparte')
-                    ->listWithLineBreaks()
-                    ->limit(50)
+                TextColumn::make('first_names')->label('Nombres')->searchable(),                
+                                
+                TextColumn::make('unique_workshops')
+                    ->label('Talleres')
+                    ->getStateUsing(function (Instructor $record) {
+                        return $record->instructorWorkshops
+                            ->groupBy('workshop.name')
+                            ->keys()
+                            ->toArray();
+                    })
+                    ->badge()
+                    ->separator(',')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('instructorWorkshops.workshop', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        });
+                    })
                     ->tooltip(function (Instructor $record) {
-                        return $record->instructorWorkshops->map(function ($iw) {
-                            // Asegura que workshop y tiempos existen antes de intentar acceder a ellos
-                            $workshopName = $iw->workshop->name ?? 'Taller desconocido';
-                            $startTime = $iw->start_time ? \Carbon\Carbon::parse($iw->start_time)->format('H:i') : 'N/A';
-                            $endTime = $iw->end_time ? \Carbon\Carbon::parse($iw->end_time)->format('H:i') : 'N/A';
-                            $dayOfWeek = $iw->day_of_week ?? 'N/A';
-                            return $workshopName . ' (' . $dayOfWeek . ' ' . $startTime . '-' . $endTime . ')';
-                        })->implode("\n");
+                        return $record->instructorWorkshops
+                            ->groupBy('workshop.name')
+                            ->map(function ($workshops, $workshopName) {
+                                $schedules = $workshops->map(function ($iw) {
+                                    $workshop = $iw->workshop;
+                                    if (!$workshop) return 'Horario no disponible';
+                                    
+                                    $startTime = $workshop->start_time ? 
+                                        \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
+                                    $endTime = $workshop->end_time ? 
+                                        \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
+                                    $day = $workshop->day_of_week ?? 'N/A';
+                                    
+                                    return "{$day} {$startTime}-{$endTime}";
+                                })->unique()->implode(', ');
+                                
+                                return "{$workshopName}: {$schedules}";
+                            })
+                            ->implode("\n");
+                    }),
+
+                TextColumn::make('total_schedules')
+                    ->label('Horarios')
+                    ->getStateUsing(function (Instructor $record) {
+                        $totalSchedules = $record->instructorWorkshops->count();
+                        return $totalSchedules . ($totalSchedules === 1 ? ' horario' : ' horarios');
+                    })
+                    ->badge()
+                    ->color(function (Instructor $record) {
+                        $count = $record->instructorWorkshops->count();
+                        return match (true) {
+                            $count === 0 => 'gray',
+                            $count === 1 => 'success',
+                            $count <= 3 => 'warning',
+                            default => 'danger'
+                        };
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->withCount('instructorWorkshops')
+                            ->orderBy('instructor_workshops_count', $direction);
                     }),
             ])
             ->filters([

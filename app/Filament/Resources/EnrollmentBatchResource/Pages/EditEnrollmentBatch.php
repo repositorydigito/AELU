@@ -47,4 +47,9 @@ class EditEnrollmentBatch extends EditRecord
         
         return $record;
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return EnrollmentBatchResource::getUrl('index');
+    }
 }

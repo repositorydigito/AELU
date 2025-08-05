@@ -10,7 +10,6 @@ use App\Models\MonthlyInstructorRate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
-// Este observer se utiliza para crear InstructorPayments cuando se crean,actualizan o eliminan StudentEnrollments.
 class StudentEnrollmentObserver
 {
     public function created(StudentEnrollment $studentEnrollment): void
@@ -60,47 +59,28 @@ class StudentEnrollmentObserver
         $appliedVolunteerPercentage = null;
 
         if ($instructorWorkshop->payment_type == 'volunteer') {
-            // 🎯 LÓGICA PARA INSTRUCTORES VOLUNTARIOS CON ESTUDIANTES EXENTOS
+            // 🎯 LÓGICA PARA INSTRUCTORES VOLUNTARIOS
 
             // Determinar el porcentaje a aplicar
             $appliedVolunteerPercentage = $instructorWorkshop->custom_volunteer_percentage ?? 0.5000;
 
-            // 🔥 NUEVA LÓGICA CORREGIDA:
-            // TODOS los estudiantes pagan por talleres, solo aplicar descuento del 50% a 'Individual PRE-PAMA'
-            $enrollments = DB::table('student_enrollments')
-                ->join('students', 'student_enrollments.student_id', '=', 'students.id')
-                ->where('student_enrollments.instructor_workshop_id', $instructorWorkshopId)
-                ->where('student_enrollments.monthly_period_id', $monthlyPeriodId)
-                ->select(
-                    'student_enrollments.total_amount',
-                    'students.category_partner',
-                    'students.first_names',
-                    'students.last_names'
-                )
-                ->get();
+            // 🔥 LÓGICA SIMPLIFICADA: Sumar todos los ingresos sin descuentos
+            // Los estudiantes PRE-PAMA ya pagaron el 50% adicional en la inscripción
+            $monthlyRevenue = DB::table('student_enrollments')
+                ->where('instructor_workshop_id', $instructorWorkshopId)
+                ->where('monthly_period_id', $monthlyPeriodId)
+                ->sum('total_amount');
 
-            $monthlyRevenue = 0;
-            $regularStudents = 0;
-            $prepmaStudents = 0;
+            $totalStudents = DB::table('student_enrollments')
+                ->where('instructor_workshop_id', $instructorWorkshopId)
+                ->where('monthly_period_id', $monthlyPeriodId)
+                ->distinct('student_id')
+                ->count('student_id');
 
-            foreach ($enrollments as $enrollment) {
-                if ($enrollment->category_partner === 'Individual PRE-PAMA') {
-                    // Estudiantes PRE-PAMA pagan el 50% del precio normal
-                    $monthlyRevenue += $enrollment->total_amount * 1.5;
-                    $prepmaStudents++;
-                } else {
-                    // Todos los demás estudiantes pagan el precio completo
-                    $monthlyRevenue += $enrollment->total_amount;
-                    $regularStudents++;
-                }
-            }
-
-            $totalStudents = $regularStudents + $prepmaStudents;
             $calculatedAmount = $monthlyRevenue * $appliedVolunteerPercentage;
 
             // Campo original para auditoría
             $volunteerPercentage = $monthlyRate?->volunteer_percentage;
-
         }
 
         if ($instructorWorkshop->payment_type == 'hourly') {
@@ -142,12 +122,8 @@ class StudentEnrollmentObserver
 
         // Preparar notas informativas
         $notes = '';
-        if ($instructorWorkshop->isVolunteer() && isset($prepmaStudents, $regularStudents)) {
-            if ($prepmaStudents > 0) {
-                $notes = "Ingresos calculados: {$regularStudents} estudiantes regulares + {$prepmaStudents} estudiantes PRE-PAMA (50% descuento). Total: {$totalStudents} estudiantes.";
-            } else {
-                $notes = "Todos los {$totalStudents} estudiantes pagan precio completo. Ingresos totales: S/ " . number_format($monthlyRevenue, 2);
-            }
+        if ($instructorWorkshop->isVolunteer()) {
+            $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ " . number_format($monthlyRevenue, 2) . " × {$appliedVolunteerPercentage}% = S/ " . number_format($calculatedAmount, 2);
         } elseif ($instructorWorkshop->isHourly()) {
             $notes = "Pago por horas: {$totalHours} horas totales (4 clases × {$durationHours} hrs/clase) × S/ {$appliedHourlyRate}/hora = S/ " . number_format($calculatedAmount, 2);
         }

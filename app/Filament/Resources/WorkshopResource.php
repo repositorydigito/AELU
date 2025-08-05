@@ -79,6 +79,9 @@ class WorkshopResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->required(),
+                        Forms\Components\TextInput::make('place')
+                            ->label('Lugar')
+                            ->nullable(),
                     ])
                     ->columns(3),
                 Forms\Components\Section::make('Vista Previa de Tarifas')
@@ -307,6 +310,12 @@ class WorkshopResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('start_time')
+                    ->label('Hora de Inicio')
+                    ->time('H:i A'),
+                Tables\Columns\TextColumn::make('end_time')
+                    ->label('Hora de Fin')
+                    ->time('H:i A'),
                 Tables\Columns\TextColumn::make('standard_monthly_fee')
                     ->label('Tarifa Mensual')
                     ->money('PEN')
@@ -316,13 +325,14 @@ class WorkshopResource extends Resource
                     ->formatStateUsing(fn($state) => $state . '%')
                     ->sortable()
                     ->color('info'),
+                Tables\Columns\TextColumn::make('place')
+                    ->label('Lugar'),
             ])
             ->defaultSort('name', 'asc')
             ->filters([
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
                 Tables\Actions\Action::make('view_pricings')

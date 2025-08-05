@@ -24,11 +24,15 @@ class Workshop extends Model
         'duration',
         'capacity',
         'number_of_classes',
+        'place',
     ];
 
     protected $casts = [
         'standard_monthly_fee' => 'decimal:2',
         'pricing_surcharge_percentage' => 'decimal:2',
+        'duration' => 'integer',
+        'capacity' => 'integer',
+        'number_of_classes' => 'integer',
     ];
 
     public function instructorWorkshops()

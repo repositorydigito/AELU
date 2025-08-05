@@ -66,6 +66,10 @@ class CreateEnrollment extends CreateRecord
             throw new \Exception('Período mensual no válido');
         }
 
+        // 🔥 OBTENER INFORMACIÓN DEL ESTUDIANTE PARA VERIFICAR SI ES PRE-PAMA
+        $student = \App\Models\Student::find($data['student_id']);
+        $isPrepama = $student && $student->category_partner === 'Individual PRE-PAMA';
+
         // Determinar el estado de pago final
         $finalPaymentStatus = $paymentMethod === 'cash' ? 'completed' : 'pending';
 
@@ -78,6 +82,35 @@ class CreateEnrollment extends CreateRecord
             if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
                 $skippedWorkshops[] = "Taller no válido o no seleccionado";
                 continue;
+            }
+
+            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($detail['instructor_workshop_id']);
+            if (!$instructorWorkshop) {
+                continue;
+            }
+
+            // Contar estudiantes ya inscritos en este taller para el período seleccionado
+            $currentEnrollments = \App\Models\StudentEnrollment::where('instructor_workshop_id', $detail['instructor_workshop_id'])
+                ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                ->where('payment_status', 'completed')
+                ->distinct('student_id')
+                ->count('student_id');
+
+            $capacity = $instructorWorkshop->workshop->capacity ?? 0;
+            $availableSpots = $capacity - $currentEnrollments;
+
+            // Si no hay cupos disponibles, mostrar error y saltar este taller
+            if ($availableSpots <= 0) {
+                $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
+
+                Notification::make()
+                    ->title('Cupos agotados')
+                    ->body("El taller '{$instructorWorkshop->workshop->name}' ya no tiene cupos disponibles para {$monthName}. Cupos: {$currentEnrollments}/{$capacity}")
+                    ->danger()
+                    ->send();
+
+                $skippedWorkshops[] = "Sin cupos: {$instructorWorkshop->workshop->name} - {$monthName}";
+                continue; // Saltar este taller
             }
 
             // 🔥 VALIDACIÓN DE DUPLICADOS USANDO EL PERÍODO SELECCIONADO
@@ -108,7 +141,7 @@ class CreateEnrollment extends CreateRecord
                 }
             }
 
-            // Obtener el precio desde workshop_pricings
+            // 🔥 CÁLCULO DE PRECIO CON LÓGICA PRE-PAMA
             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($detail['instructor_workshop_id']);
             $numberOfClasses = $detail['number_of_classes'];
 
@@ -119,7 +152,11 @@ class CreateEnrollment extends CreateRecord
                 ->first();
 
             // Si no existe el pricing, calcular basado en el precio estándar
-            $workshopTotal = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
+            $baseWorkshopTotal = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
+
+            // 🔥 APLICAR 50% ADICIONAL PARA ESTUDIANTES PRE-PAMA
+            $workshopTotal = $isPrepama ? ($baseWorkshopTotal * 1.5) : $baseWorkshopTotal;
+
             $totalAmount += $workshopTotal;
 
             $detail['calculated_total'] = $workshopTotal;
@@ -128,7 +165,7 @@ class CreateEnrollment extends CreateRecord
             $validWorkshopDetails[] = $detail;
         }
 
-        if (empty($validWorkshopDetails)) {
+        /* if (empty($validWorkshopDetails)) {
             Notification::make()
                 ->title('Error')
                 ->body('No se pudo crear ninguna inscripción.')
@@ -136,7 +173,7 @@ class CreateEnrollment extends CreateRecord
                 ->send();
 
             throw new \Exception('No se crearon inscripciones');
-        }
+        } */
 
         // Crear el lote de inscripciones
         $enrollmentBatch = \App\Models\EnrollmentBatch::create([
@@ -173,15 +210,16 @@ class CreateEnrollment extends CreateRecord
             $this->createEnrollmentClasses($enrollment);
         }
 
-        // Mostrar notificación de éxito
+        // Mostrar notificación de éxito (con información PRE-PAMA si aplica)
         $count = count($createdEnrollments);
         $student = \App\Models\Student::find($data['student_id']);
+        $prepamaMessage = $isPrepama ? " (Estudiante PRE-PAMA: 50% adicional aplicado)" : "";
 
         if ($paymentMethod === 'cash') {
             // Pago en efectivo - Estado: Inscrito - Generar PDF
             Notification::make()
                 ->title('¡Inscripciones completadas!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: Inscrito. Se generará el ticket PDF.")
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: Inscrito. Se generará el ticket PDF.")
                 ->success()
                 ->actions([
                     \Filament\Notifications\Actions\Action::make('download_ticket')
@@ -196,7 +234,7 @@ class CreateEnrollment extends CreateRecord
             // Pago con link - Estado: En Proceso
             Notification::make()
                 ->title('¡Inscripciones en proceso!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: En Proceso. El ticket PDF se generará cuando se confirme el pago.")
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: En Proceso.")
                 ->warning()
                 ->send();
         }
