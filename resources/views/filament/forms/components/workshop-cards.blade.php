@@ -3,7 +3,7 @@
         $workshops = $getViewData()['workshops'] ?? collect();
         $studentId = $getViewData()['student_id'] ?? null;
         $student = $studentId ? \App\Models\Student::find($studentId) : null;
-        $isMaintenancePaid = $student ? $student->monthly_maintenance_paid : false;
+        $isMaintenancePaid = $student ? $student->is_maintenance_current : false;
     @endphp
 
     <style>
@@ -32,7 +32,7 @@
     </style>
 
     <!-- Notificación de cupos agotados (dentro del componente) -->
-    <div x-cloak x-show="showNotification" 
+    <div x-cloak x-show="showNotification"
          class="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 notification-fade"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 transform translate-x-full"
@@ -62,7 +62,7 @@
                     El estudiante <strong>{{ $student->first_names }} {{ $student->last_names }}</strong> no está al día con el pago del mantenimiento mensual.
                 </p>
                 <p class="text-sm text-red-600">
-                    Para proceder con la inscripción, primero debe ponerse al día con el mantenimiento mensual. 
+                    Para proceder con la inscripción, primero debe ponerse al día con el mantenimiento mensual.
                     Contacte al área administrativa para regularizar el pago.
                 </p>
             </div>
@@ -76,7 +76,7 @@
                     <span x-text="selectedCount"></span> talleres seleccionados
                 </div>
             </div>
-            
+
             <!-- Barra de búsqueda -->
             <div class="relative mb-4">
                 {{-- <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -104,7 +104,7 @@
                     </button>
                 </div>
             </div>
-            
+
             <!-- Contador de resultados -->
             <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
                 <span x-text="getResultsText()"></span>
@@ -112,7 +112,7 @@
                     <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
                         Búsqueda: "<span x-text="searchQuery"></span>"
                     </span>
-                    <button 
+                    <button
                         x-on:click="clearSearch()"
                         class="text-blue-600 hover:text-blue-800 text-xs underline"
                         type="button"
@@ -129,7 +129,7 @@
             <div x-cloak x-show="paginatedWorkshops.length > 0">
                 <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
                     <template x-for="workshop in paginatedWorkshops" x-bind:key="workshop.id">
-                        <div 
+                        <div
                             class="workshop-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md relative"
                             x-bind:class="{
                                 'border-primary-500 bg-primary-50 ring-2 ring-primary-200': selectedWorkshops.includes(workshop.id),
@@ -155,7 +155,7 @@
                                     </div>
                                 </div>
                                 <div class="ml-2">
-                                    <div 
+                                    <div
                                         class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
                                         x-bind:class="{
                                             'border-primary-500 bg-primary-500': selectedWorkshops.includes(workshop.id),
@@ -164,22 +164,22 @@
                                         }"
                                     >
                                         <!-- Checkmark para seleccionados -->
-                                        <svg 
-                                            class="w-4 h-4 text-white" 
+                                        <svg
+                                            class="w-4 h-4 text-white"
                                             x-cloak
                                             x-show="selectedWorkshops.includes(workshop.id)"
-                                            fill="currentColor" 
+                                            fill="currentColor"
                                             viewBox="0 0 20 20"
                                         >
                                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                         </svg>
                                         <!-- X para cupos agotados -->
-                                        <svg 
-                                            class="w-4 h-4 text-red-500" 
+                                        <svg
+                                            class="w-4 h-4 text-red-500"
                                             x-cloak
                                             x-show="workshop.is_full"
-                                            fill="none" 
-                                            stroke="currentColor" 
+                                            fill="none"
+                                            stroke="currentColor"
                                             viewBox="0 0 24 24"
                                         >
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -217,8 +217,8 @@
                                 <!-- Información de cupos -->
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm text-gray-600">Cupos disponibles:</span>
-                                    <span 
-                                        class="text-sm font-medium"                                        
+                                    <span
+                                        class="text-sm font-medium"
                                         x-text="workshop.current_enrollments + '/' + workshop.capacity"
                                     ></span>
                                 </div>
@@ -242,7 +242,7 @@
                 <p class="text-gray-500 mb-4">
                     No hay talleres que coincidan con "<span x-text="searchQuery" class="font-medium"></span>"
                 </p>
-                <button 
+                <button
                     x-on:click="clearSearch()"
                     class="text-primary-600 hover:text-primary-800 font-medium"
                     type="button"
@@ -268,10 +268,10 @@
                     <span> de </span>
                     <span x-text="totalPages" class="font-medium text-gray-900 mx-1"></span>
                 </div>
-                
+
                 <div class="flex items-center space-x-2">
                     <!-- Botón anterior -->
-                    <button 
+                    <button
                         x-on:click.stop="previousPage()"
                         x-bind:disabled="currentPage === 1"
                         x-bind:class="currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
@@ -282,10 +282,10 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                         </svg>
                     </button>
-                    
+
                     <!-- Números de página -->
                     <template x-for="page in getPageNumbers()" x-bind:key="page">
-                        <button 
+                        <button
                             x-on:click.stop="goToPage(page)"
                             x-bind:class="currentPage === page ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'"
                             class="px-3 py-2 text-sm font-medium border rounded-md transition-colors"
@@ -293,9 +293,9 @@
                             x-text="page"
                         ></button>
                     </template>
-                    
+
                     <!-- Botón siguiente -->
-                    <button 
+                    <button
                         x-on:click.stop="nextPage()"
                         x-bind:disabled="currentPage === totalPages"
                         x-bind:class="currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
@@ -311,8 +311,8 @@
         </div>
     @endif
 
-    <input type="hidden" 
-           name="selected_workshops" 
+    <input type="hidden"
+           name="selected_workshops"
            x-model="selectedWorkshopsJson"
            wire:model="data.selected_workshops" />
 
@@ -321,39 +321,39 @@
         return {
             allWorkshops: @json($workshops->values()->toArray()),
             selectedWorkshops: @json($workshops->where('selected', true)->pluck('id')->toArray()),
-            
+
             // Estado de búsqueda y paginación
             searchQuery: '',
             filteredWorkshops: [],
             currentPage: 1,
             perPage: 6,
-            
+
             // Estado de notificaciones (compatible con Livewire)
             showNotification: false,
             notificationMessage: '',
-            
+
             init() {
                 this.filteredWorkshops = [...this.allWorkshops];
             },
-            
+
             get selectedCount() {
                 return this.selectedWorkshops.length;
             },
-            
+
             get selectedWorkshopsJson() {
                 return JSON.stringify(this.selectedWorkshops);
             },
-            
+
             get totalPages() {
                 return Math.ceil(this.filteredWorkshops.length / this.perPage);
             },
-            
+
             get paginatedWorkshops() {
                 const start = (this.currentPage - 1) * this.perPage;
                 const end = start + this.perPage;
                 return this.filteredWorkshops.slice(start, end);
             },
-            
+
             updateSearch() {
                 if (this.searchQuery.trim() === '') {
                     this.filteredWorkshops = [...this.allWorkshops];
@@ -367,12 +367,12 @@
                 }
                 this.currentPage = 1;
             },
-            
+
             clearSearch() {
                 this.searchQuery = '';
                 this.updateSearch();
             },
-            
+
             getResultsText() {
                 const total = this.filteredWorkshops.length;
                 const available = this.filteredWorkshops.filter(w => !w.is_full).length;
@@ -383,7 +383,7 @@
                 }
                 return `${total} talleres disponibles${full > 0 ? ` (${full} sin cupos)` : ''}`;
             },
-            
+
             toggleWorkshop(workshopId) {
                 const workshop = this.allWorkshops.find(w => w.id === workshopId);
                 if (workshop && workshop.is_full) {
@@ -397,7 +397,7 @@
                 } else {
                     this.selectedWorkshops.push(workshopId);
                 }
-                
+
                 /* this.$nextTick(() => {
                     const hiddenInput = document.querySelector('input[name="selected_workshops"]');
                     if (hiddenInput) {
@@ -414,7 +414,7 @@
                         hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
                         hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
-                    
+
                     // También actualizar cualquier input con el name específico
                     const namedInput = document.querySelector('input[name="selected_workshops"]');
                     if (namedInput && namedInput !== hiddenInput) {
@@ -422,7 +422,7 @@
                         namedInput.dispatchEvent(new Event('input', { bubbles: true }));
                         namedInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
-                    
+
                     // Forzar actualización del estado de Filament
                     if (window.Livewire) {
                         window.Livewire.emit('workshopsUpdated', this.selectedWorkshops);
@@ -434,36 +434,36 @@
             showCapacityAlert(workshopName) {
                 this.notificationMessage = `El taller "${workshopName}" no tiene cupos disponibles`;
                 this.showNotification = true;
-                
+
                 // Ocultar automáticamente después de 3 segundos
                 setTimeout(() => {
                     this.showNotification = false;
                 }, 3000);
             },
-            
+
             nextPage() {
                 if (this.currentPage < this.totalPages) {
                     this.currentPage++;
                 }
             },
-            
+
             previousPage() {
                 if (this.currentPage > 1) {
                     this.currentPage--;
                 }
             },
-            
+
             goToPage(page) {
                 if (page >= 1 && page <= this.totalPages) {
                     this.currentPage = page;
                 }
             },
-            
+
             getPageNumbers() {
                 const total = this.totalPages;
                 const current = this.currentPage;
                 const pages = [];
-                
+
                 if (total <= 7) {
                     for (let i = 1; i <= total; i++) {
                         pages.push(i);
@@ -477,7 +477,7 @@
                         pages.push(1, '...', current - 1, current, current + 1, '...', total);
                     }
                 }
-                
+
                 return pages.filter(page => page !== '...');
             }
         }

@@ -28,12 +28,17 @@ class Student extends Model
         'emergency_contact_name',
         'emergency_contact_relationship',
         'emergency_contact_phone',
-        'monthly_maintenance_paid',
+        'monthly_maintenance_status',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
-        'monthly_maintenance_paid' => 'boolean',
+    ];
+
+    public const MAINTENANCE_STATUS = [
+        'exento' => 'Exento',
+        'al_dia' => 'Al día',
+        'no_pagado' => 'No pagado',
     ];
 
     public function medicalRecord()
@@ -49,7 +54,7 @@ class Student extends Model
     public function affidavit()
     {
         return $this->hasOne(Affidavit::class);
-    }    
+    }
 
     public function studentEnrollments()
     {
@@ -77,8 +82,12 @@ class Student extends Model
     public function getAgeAttribute(): int
     {
         return $this->birth_date ? $this->birth_date->age : 0;
-    } 
-    // Determina si el estudiante está exento de pago    
+    }
+    public function getIsMaintenanceCurrentAttribute(): bool
+    {
+        return in_array($this->monthly_maintenance_status, ['exento', 'al_dia']);
+    }
+    // Determina si el estudiante está exento de pago
     public function isPaymentExempt(): bool
     {
         return in_array($this->category_partner, [
@@ -86,14 +95,14 @@ class Student extends Model
             'Vitalicios',
             'Transitorio Exonerado'
         ]);
-    }    
-    // Calcula el multiplicador de precio según la categoría y edad    
+    }
+    // Calcula el multiplicador de precio según la categoría y edad
     public function getPricingMultiplierAttribute(): float
     {
         // Calcular automáticamente según categoría y edad
         return $this->calculatePricingMultiplier();
-    }    
-    // Calcula automáticamente el multiplicador de precio    
+    }
+    // Calcula automáticamente el multiplicador de precio
     public function calculatePricingMultiplier(): float
     {
         $age = $this->age;
@@ -111,14 +120,14 @@ class Student extends Model
 
         // Todas las demás categorías pagan tarifa normal
         return 1.00;
-    }    
-    // Calcula el precio final para una cantidad de clases específica    
+    }
+    // Calcula el precio final para una cantidad de clases específica
     public function calculateFinalPrice(float $basePrice): float
     {
         $multiplier = $this->pricing_multiplier;
         return round($basePrice * $multiplier, 2);
-    }    
-    // Obtiene la descripción de la tarifa aplicada    
+    }
+    // Obtiene la descripción de la tarifa aplicada
     public function getPricingDescriptionAttribute(): string
     {
         $multiplier = $this->pricing_multiplier;
@@ -133,7 +142,7 @@ class Student extends Model
         }
 
         return 'Tarifa normal';
-    }    
+    }
     // Verifica si el estudiante debería actualizar su categoría automáticamente
     public function shouldUpdateCategory(): bool
     {
@@ -156,8 +165,8 @@ class Student extends Model
         }
 
         return false;
-    }    
-    // Sugiere la categoría correcta según la edad    
+    }
+    // Sugiere la categoría correcta según la edad
     public function getSuggestedCategoryAttribute(): string
     {
         $age = $this->age;

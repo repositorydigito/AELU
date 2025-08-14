@@ -53,7 +53,7 @@ class EnrollmentResource extends Resource
                                         return 'Estudiante no encontrado';
                                     }
 
-                                    if (!$student->monthly_maintenance_paid) {
+                                    if ($student->isMaintenanceCurrent === false) {
                                         return '⚠️ Este estudiante NO está al día con el mantenimiento mensual';
                                     }
 
@@ -73,7 +73,7 @@ class EnrollmentResource extends Resource
                                     }
 
                                     // Si el estudiante no está al día con el mantenimiento, mostrar notificación
-                                    if (!$student->monthly_maintenance_paid) {
+                                    if ($student->is_maintenance_current === false) {
                                         \Filament\Notifications\Notification::make()
                                             ->title('Estudiante no al día')
                                             ->body("El estudiante {$student->first_names} {$student->last_names} no está al día con el pago del mantenimiento mensual. No se puede proceder con la inscripción.")
@@ -242,7 +242,7 @@ class EnrollmentResource extends Resource
                             }
 
                             $student = \App\Models\Student::find($studentId);
-                            if (!$student || !$student->monthly_maintenance_paid) {
+                            if (!$student || $student->is_maintenance_current === false) {
                                 throw ValidationException::withMessages(['student_id' => 'El estudiante seleccionado no está al día con el mantenimiento mensual']);
                             }
 

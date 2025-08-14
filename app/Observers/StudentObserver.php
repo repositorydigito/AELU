@@ -12,6 +12,7 @@ class StudentObserver
     public function creating(Student $student): void
     {
         $this->calculatePricingFields($student);
+        $this->setMaintenanceStatus($student);
     }
 
     /**
@@ -22,6 +23,7 @@ class StudentObserver
         // Solo recalcular si cambiaron campos relevantes
         if ($student->isDirty(['category_partner', 'birth_date'])) {
             $this->calculatePricingFields($student);
+            $this->setMaintenanceStatus($student);
         }
     }
 
@@ -32,11 +34,6 @@ class StudentObserver
     {
         // Los campos de tarifa ahora se calculan dinámicamente en el modelo
         // No necesitamos guardar nada en la base de datos
-        
-        // Si es una categoría exenta, asegurar que el mantenimiento esté marcado como pagado
-        if ($this->isPaymentExempt($student)) {
-            $student->monthly_maintenance_paid = true;
-        }
     }
 
     /**
@@ -71,5 +68,25 @@ class StudentObserver
 
         // Todas las demás categorías pagan tarifa normal
         return 1.00;
+    }
+    /**
+     * Establece automáticamente el estado de mantenimiento según la categoría
+     */
+    protected function setMaintenanceStatus(Student $student): void
+    {
+        $exemptCategories = [
+            'Transitorio Exonerado',
+            'Hijo de Fundador',
+            'Vitalicios'
+        ];
+
+        // Si es una categoría exenta, marcar como exento
+        if (in_array($student->category_partner, $exemptCategories)) {
+            $student->monthly_maintenance_status = 'exento';
+        }
+        // Si no tiene estado definido y no es exento, poner como no pagado
+        elseif (empty($student->monthly_maintenance_status)) {
+            $student->monthly_maintenance_status = 'no_pagado';
+        }
     }
 }
