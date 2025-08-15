@@ -32,9 +32,9 @@ return new class extends Migration
 
             // Tarifas
             $table->boolean('has_payment_exemption')->default(false);
-            $table->decimal('pricing_multiplier', 5, 2)->default(1.00); // Multiplicador para el precio (1.5 para PRE-PAMA, 1.0 para otros, 0.0 para exentos)
+            $table->decimal('pricing_multiplier', 5, 2)->default(1.00); // Multiplicador para el precio (1.5 para PRE-PAMA, 1.0 para otros, 0.0 para exonerados)
 
-            $table->boolean('monthly_maintenance_paid')->default(false);
+            $table->enum('monthly_maintenance_status', ['exonerado', 'al_dia', 'no_pagado']);
         });
     }
 

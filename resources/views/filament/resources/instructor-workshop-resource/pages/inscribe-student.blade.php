@@ -59,10 +59,10 @@
                 </div>
             </div>
             <div class="space-y-2">
-                <h4 class="font-semibold text-purple-700">Exentos de Pago:</h4>
+                <h4 class="font-semibold text-purple-700">Exonerados de Pago:</h4>
                 <div class="space-y-1">
                     <div class="flex justify-between items-center p-2 bg-white rounded border">
-                        <span>Transitorio Exonerado:</span>
+                        <span>Transitorio Mayor de 75:</span>
                         <span class="text-red-600 font-bold">S/ 0.00</span>
                     </div>
                     <div class="flex justify-between items-center p-2 bg-white rounded border">
