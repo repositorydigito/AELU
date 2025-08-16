@@ -154,14 +154,14 @@ class CreateEnrollment extends CreateRecord
             // Si no existe el pricing, calcular basado en el precio estándar
             $baseWorkshopTotal = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
 
-            // 🔥 APLICAR 50% ADICIONAL PARA ESTUDIANTES PRE-PAMA
-            $workshopTotal = $isPrepama ? ($baseWorkshopTotal * 1.5) : $baseWorkshopTotal;
+            // APLICAR MULTIPLICADOR SEGÚN CATEGORÍA
+            $workshopTotal = $baseWorkshopTotal * $student->inscription_multiplier;
 
             $totalAmount += $workshopTotal;
 
             $detail['calculated_total'] = $workshopTotal;
             $detail['price_per_class'] = $workshopTotal / $numberOfClasses;
-            $detail['monthly_period_id'] = $selectedMonthlyPeriodId; // 🔥 ASIGNAR EL PERÍODO SELECCIONADO
+            $detail['monthly_period_id'] = $selectedMonthlyPeriodId; 
             $validWorkshopDetails[] = $detail;
         }
 

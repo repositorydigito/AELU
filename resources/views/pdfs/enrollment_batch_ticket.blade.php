@@ -32,6 +32,14 @@
             font-size: 14px;
             font-weight: bold;
         }
+
+        .student-name {
+            margin: 0;
+            padding: 2px 5px;
+            border: 1px solid #000;
+            font-size: 14px;
+            font-weight: bold;
+        }
         
         .user-fields {
             display: flex;
@@ -216,18 +224,22 @@
     <div class="ticket-container">
         <div class="header">
             <h1>PROGRAMA ADULTO MAYOR AELU (PAMA)</h1>
-            <div class="user-fields">
-                <div class="user-field">
-                    <strong>USUARIO:</strong> {{ $created_by_user ?? 'Admin' }}
-                </div>                
+            <div class="student-name">
+                {{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }}
             </div>
+            
+        </div>
+
+        <div class="info-row">
+            <div class="info-label">USUARIO</div>
+            <div class="info-value">{{ $created_by_user ?? 'Admin' }}</div>                         
         </div>
 
         <div class="info-row">
             <div class="info-label">TICKET N°</div>
             <div class="info-value">{{ $enrollmentBatch->batch_code ?? str_pad($enrollmentBatch->id, 6, '0', STR_PAD_LEFT) }}</div>
-            <div class="info-label" style="width: 30%;">FECHA</div>
-            <div class="info-value" style="width: 30%;">{{ $enrollmentBatch->enrollment_date->format('d/m/Y') }}</div>
+            <div class="info-label">FECHA</div>
+            <div class="info-value">{{ $enrollmentBatch->enrollment_date->format('d/m/Y') }}</div>
         </div>
 
         <div class="info-row">
@@ -235,10 +247,10 @@
             <div class="info-value">{{ $student->student_code ?? 'N/A' }}</div>
         </div>
 
-        <div class="info-row">
+        {{-- <div class="info-row">
             <div class="info-label">APELLIDOS Y NOMBRES</div>
             <div class="info-value">{{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }}</div>
-        </div>
+        </div> --}}
 
         <table class="workshops-table">
             <thead>

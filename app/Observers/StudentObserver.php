@@ -35,19 +35,6 @@ class StudentObserver
         // Los campos de tarifa ahora se calculan dinámicamente en el modelo
         // No necesitamos guardar nada en la base de datos
     }
-
-    /**
-     * Determina si el estudiante está exento de pago
-     */
-    protected function isPaymentExempt(Student $student): bool
-    {
-        return in_array($student->category_partner, [
-            'Hijo de Fundador',
-            'Vitalicios',
-            'Transitorio Exonerado'
-        ]);
-    }
-
     /**
      * Calcula el multiplicador de precio según la categoría y edad
      */
@@ -57,7 +44,7 @@ class StudentObserver
         $category = $student->category_partner;
 
         // Categorías exentas de pago
-        if (in_array($category, ['Hijo de Fundador', 'Vitalicios', 'Transitorio Exonerado'])) {
+        if (in_array($category, ['Hijo de Fundador', 'Vitalicios', 'Transitorio Mayor de 75'])) {
             return 0.00;
         }
 
@@ -75,16 +62,16 @@ class StudentObserver
     protected function setMaintenanceStatus(Student $student): void
     {
         $exemptCategories = [
-            'Transitorio Exonerado',
+            'Transitorio Mayor de 75',
             'Hijo de Fundador',
             'Vitalicios'
         ];
 
-        // Si es una categoría exenta, marcar como exento
+        // Si es una categoría exonerada, marcar como exonerado
         if (in_array($student->category_partner, $exemptCategories)) {
-            $student->monthly_maintenance_status = 'exento';
+            $student->monthly_maintenance_status = 'exonerado';
         }
-        // Si no tiene estado definido y no es exento, poner como no pagado
+        // Si no tiene estado definido y no es exonerado, poner como no pagado
         elseif (empty($student->monthly_maintenance_status)) {
             $student->monthly_maintenance_status = 'no_pagado';
         }

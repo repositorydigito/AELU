@@ -46,7 +46,7 @@ class StudentSeeder extends Seeder
                 'document_number' => '12345677',
                 'birth_date' => Carbon::create('1945', '08', '20'),
                 'student_code' => '00145501',
-                'category_partner' => 'Vitalicio',
+                'category_partner' => 'Vitalicios',
             ],
             [
                 'last_names' => 'Isa Asato de Nakama',
@@ -55,7 +55,7 @@ class StudentSeeder extends Seeder
                 'document_number' => '12345676',
                 'birth_date' => Carbon::create('1945', '03', '18'),
                 'student_code' => '00104400',
-                'category_partner' => 'Vitalicio',
+                'category_partner' => 'Vitalicios',
             ],
             [
                 'last_names' => 'Kiyan Arakaki',
@@ -73,7 +73,7 @@ class StudentSeeder extends Seeder
                 'document_number' => '12345674',
                 'birth_date' => Carbon::create('1936', '01', '12'),
                 'student_code' => 'T0039700',
-                'category_partner' => 'Transitorio Exonerado',
+                'category_partner' => 'Transitorio Mayor de 75',
             ],
             [
                 'last_names' => 'Matsukawa de Tomioka',
@@ -82,7 +82,7 @@ class StudentSeeder extends Seeder
                 'document_number' => '12345673',
                 'birth_date' => Carbon::create('1945', '03', '23'),
                 'student_code' => 'T0035600',
-                'category_partner' => 'Transitorio Exonerado',
+                'category_partner' => 'Transitorio Mayor de 75',
             ],
             [
                 'last_names' => 'Miyagi Chibana de Tamashiro',
@@ -91,7 +91,7 @@ class StudentSeeder extends Seeder
                 'document_number' => '12345672',
                 'birth_date' => Carbon::create('1947', '01', '17'),
                 'student_code' => '00023501',
-                'category_partner' => 'Vitalicio',
+                'category_partner' => 'Vitalicios',
             ],
             [
                 'last_names' => 'Nagahama Nakamura',
@@ -109,7 +109,7 @@ class StudentSeeder extends Seeder
                 'document_number' => '12345670',
                 'birth_date' => Carbon::create('1943', '06', '30'),
                 'student_code' => '00480001',
-                'category_partner' => 'Vitalicio',
+                'category_partner' => 'Vitalicios',
             ],
 
             // Agregar más estudiantes aquí si es necesario

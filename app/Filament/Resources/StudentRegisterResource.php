@@ -106,7 +106,27 @@ class StudentRegisterResource extends Resource
                                                 ->label('Fecha de Nacimiento')
                                                 ->required()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                ->maxDate(now()),
+                                                ->maxDate(now())
+                                                ->live() 
+                                                ->afterStateUpdated(function (callable $set, $state) {
+                                                    if ($state) {
+                                                        $birthDate = \Carbon\Carbon::parse($state);
+                                                        $age = $birthDate->age;
+                                                        $set('calculated_age', $age);
+                                                    }
+                                                }),                                            
+                                            TextInput::make('calculated_age')
+                                                ->label('Edad')
+                                                ->suffix('años')
+                                                ->disabled()
+                                                ->dehydrated(false) 
+                                                ->default(function (callable $get) {
+                                                    $birthDate = $get('birth_date');
+                                                    if ($birthDate) {
+                                                        return \Carbon\Carbon::parse($birthDate)->age;
+                                                    }
+                                                    return null;
+                                                }),
                                             TextInput::make('nationality')
                                                 ->label('Nacionalidad')
                                                 ->nullable()
@@ -141,14 +161,14 @@ class StudentRegisterResource extends Resource
                                                 ->afterStateUpdated(function (callable $get, callable $set, $state) {
                                                     // Categorías exentas de pago (sin pago)
                                                     $exemptCategories = [
-                                                        'Transitorio Exonerado',
+                                                        'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
                                                         'Vitalicios'
                                                     ];
 
                                                     // Si es una categoría exenta, marcar mantenimiento como pagado
                                                     if (in_array($state, $exemptCategories)) {
-                                                        $set('monthly_maintenance_status', 'exento');
+                                                        $set('monthly_maintenance_status', 'exonerado');
                                                     }
                                                 }),
                                         ]),
@@ -157,20 +177,20 @@ class StudentRegisterResource extends Resource
                                             Select::make('monthly_maintenance_status')
                                                 ->label('Estado de Mantenimiento Mensual')
                                                 ->options([
-                                                    'exento' => 'Exento',
+                                                    'exonerado' => 'Exonerado',
                                                     'al_dia' => 'Al día',
                                                     'no_pagado' => 'No pagado',
                                                 ])
                                                 ->helperText(function (callable $get) {
                                                     $category = $get('category_partner');
                                                     $exemptCategories = [
-                                                        'Transitorio Exonerado',
+                                                        'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
                                                         'Vitalicios'
                                                     ];
 
                                                     if (in_array($category, $exemptCategories)) {
-                                                        return 'Categoría exenta de pago - Automáticamente exento';
+                                                        return 'Categoría exenta de pago - Automáticamente exonerado';
                                                     }
 
                                                     return 'Selecciona el estado actual del mantenimiento mensual';
@@ -179,7 +199,7 @@ class StudentRegisterResource extends Resource
                                                 ->disabled(function (callable $get) {
                                                     $category = $get('category_partner');
                                                     $exemptCategories = [
-                                                        'Transitorio Exonerado',
+                                                        'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
                                                         'Vitalicios'
                                                     ];
@@ -565,9 +585,6 @@ class StudentRegisterResource extends Resource
                 ->columnSpanFull(),
             ]);
     }
-
-
-
     public static function table(Table $table): Table
     {
         return $table
@@ -583,11 +600,8 @@ class StudentRegisterResource extends Resource
                 TextColumn::make('student_code')
                     ->label('Código')
                     ->searchable()
-                    ->sortable(),
-                TextColumn::make('document_number')
-                    ->label('DNI')
-                    ->searchable(),
-                TextColumn::make('age')
+                    ->sortable(),                
+                /* TextColumn::make('age')
                     ->label('Edad')
                     ->getStateUsing(fn (Student $record) => $record->age . ' años')
                     ->sortable()
@@ -597,26 +611,23 @@ class StudentRegisterResource extends Resource
                         $record->age >= 60 && $record->age < 65 => 'success',
                         $record->age >= 65 => 'warning',
                         default => 'gray'
-                    }),
+                    }), */
                 TextColumn::make('category_partner')
                     ->label('Categoría')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'Individual PRE-PAMA' => 'warning',
-                        'Individual' => 'warning',
-                        'Transitorio Individual' => 'warning',
-                        'Transitorio Exonerado' => 'success',
-                        'Hijo de Fundador' => 'success',
-                        'Vitalicios' => 'success',
+                        'PRE PAMA 50+', 'PRE PAMA 55+' => 'warning',
+                        'Individual', 'Transitorio Mayor', 'Familiar - Dependiente' => 'info',
+                        'Transitorio Mayor de 75', 'Hijo de Fundador', 'Vitalicios' => 'success',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'Individual PRE-PAMA' => 'PRE-PAMA',
-                        'Individual' => 'Individual',
-                        'Transitorio Individual' => 'Trans. Ind.',
-                        'Transitorio Exonerado' => 'Trans. Exon.',
+                        'PRE PAMA 50+' => 'PRE-PAMA 50+',
+                        'PRE PAMA 55+' => 'PRE-PAMA 55+',
+                        'Transitorio Mayor de 75' => 'Trans. >75',
+                        'Transitorio Mayor' => 'Trans. Mayor',
+                        'Familiar - Dependiente' => 'Familiar-Dep.',
                         'Hijo de Fundador' => 'H. Fundador',
-                        'Vitalicios' => 'Vitalicio',
                         default => $state,
                     }),
                 TextColumn::make('monthly_maintenance_status')
@@ -624,22 +635,17 @@ class StudentRegisterResource extends Resource
                     ->getStateUsing(fn (Student $record) => Student::MAINTENANCE_STATUS[$record->monthly_maintenance_status] ?? 'N/A')
                     ->badge()
                     ->color(fn (Student $record) => match ($record->monthly_maintenance_status) {
-                        'exento' => 'info',
+                        'exonerado' => 'success',
                         'al_dia' => 'success',
                         'no_pagado' => 'danger',
                         default => 'gray'
                     })
                     ->icon(fn (Student $record) => match ($record->monthly_maintenance_status) {
-                        'exento' => 'heroicon-m-shield-check',
+                        'exonerado' => 'heroicon-m-shield-check',
                         'al_dia' => 'heroicon-m-check-circle',
                         'no_pagado' => 'heroicon-m-x-circle',
                         default => 'heroicon-m-question-mark-circle'
-                    }),
-                /* TextColumn::make('enrollments.instructorWorkshop.workshop.name')
-                    ->label('Talleres Inscritos')
-                    ->badge()
-                    ->colors(['info'])
-                    ->wrap(), */
+                    }),                
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_partner')
@@ -658,7 +664,7 @@ class StudentRegisterResource extends Resource
                 Tables\Filters\SelectFilter::make('monthly_maintenance_status')
                     ->label('Estado de Mantenimiento')
                     ->options([
-                        'exento' => 'Exento',
+                        'exonerado' => 'Exonerado',
                         'al_dia' => 'Al día',
                         'no_pagado' => 'No pagado',
                     ]),

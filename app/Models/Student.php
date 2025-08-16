@@ -36,7 +36,7 @@ class Student extends Model
     ];
 
     public const MAINTENANCE_STATUS = [
-        'exento' => 'Exento',
+        'exonerado' => 'Exonerado',
         'al_dia' => 'Al día',
         'no_pagado' => 'No pagado',
     ];
@@ -85,17 +85,21 @@ class Student extends Model
     }
     public function getIsMaintenanceCurrentAttribute(): bool
     {
-        return in_array($this->monthly_maintenance_status, ['exento', 'al_dia']);
+        return in_array($this->monthly_maintenance_status, ['exonerado', 'al_dia']);
     }
-    // Determina si el estudiante está exento de pago
-    public function isPaymentExempt(): bool
+    public function getInscriptionMultiplierAttribute(): float
     {
-        return in_array($this->category_partner, [
-            'Hijo de Fundador',
-            'Vitalicios',
-            'Transitorio Exonerado'
-        ]);
+        return match($this->category_partner) {
+            'PRE PAMA 50+' => 2.0,  // 100% adicional = pagan el doble
+            'PRE PAMA 55+' => 1.5,  // 50% adicional 
+            default => 1.0          // Tarifa normal para todas las demás categorías
+        };
     }
+    // Método para verificar si es PRE-PAMA
+    public function isPrePamaAttribute(): bool
+    {
+        return in_array($this->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
+    }    
     // Calcula el multiplicador de precio según la categoría y edad
     public function getPricingMultiplierAttribute(): float
     {
@@ -109,7 +113,7 @@ class Student extends Model
         $category = $this->category_partner;
 
         // Categorías exentas de pago
-        if (in_array($category, ['Hijo de Fundador', 'Vitalicios', 'Transitorio Exonerado'])) {
+        if (in_array($category, ['Hijo de Fundador', 'Vitalicios', 'Transitorio Mayor de 75'])) {
             return 0.00;
         }
 
@@ -134,7 +138,7 @@ class Student extends Model
         $age = $this->age;
 
         if ($multiplier == 0.00) {
-            return 'Exento de pago';
+            return 'Exonerado de pago';
         }
 
         if ($multiplier == 1.50) {
@@ -160,31 +164,12 @@ class Student extends Model
         }
 
         // Si tiene 65+ y no es Transitorio
-        if ($age >= 65 && !in_array($category, ['Transitorio Individual', 'Transitorio Exonerado'])) {
+        if ($age >= 65 && !in_array($category, ['Transitorio Individual', 'Transitorio Mayor de 75'])) {
             return true;
         }
 
         return false;
-    }
-    // Sugiere la categoría correcta según la edad
-    public function getSuggestedCategoryAttribute(): string
-    {
-        $age = $this->age;
-
-        if ($age < 60) {
-            return 'Individual PRE-PAMA';
-        }
-
-        if ($age >= 60 && $age < 65) {
-            return 'Individual';
-        }
-
-        if ($age >= 65) {
-            return 'Transitorio Individual'; // Por defecto, pero puede ser Exonerado
-        }
-
-        return $this->category_partner;
-    }
+    }    
     // Actualiza automáticamente los campos de tarifa según la categoría
     public function updatePricingFields(): void
     {
