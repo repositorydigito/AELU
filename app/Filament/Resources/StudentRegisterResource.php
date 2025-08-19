@@ -107,19 +107,19 @@ class StudentRegisterResource extends Resource
                                                 ->required()
                                                 ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxDate(now())
-                                                ->live() 
+                                                ->live()
                                                 ->afterStateUpdated(function (callable $set, $state) {
                                                     if ($state) {
                                                         $birthDate = \Carbon\Carbon::parse($state);
                                                         $age = $birthDate->age;
                                                         $set('calculated_age', $age);
                                                     }
-                                                }),                                            
+                                                }),
                                             TextInput::make('calculated_age')
                                                 ->label('Edad')
                                                 ->suffix('años')
                                                 ->disabled()
-                                                ->dehydrated(false) 
+                                                ->dehydrated(false)
                                                 ->default(function (callable $get) {
                                                     $birthDate = $get('birth_date');
                                                     if ($birthDate) {
@@ -159,28 +159,34 @@ class StudentRegisterResource extends Resource
                                                 ])
                                                 ->live()
                                                 ->afterStateUpdated(function (callable $get, callable $set, $state) {
-                                                    // Categorías exentas de pago (sin pago)
+                                                    // Categorías exentas de pago
                                                     $exemptCategories = [
                                                         'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
                                                         'Vitalicios'
                                                     ];
 
-                                                    // Si es una categoría exenta, marcar mantenimiento como pagado
+                                                    // Si es una categoría exenta, limpiar el período de mantenimiento
                                                     if (in_array($state, $exemptCategories)) {
-                                                        $set('monthly_maintenance_status', 'exonerado');
-                                                    }
+                                                        $set('maintenance_period_id', null);
+                                                    } /* else {
+                                                        // Si no es exenta y no tiene período asignado,
+                                                        // podemos sugerir el período actual por defecto
+                                                        $currentPeriod = \App\Models\MaintenancePeriod::getCurrentPeriod();
+                                                        if ($currentPeriod && !$get('maintenance_period_id')) {
+                                                            $set('maintenance_period_id', $currentPeriod->id);
+                                                        }
+                                                    } */
                                                 }),
                                         ]),
                                     Grid::make(1)
                                         ->schema([
-                                            Select::make('monthly_maintenance_status')
-                                                ->label('Estado de Mantenimiento Mensual')
-                                                ->options([
-                                                    'exonerado' => 'Exonerado',
-                                                    'al_dia' => 'Al día',
-                                                    'no_pagado' => 'No pagado',
-                                                ])
+                                            Select::make('maintenance_period_id')
+                                                ->label('Período de Mantenimiento')
+                                                ->relationship('maintenancePeriod', 'name')
+                                                ->searchable()
+                                                ->preload()
+                                                ->placeholder('Seleccionar período de mantenimiento')
                                                 ->helperText(function (callable $get) {
                                                     $category = $get('category_partner');
                                                     $exemptCategories = [
@@ -190,12 +196,11 @@ class StudentRegisterResource extends Resource
                                                     ];
 
                                                     if (in_array($category, $exemptCategories)) {
-                                                        return 'Categoría exenta de pago - Automáticamente exonerado';
+                                                        return '✅ Categoría exenta de pago - No requiere asignar período';
                                                     }
 
-                                                    return 'Selecciona el estado actual del mantenimiento mensual';
+                                                    return 'Selecciona hasta qué mes ha pagado el mantenimiento.';
                                                 })
-                                                ->default('no_pagado')
                                                 ->disabled(function (callable $get) {
                                                     $category = $get('category_partner');
                                                     $exemptCategories = [
@@ -206,7 +211,36 @@ class StudentRegisterResource extends Resource
 
                                                     return in_array($category, $exemptCategories);
                                                 })
-                                                ->live(),
+                                                ->options(function () {
+                                                    // Mostrar desde 6 meses atrás hasta 12 meses adelante
+                                                    $periods = \App\Models\MaintenancePeriod::query()
+                                                        ->whereRaw('(year * 12 + month) >= ?', [
+                                                            (now()->year * 12 + now()->month) - 6
+                                                        ])
+                                                        ->whereRaw('(year * 12 + month) <= ?', [
+                                                            (now()->year * 12 + now()->month) + 12
+                                                        ])
+                                                        ->orderBy('year')
+                                                        ->orderBy('month')
+                                                        ->get()
+                                                        ->pluck('name', 'id');
+
+                                                    return $periods;
+                                                })
+                                                ->live()
+                                                ->afterStateUpdated(function (callable $get, callable $set, $state) {
+                                                    $category = $get('category_partner');
+                                                    $exemptCategories = [
+                                                        'Transitorio Mayor de 75',
+                                                        'Hijo de Fundador',
+                                                        'Vitalicios'
+                                                    ];
+
+                                                    // Si es categoría exenta, limpiar el período
+                                                    if (in_array($category, $exemptCategories)) {
+                                                        $set('maintenance_period_id', null);
+                                                    }
+                                                }),
                                         ]),
                                     Grid::make(2)
                                         ->schema([
@@ -464,9 +498,6 @@ class StudentRegisterResource extends Resource
                                             Placeholder::make('address_summary')
                                                 ->label('Domicilio')
                                                 ->content(fn (callable $get) => $get('address')),
-                                            Placeholder::make('monthly_maintenance_status_summary')
-                                                ->label('Mantenimiento Mensual')
-                                                ->content(fn (callable $get) => Student::MAINTENANCE_STATUS[$get('monthly_maintenance_status')] ?? 'No definido'),
                                         ]),
                                 ]),
                             Section::make('Ficha Médica Resumen')
@@ -600,7 +631,7 @@ class StudentRegisterResource extends Resource
                 TextColumn::make('student_code')
                     ->label('Código')
                     ->searchable()
-                    ->sortable(),                
+                    ->sortable(),
                 /* TextColumn::make('age')
                     ->label('Edad')
                     ->getStateUsing(fn (Student $record) => $record->age . ' años')
@@ -630,22 +661,20 @@ class StudentRegisterResource extends Resource
                         'Hijo de Fundador' => 'H. Fundador',
                         default => $state,
                     }),
-                TextColumn::make('monthly_maintenance_status')
+                TextColumn::make('maintenance_status_display')
                     ->label('Mantenimiento')
-                    ->getStateUsing(fn (Student $record) => Student::MAINTENANCE_STATUS[$record->monthly_maintenance_status] ?? 'N/A')
+                    ->getStateUsing(fn (Student $record) => $record->getMaintenanceStatusText())
                     ->badge()
-                    ->color(fn (Student $record) => match ($record->monthly_maintenance_status) {
-                        'exonerado' => 'success',
-                        'al_dia' => 'success',
-                        'no_pagado' => 'danger',
-                        default => 'gray'
+                    ->color(fn (Student $record) => match (true) {
+                        $record->isExemptFromMaintenance() => 'success',
+                        $record->isMaintenanceCurrent() => 'success',
+                        default => 'danger'
                     })
-                    ->icon(fn (Student $record) => match ($record->monthly_maintenance_status) {
-                        'exonerado' => 'heroicon-m-shield-check',
-                        'al_dia' => 'heroicon-m-check-circle',
-                        'no_pagado' => 'heroicon-m-x-circle',
-                        default => 'heroicon-m-question-mark-circle'
-                    }),                
+                    ->icon(fn (Student $record) => match (true) {
+                        $record->isExemptFromMaintenance() => 'heroicon-m-shield-check',
+                        $record->isMaintenanceCurrent() => 'heroicon-m-check-circle',
+                        default => 'heroicon-m-x-circle'
+                    }),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('category_partner')
@@ -661,13 +690,53 @@ class StudentRegisterResource extends Resource
                         'PRE PAMA 55+' => 'PRE PAMA 55+ (50% adicional)',
                         'PRE PAMA 50+' => 'PRE PAMA 50+ (100% adicional)',
                     ]),
-                Tables\Filters\SelectFilter::make('monthly_maintenance_status')
+                Tables\Filters\Filter::make('maintenance_status')
                     ->label('Estado de Mantenimiento')
-                    ->options([
-                        'exonerado' => 'Exonerado',
-                        'al_dia' => 'Al día',
-                        'no_pagado' => 'No pagado',
-                    ]),
+                    ->form([
+                        Select::make('status')
+                            ->label('Estado')
+                            ->options([
+                                'current' => 'Al día',
+                                'not_current' => 'No al día',
+                                'exempt' => 'Exonerado',
+                            ])
+                            ->placeholder('Todos los estados'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!isset($data['status'])) {
+                            return $query;
+                        }
+
+                        return match ($data['status']) {
+                            'exempt' => $query->whereIn('category_partner', [
+                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75'
+                            ]),
+                            'current' => $query->whereHas('maintenancePeriod', function ($q) {
+                                $currentPeriod = \App\Models\MaintenancePeriod::getCurrentPeriod();
+                                if ($currentPeriod) {
+                                    $q->whereRaw('(year * 12 + month) >= ?', [
+                                        $currentPeriod->year * 12 + $currentPeriod->month
+                                    ]);
+                                }
+                            })->whereNotIn('category_partner', [
+                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75'
+                            ]),
+                            'not_current' => $query->where(function ($q) {
+                                $q->whereDoesntHave('maintenancePeriod')
+                                ->orWhereHas('maintenancePeriod', function ($subQ) {
+                                    $currentPeriod = \App\Models\MaintenancePeriod::getCurrentPeriod();
+                                    if ($currentPeriod) {
+                                        $subQ->whereRaw('(year * 12 + month) < ?', [
+                                            $currentPeriod->year * 12 + $currentPeriod->month
+                                        ]);
+                                    }
+                                });
+                            })->whereNotIn('category_partner', [
+                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75'
+                            ]),
+                            default => $query,
+                        };
+                    }),
             ])
             ->headerActions([
                 /* Action::make('import')

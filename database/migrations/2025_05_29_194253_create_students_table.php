@@ -34,7 +34,7 @@ return new class extends Migration
             $table->boolean('has_payment_exemption')->default(false);
             $table->decimal('pricing_multiplier', 5, 2)->default(1.00); // Multiplicador para el precio (1.5 para PRE-PAMA, 1.0 para otros, 0.0 para exonerados)
 
-            $table->enum('monthly_maintenance_status', ['exonerado', 'al_dia', 'no_pagado']);
+            $table->foreignId('maintenance_period_id')->nullable()->constrained('maintenance_periods');
         });
     }
 

@@ -1,9 +1,39 @@
-<div x-data="workshopSelector()">
+<div x-data="workshopSelector()"
+     data-previous-workshops="{{ json_encode($getViewData()['previous_workshops'] ?? []) }}"
+     data-student-id="{{ $getViewData()['student_id'] ?? '' }}">
     @php
         $workshops = $getViewData()['workshops'] ?? collect();
         $studentId = $getViewData()['student_id'] ?? null;
         $student = $studentId ? \App\Models\Student::find($studentId) : null;
-        $isMaintenancePaid = $student ? $student->is_maintenance_current : false;
+        $isMaintenanceCurrent = $student ? $student->isMaintenanceCurrent() : false;
+        $previousWorkshopIds = $getViewData()['previous_workshops'] ?? [];
+
+        // OBTENER EL MES ANTERIOR BASADO EN EL PERÍODO SELECCIONADO
+        $selectedMonthlyPeriodId = $getViewData()['selected_monthly_period_id'] ?? null;
+        $previousMonthName = 'Mes Anterior';
+
+        if ($selectedMonthlyPeriodId) {
+            $currentPeriod = \App\Models\MonthlyPeriod::find($selectedMonthlyPeriodId);
+            if ($currentPeriod) {
+                // Calcular mes anterior
+                $previousMonth = $currentPeriod->month - 1;
+                $previousYear = $currentPeriod->year;
+
+                if ($previousMonth < 1) {
+                    $previousMonth = 12;
+                    $previousYear -= 1;
+                }
+
+                // Crear fecha del mes anterior para obtener el nombre
+                $previousDate = \Carbon\Carbon::create($previousYear, $previousMonth, 1);
+                $previousMonthName = ucfirst($previousDate->locale('es')->monthName);
+            }
+        }
+
+        // CREAR VARIABLES PARA PASAR A JAVASCRIPT
+        $workshopsForJs = $workshops->values()->toArray();
+        $selectedWorkshopsForJs = $workshops->where('selected', true)->pluck('id')->toArray();
+        $previousWorkshopIdsForJs = $previousWorkshopIds;
     @endphp
 
     <style>
@@ -49,7 +79,7 @@
         <div class="text-center py-8 text-gray-500">
             <p class="text-lg">Primero selecciona un estudiante para ver los talleres disponibles</p>
         </div>
-    @elseif(!$isMaintenancePaid)
+    @elseif(!$isMaintenanceCurrent)
         <div class="text-center py-8">
             <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
                 <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
@@ -68,25 +98,100 @@
             </div>
         </div>
     @else
+        <!-- Sección de Talleres Previos -->
+        <div x-cloak x-show="previousWorkshops.length > 0" class="mb-8">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <div class="flex items-center mb-4">
+                    <svg class="w-6 h-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <h3 class="text-lg font-semibold text-blue-800">Talleres del Mes Anterior ({{ $previousMonthName }})</h3>
+                        <p class="text-sm text-blue-700">
+                            <span x-text="previousWorkshops.length"></span> talleres ya inscritos
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Grid de talleres previos -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <template x-for="workshop in previousWorkshops" x-bind:key="'prev_' + workshop.id">
+                        <div class="border border-blue-300 bg-blue-100 rounded-lg p-4 relative">
+                            <!-- Badge de taller previo -->
+                            <div class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
+                                Mes Anterior
+                            </div>
+
+                            <!-- Icono de confirmación -->
+                            <div class="absolute -top-2 -left-2 bg-green-500 text-white rounded-full p-1 z-10">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+
+                            <!-- Contenido del taller previo -->
+                            <div class="mt-2">
+                                <h4 class="font-semibold text-blue-900 text-lg" x-text="workshop.name"></h4>
+                                <div class="flex items-center mt-2">
+                                    <svg class="w-4 h-4 text-blue-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                    <span class="text-sm text-blue-800" x-text="workshop.instructor"></span>
+                                </div>
+
+                                <div class="space-y-1 mt-3">
+                                    <div class="flex items-center text-sm text-blue-700">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <span x-text="workshop.day"></span>
+                                    </div>
+                                    <div class="flex items-center text-sm text-blue-700">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span x-text="workshop.start_time + ' - ' + workshop.end_time"></span>
+                                    </div>
+                                </div>
+
+                                <div class="border-t border-blue-200 pt-2 mt-3">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-blue-700">Precio:</span>
+                                        <span class="font-semibold text-blue-900" x-text="'S/ ' + parseFloat(workshop.price).toFixed(2)"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
         <!-- Header con contador y buscador -->
         <div class="mb-6">
+            <div x-cloak x-show="previousWorkshops.length === 0" class="mb-6">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <div>
+                            <h4 class="text-sm font-medium text-green-800">No se registraron talleres en el mes pasado</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-medium text-gray-900">Talleres Disponibles</h3>
                 <div class="text-sm text-gray-500">
                     <span x-text="selectedCount"></span> talleres seleccionados
+                    <span x-cloak x-show="previousWorkshops.length > 0" class="text-blue-600">
+                        (<span x-text="previousWorkshops.length"></span> del mes anterior)
+                    </span>
                 </div>
             </div>
 
             <!-- Barra de búsqueda -->
             <div class="relative mb-4">
-                {{-- <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </div> --}}
                 <input
                     x-model="searchQuery"
-                    x-on:input="updateSearch()"
                     type="text"
                     class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="Buscar talleres por nombre, instructor o día de la semana..."
@@ -98,9 +203,6 @@
                         type="button"
                         class="text-gray-400 hover:text-gray-600 focus:outline-none"
                     >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
                     </button>
                 </div>
             </div>
@@ -319,12 +421,15 @@
     <script>
     function workshopSelector() {
         return {
-            allWorkshops: @json($workshops->values()->toArray()),
-            selectedWorkshops: @json($workshops->where('selected', true)->pluck('id')->toArray()),
+            allWorkshops: @json($workshopsForJs),
+            selectedWorkshops: @json($selectedWorkshopsForJs),
+            previousWorkshopIds: [], // Lo inicializamos vacío y lo llenamos en init()
+
+            // Añadir una propiedad para trackear cambios
+            lastStudentId: null,
 
             // Estado de búsqueda y paginación
             searchQuery: '',
-            filteredWorkshops: [],
             currentPage: 1,
             perPage: 6,
 
@@ -333,7 +438,63 @@
             notificationMessage: '',
 
             init() {
-                this.filteredWorkshops = [...this.allWorkshops];
+                this.updatePreviousWorkshops();
+
+                // Escuchar cambios en el DOM para detectar actualizaciones
+                const observer = new MutationObserver(() => {
+                    this.updatePreviousWorkshops();
+                });
+
+                observer.observe(this.$el, {
+                    attributes: true,
+                    attributeFilter: ['data-previous-workshops', 'data-student-id']
+                });
+            },
+
+            updatePreviousWorkshops() {
+                // Leer studentId actual
+                const currentStudentId = this.$el.getAttribute('data-student-id');
+
+                // Solo actualizar si el estudiante cambió
+                if (currentStudentId !== this.lastStudentId) {
+                    this.lastStudentId = currentStudentId;
+
+                    // Leer previousWorkshopIds desde data attribute
+                    const dataAttr = this.$el.getAttribute('data-previous-workshops');
+                    if (dataAttr) {
+                        try {
+                            this.previousWorkshopIds = JSON.parse(dataAttr);
+                        } catch (e) {
+                            console.error('Error parsing data-previous-workshops:', e);
+                            this.previousWorkshopIds = [];
+                        }
+                    } else {
+                        this.previousWorkshopIds = [];
+                    }
+                }
+            },
+
+            get filteredWorkshops() {
+                const baseWorkshops = this.allWorkshops.filter(workshop =>
+                    !this.previousWorkshopIds.includes(workshop.id)
+                );
+
+                if (this.searchQuery.trim() === '') {
+                    return baseWorkshops;
+                } else {
+                    const query = this.searchQuery.toLowerCase().trim();
+                    return baseWorkshops.filter(workshop => {
+                        return workshop.name.toLowerCase().includes(query) ||
+                            workshop.instructor.toLowerCase().includes(query) ||
+                            workshop.day.toLowerCase().includes(query);
+                    });
+                }
+            },
+
+            get previousWorkshops() {
+                return this.allWorkshops.filter(workshop =>
+                    this.previousWorkshopIds.includes(workshop.id)
+                );
             },
 
             get selectedCount() {
@@ -354,23 +515,9 @@
                 return this.filteredWorkshops.slice(start, end);
             },
 
-            updateSearch() {
-                if (this.searchQuery.trim() === '') {
-                    this.filteredWorkshops = [...this.allWorkshops];
-                } else {
-                    const query = this.searchQuery.toLowerCase().trim();
-                    this.filteredWorkshops = this.allWorkshops.filter(workshop => {
-                        return workshop.name.toLowerCase().includes(query) ||
-                               workshop.instructor.toLowerCase().includes(query) ||
-                               workshop.day.toLowerCase().includes(query);
-                    });
-                }
-                this.currentPage = 1;
-            },
-
             clearSearch() {
                 this.searchQuery = '';
-                this.updateSearch();
+                this.currentPage = 1;
             },
 
             getResultsText() {
@@ -398,32 +545,16 @@
                     this.selectedWorkshops.push(workshopId);
                 }
 
-                /* this.$nextTick(() => {
-                    const hiddenInput = document.querySelector('input[name="selected_workshops"]');
-                    if (hiddenInput) {
-                        hiddenInput.value = this.selectedWorkshopsJson;
-                        hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
-                }); */
-
+                // Actualizar el campo hidden y sincronizar con Filament
                 this.$nextTick(() => {
-                    // Actualizar el campo hidden
-                    const hiddenInput = this.$refs.selectedWorkshopsInput;
-                    if (hiddenInput) {
-                        hiddenInput.value = this.selectedWorkshopsJson;
-                        hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-
-                    // También actualizar cualquier input con el name específico
                     const namedInput = document.querySelector('input[name="selected_workshops"]');
-                    if (namedInput && namedInput !== hiddenInput) {
+                    if (namedInput) {
                         namedInput.value = this.selectedWorkshopsJson;
                         namedInput.dispatchEvent(new Event('input', { bubbles: true }));
                         namedInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
 
-                    // Forzar actualización del estado de Filament
+                    // Forzar actualización en Filament
                     if (window.Livewire) {
                         window.Livewire.emit('workshopsUpdated', this.selectedWorkshops);
                     }
@@ -483,4 +614,5 @@
         }
     }
     </script>
+
 </div>

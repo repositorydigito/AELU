@@ -6,18 +6,12 @@ use App\Models\Student;
 
 class StudentObserver
 {
-    /**
-     * Handle the Student "creating" event.
-     */
     public function creating(Student $student): void
     {
         $this->calculatePricingFields($student);
         $this->setMaintenanceStatus($student);
     }
 
-    /**
-     * Handle the Student "updating" event.
-     */
     public function updating(Student $student): void
     {
         // Solo recalcular si cambiaron campos relevantes
@@ -67,13 +61,9 @@ class StudentObserver
             'Vitalicios'
         ];
 
-        // Si es una categoría exonerada, marcar como exonerado
+        // Si es una categoría exonerada, limpiar el período de mantenimiento
         if (in_array($student->category_partner, $exemptCategories)) {
-            $student->monthly_maintenance_status = 'exonerado';
-        }
-        // Si no tiene estado definido y no es exonerado, poner como no pagado
-        elseif (empty($student->monthly_maintenance_status)) {
-            $student->monthly_maintenance_status = 'no_pagado';
+            $student->maintenance_period_id = null;
         }
     }
 }

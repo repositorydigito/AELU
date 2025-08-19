@@ -28,48 +28,37 @@ class Student extends Model
         'emergency_contact_name',
         'emergency_contact_relationship',
         'emergency_contact_phone',
-        'monthly_maintenance_status',
+        'maintenance_period_id',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
     ];
 
-    public const MAINTENANCE_STATUS = [
-        'exonerado' => 'Exonerado',
-        'al_dia' => 'Al día',
-        'no_pagado' => 'No pagado',
-    ];
-
     public function medicalRecord()
     {
         return $this->hasOne(MedicalRecord::class);
     }
-
+    public function maintenancePeriod()
+    {
+        return $this->belongsTo(MaintenancePeriod::class);
+    }
     public function medications()
     {
         return $this->hasManyThrough(StudentMedication::class, MedicalRecord::class);
     }
-
     public function affidavit()
     {
         return $this->hasOne(Affidavit::class);
     }
-
     public function studentEnrollments()
     {
         return $this->hasMany(StudentEnrollment::class);
     }
-
     public function workshops(): BelongsToMany
     {
         return $this->belongsToMany(Workshop::class, 'student_enrollments', 'student_id', 'workshop_id');
     }
-
-    /* public function payments(): HasMany
-    {
-        return $this->hasMany(Payment::class);
-    } */
 
     public function getFullNameAttribute(): string
     {
@@ -83,15 +72,56 @@ class Student extends Model
     {
         return $this->birth_date ? $this->birth_date->age : 0;
     }
+    public function isExemptFromMaintenance(): bool
+    {
+        return in_array($this->category_partner, [
+            'Vitalicios',
+            'Hijo de Fundador',
+            'Transitorio Mayor de 75'
+        ]);
+    }
+    public function isMaintenanceCurrent(): bool
+    {
+        // Si es categoría exonerada, siempre está al día
+        if ($this->isExemptFromMaintenance()) {
+            return true;
+        }
+
+        // Si no tiene período asignado, considerarlo como no al día
+        if (!$this->maintenancePeriod) {
+            return false;
+        }
+
+        $currentPeriod = MaintenancePeriod::getCurrentPeriod();
+
+        // Si no existe el período actual, return false por seguridad
+        if (!$currentPeriod) {
+            return false;
+        }
+
+        return $this->maintenancePeriod->isEqualOrAfter($currentPeriod);
+    }
+    public function getMaintenanceStatusText(): string
+    {
+        if ($this->isExemptFromMaintenance()) {
+            return 'Exonerado';
+        }
+
+        if (!$this->maintenancePeriod) {
+            return 'Sin asignar';
+        }
+
+        return $this->maintenancePeriod->name;
+    }
     public function getIsMaintenanceCurrentAttribute(): bool
     {
-        return in_array($this->monthly_maintenance_status, ['exonerado', 'al_dia']);
+        return $this->isMaintenanceCurrent();
     }
     public function getInscriptionMultiplierAttribute(): float
     {
         return match($this->category_partner) {
             'PRE PAMA 50+' => 2.0,  // 100% adicional = pagan el doble
-            'PRE PAMA 55+' => 1.5,  // 50% adicional 
+            'PRE PAMA 55+' => 1.5,  // 50% adicional
             default => 1.0          // Tarifa normal para todas las demás categorías
         };
     }
@@ -99,7 +129,7 @@ class Student extends Model
     public function isPrePamaAttribute(): bool
     {
         return in_array($this->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
-    }    
+    }
     // Calcula el multiplicador de precio según la categoría y edad
     public function getPricingMultiplierAttribute(): float
     {
@@ -169,7 +199,7 @@ class Student extends Model
         }
 
         return false;
-    }    
+    }
     // Actualiza automáticamente los campos de tarifa según la categoría
     public function updatePricingFields(): void
     {
