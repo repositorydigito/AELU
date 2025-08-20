@@ -80,10 +80,17 @@ class WorkshopResource extends Resource
                             ->minValue(0)
                             ->required(),
                         Forms\Components\TextInput::make('place')
-                            ->label('Lugar')
+                            ->label('Locación')
+                            ->nullable(),
+                        Forms\Components\Select::make('modality')
+                            ->label('Modalidad')
+                            ->options([
+                                'Presencial' => 'Presencial',
+                                'Virtual' => 'Virtual',
+                            ])
                             ->nullable(),
                     ])
-                    ->columns(3),
+                    ->columns(5),
                 Forms\Components\Section::make('Vista Previa de Tarifas')
                     ->schema([
                         Forms\Components\Placeholder::make('recargo_actual')
@@ -310,6 +317,9 @@ class WorkshopResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('day_of_week')
+                    ->label('Día')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('start_time')
                     ->label('Hora de Inicio')
                     ->time('H:i A'),
@@ -318,15 +328,8 @@ class WorkshopResource extends Resource
                     ->time('H:i A'),
                 Tables\Columns\TextColumn::make('standard_monthly_fee')
                     ->label('Tarifa Mensual')
-                    ->money('PEN')
+                    ->prefix('S/. ')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('pricing_surcharge_percentage')
-                    ->label('Recargo')
-                    ->formatStateUsing(fn($state) => $state . '%')
-                    ->sortable()
-                    ->color('info'),
-                Tables\Columns\TextColumn::make('place')
-                    ->label('Lugar'),
             ])
             ->defaultSort('name', 'asc')
             ->filters([
