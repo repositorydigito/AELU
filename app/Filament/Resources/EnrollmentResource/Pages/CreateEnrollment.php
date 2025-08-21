@@ -68,7 +68,7 @@ class CreateEnrollment extends CreateRecord
 
         // 🔥 OBTENER INFORMACIÓN DEL ESTUDIANTE PARA VERIFICAR SI ES PRE-PAMA
         $student = \App\Models\Student::find($data['student_id']);
-        $isPrepama = $student && $student->category_partner === 'Individual PRE-PAMA';
+        $isPrepama = $student && in_array($student->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
 
         // Determinar el estado de pago final
         $finalPaymentStatus = $paymentMethod === 'cash' ? 'completed' : 'pending';
@@ -172,8 +172,36 @@ class CreateEnrollment extends CreateRecord
                 ->danger()
                 ->send();
 
-            throw new \Exception('No se crearon inscripciones');
+            throw new \Exception('No se crearon inscripciones válidas');
         } */
+        if (empty($validWorkshopDetails)) {
+            $skippedCount = count($skippedWorkshops);
+            
+            if ($skippedCount > 0) {
+                $reasons = array_unique($skippedWorkshops);
+                $reasonsText = implode(', ', array_slice($reasons, 0, 3));
+                if (count($reasons) > 3) {
+                    $reasonsText .= '...';
+                }
+                
+                Notification::make()
+                    ->title('No se pudieron procesar las inscripciones')
+                    ->body("Se omitieron {$skippedCount} talleres: {$reasonsText}")
+                    ->warning()
+                    ->persistent()
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('Error en la inscripción')
+                    ->body('No se pudo crear ninguna inscripción válida.')
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            }
+
+            // Usar halt() en lugar de throw Exception
+            $this->halt();
+        }
 
         // Crear el lote de inscripciones
         $enrollmentBatch = \App\Models\EnrollmentBatch::create([
@@ -213,13 +241,12 @@ class CreateEnrollment extends CreateRecord
         // Mostrar notificación de éxito (con información PRE-PAMA si aplica)
         $count = count($createdEnrollments);
         $student = \App\Models\Student::find($data['student_id']);
-        $prepamaMessage = $isPrepama ? " (Estudiante PRE-PAMA: 50% adicional aplicado)" : "";
 
         if ($paymentMethod === 'cash') {
             // Pago en efectivo - Estado: Inscrito - Generar PDF
             Notification::make()
                 ->title('¡Inscripciones completadas!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: Inscrito. Se generará el ticket PDF.")
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: Inscrito. Se generará el ticket PDF.")
                 ->success()
                 ->actions([
                     \Filament\Notifications\Actions\Action::make('download_ticket')
@@ -234,7 +261,7 @@ class CreateEnrollment extends CreateRecord
             // Pago con link - Estado: En Proceso
             Notification::make()
                 ->title('¡Inscripciones en proceso!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: En Proceso.")
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: En Proceso.")
                 ->warning()
                 ->send();
         }

@@ -212,17 +212,26 @@ class EnrollmentResource extends Resource
                                     // Actualizar campos
                                     $set('selected_workshops', json_encode($previousWorkshops));
                                     $set('previous_workshops', json_encode($previousWorkshops));
+
+                                    // Este foreach es para la pre-selección automática de talleres previos
+                                    $workshopDetails = [];
+                                    foreach ($previousWorkshops as $workshopId) {
+                                        /* $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+                                        $defaultClasses = $instructorWorkshop ? $instructorWorkshop->workshop->number_of_classes : 4; */
+
+                                        $workshopDetails[] = [
+                                            'instructor_workshop_id' => $workshopId,
+                                            'enrollment_type' => 'full_month',
+                                            'number_of_classes' => 4,
+                                            'enrollment_date' => now()->format('Y-m-d'),
+                                        ];
+                                    }
+                                    $set('workshop_details', $workshopDetails);
                                 })
                                 ->columnSpanFull(),
 
                             // Separador visual
-                            Forms\Components\Section::make('')
-                                /* ->description(function (Forms\Get $get) {
-                                    $previousWorkshops = json_decode($get('previous_workshops') ?? '[]', true);
-                                    return empty($previousWorkshops)
-                                        ? 'Selecciona los talleres en los que deseas inscribir al estudiante'
-                                        : 'Selecciona talleres adicionales para inscribir al estudiante';
-                                }) */
+                            Forms\Components\Section::make('')                                
                                 ->schema([
                                     // Campo oculto para almacenar los talleres seleccionados
                                     Forms\Components\Hidden::make('selected_workshops')
@@ -232,7 +241,8 @@ class EnrollmentResource extends Resource
                                             // Sincronizar los talleres seleccionados con el paso 2
                                             $selectedWorkshops = json_decode($state ?? '[]', true);
                                             $workshopDetails = [];
-
+                                            
+                                            // Este foreach es cuando el usuario interactua manualmente con los talleres
                                             foreach ($selectedWorkshops as $workshopId) {
                                                 $workshopDetails[] = [
                                                     'instructor_workshop_id' => $workshopId,
@@ -478,6 +488,24 @@ class EnrollmentResource extends Resource
                                             $isPrePama = $student ? $student->is_pre_pama : false;
 
                                             $html = '<div class="space-y-4">';
+                                            // 🔥 AGREGAR INFORMACIÓN DEL ESTUDIANTE
+                                            if ($student) {
+                                                $categoryText = $isPrePama ? $student->category_partner : $student->category_partner;
+                                                $html .= "
+                                                    <div class='mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
+                                                        <h3 class='font-semibold text-blue-800 mb-2'>Información del Estudiante</h3>
+                                                        <div class='grid grid-cols-2 gap-4 text-sm'>
+                                                            <div>
+                                                                <p><strong>Nombre:</strong> {$student->first_names} {$student->last_names}</p>
+                                                                <p><strong>Código:</strong> {$student->student_code}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p><strong>Categoría:</strong> {$categoryText}</p>                                                                
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ";
+                                            }
                                             $subtotal = 0;
                                             $prepamaTotal = 0;
 
