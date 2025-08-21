@@ -34,20 +34,15 @@ class StudentObserver
      */
     protected function calculatePricingMultiplier(Student $student): float
     {
-        $age = $student->birth_date ? $student->birth_date->age : 0;
-        $category = $student->category_partner;
+        $category = $student->category_partner;        
 
-        // Categorías exentas de pago
-        if (in_array($category, ['Hijo de Fundador', 'Vitalicios', 'Transitorio Mayor de 75'])) {
-            return 0.00;
+        if ($category === 'PRE PAMA 50+') {
+            return 2.0; 
+        }        
+        if ($category === 'PRE PAMA 55+') {
+            return 1.5; 
         }
 
-        // Individual PRE-PAMA: Menores de 60 años pagan 50% adicional
-        if ($category === 'Individual PRE-PAMA' || ($category === 'Individual' && $age < 60)) {
-            return 1.50; // 150% = tarifa normal + 50%
-        }
-
-        // Todas las demás categorías pagan tarifa normal
         return 1.00;
     }
     /**

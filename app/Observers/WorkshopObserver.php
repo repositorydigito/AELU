@@ -131,14 +131,14 @@ class WorkshopObserver
             $affectedRows = $workshop->instructorWorkshops()->update($updateData);
 
             // Log para debugging (opcional - puedes comentar en producción)
-            \Log::info("Workshop horarios sincronizados", [
+            /* \Log::info("Workshop horarios sincronizados", [
                 'workshop_id' => $workshop->id,
                 'workshop_name' => $workshop->name,
                 'updated_fields' => array_keys($updateData),
                 'update_data' => $updateData,
                 'affected_instructor_workshops' => $affectedRows,
                 'changes' => $workshop->getDirty()
-            ]);
+            ]); */
         }
     }
 

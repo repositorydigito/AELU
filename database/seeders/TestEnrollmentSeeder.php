@@ -50,7 +50,6 @@ class TestEnrollmentSeeder extends Seeder
             'student_code' => 'EST001',
             'category_partner' => 'Socio Activo',
             'pricing_multiplier' => 1.00,
-            'monthly_maintenance_status' => 'al_dia',
         ]);
 
         $newStudent = Student::firstOrCreate([
@@ -63,7 +62,6 @@ class TestEnrollmentSeeder extends Seeder
             'student_code' => 'EST002',
             'category_partner' => 'Socio Activo',
             'pricing_multiplier' => 1.00,
-            'monthly_maintenance_status' => 'al_dia',
         ]);
 
         $prepamaStudent = Student::firstOrCreate([
@@ -76,7 +74,6 @@ class TestEnrollmentSeeder extends Seeder
             'student_code' => 'EST003',
             'category_partner' => 'Individual PRE-PAMA',
             'pricing_multiplier' => 1.50,
-            'monthly_maintenance_status' => 'al_dia',
         ]);
 
         // 3. Crear instructores
