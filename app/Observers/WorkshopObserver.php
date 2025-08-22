@@ -5,13 +5,13 @@ namespace App\Observers;
 use App\Models\Workshop;
 use App\Models\WorkshopPricing;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class WorkshopObserver
 {
     public function created(Workshop $workshop): void
     {
         $this->syncPricing($workshop);
+        $this->createInstructorWorkshop($workshop);
     }
 
     public function updated(Workshop $workshop): void
@@ -19,12 +19,7 @@ class WorkshopObserver
         // Regenerar tarifas si cambia la tarifa mensual o el porcentaje de recargo
         if ($workshop->isDirty(['standard_monthly_fee', 'pricing_surcharge_percentage'])) {
             $this->syncPricing($workshop);
-        }
-
-        // Sincronizar horarios y capacidad con InstructorWorkshops si cambian campos relevantes
-        if ($workshop->isDirty(['start_time', 'duration', 'day_of_week', 'capacity'])) {
-            $this->syncInstructorWorkshopsSchedule($workshop);
-        }
+        }       
     }
 
     protected function syncPricing(Workshop $workshop): void
@@ -81,84 +76,47 @@ class WorkshopObserver
                 ]);
             }
         });
-    }
-
-    protected function syncInstructorWorkshopsSchedule(Workshop $workshop): void
+    }   
+    protected function createInstructorWorkshop(Workshop $workshop): void
     {
-        // Solo proceder si hay InstructorWorkshops relacionados
-        if ($workshop->instructorWorkshops()->count() === 0) {
-            return;
-        }
+        // Solo crear si no existe ya
+        if ($workshop->instructorWorkshops()->count() === 0 && $workshop->instructor_id) {
+            
+            // Mapear día de la semana a número
+            $dayMapping = [
+                'Lunes' => 1,
+                'Martes' => 2,
+                'Miércoles' => 3,
+                'Jueves' => 4,
+                'Viernes' => 5,
+                'Sábado' => 6,
+                'Domingo' => 0,
+            ];
 
-        // Calcular la nueva hora de fin
-        $endTime = null;
-        $durationHours = null;
+            $dayOfWeekNumber = $dayMapping[$workshop->day_of_week] ?? 1;
 
-        if ($workshop->start_time && $workshop->duration) {
-            $startTime = Carbon::parse($workshop->start_time);
-            $endTime = $startTime->copy()->addMinutes($workshop->duration)->format('H:i:s');
-            $durationHours = round($workshop->duration / 60, 2); // Convertir minutos a horas con 2 decimales
-        }
+            $endTime = null;
+            if ($workshop->start_time && $workshop->duration) {
+                try {
+                    $startTime = \Carbon\Carbon::parse($workshop->start_time);
+                    $endTime = $startTime->addMinutes($workshop->duration)->format('H:i:s');
+                } catch (\Exception $e) {
+                    info("Error calculating end_time for workshop {$workshop->id}: " . $e->getMessage());
+                    $endTime = $workshop->start_time; // Fallback
+                }
+            }
 
-        // Mapear día de la semana a número
-        $dayOfWeekNumber = $this->mapDayOfWeekToNumber($workshop->day_of_week);
-
-        // Preparar datos para actualización
-        $updateData = [];
-        
-        if ($workshop->isDirty('start_time')) {
-            $updateData['start_time'] = $workshop->start_time;
-        }
-        
-        if ($workshop->isDirty(['start_time', 'duration'])) {
-            $updateData['end_time'] = $endTime;
-        }
-        
-        if ($workshop->isDirty('day_of_week')) {
-            $updateData['day_of_week'] = $dayOfWeekNumber;
-        }
-        
-        if ($workshop->isDirty('duration')) {
-            $updateData['duration_hours'] = $durationHours;
-        }
-        
-        if ($workshop->isDirty('capacity')) {
-            $updateData['max_capacity'] = $workshop->capacity;
-        }
-
-        // Solo actualizar si hay cambios
-        if (!empty($updateData)) {
-            $affectedRows = $workshop->instructorWorkshops()->update($updateData);
-
-            // Log para debugging (opcional - puedes comentar en producción)
-            /* \Log::info("Workshop horarios sincronizados", [
+            \App\Models\InstructorWorkshop::create([
                 'workshop_id' => $workshop->id,
-                'workshop_name' => $workshop->name,
-                'updated_fields' => array_keys($updateData),
-                'update_data' => $updateData,
-                'affected_instructor_workshops' => $affectedRows,
-                'changes' => $workshop->getDirty()
-            ]); */
+                'instructor_id' => $workshop->instructor_id,
+                'day_of_week' => $dayOfWeekNumber,
+                'start_time' => $workshop->start_time,
+                'end_time' => $endTime,
+                'max_capacity' => $workshop->capacity,
+                'is_active' => true,
+                'payment_type' => 'volunteer', // Por defecto
+                'place' => $workshop->place ?? null,
+            ]);
         }
-    }
-
-
-    /** * Mapear día de la semana en español a número * Coincide con el formato usado en InstructorWorkshop */
-     
-    private function mapDayOfWeekToNumber(?string $dayOfWeek): ?int
-    {
-        if (!$dayOfWeek) return null;
-
-        $mapping = [
-            'Lunes' => 1,
-            'Martes' => 2,  
-            'Miércoles' => 3,
-            'Jueves' => 4,
-            'Viernes' => 5,
-            'Sábado' => 6,
-            'Domingo' => 0, 
-        ];
-
-        return $mapping[$dayOfWeek] ?? null;
     }
 }

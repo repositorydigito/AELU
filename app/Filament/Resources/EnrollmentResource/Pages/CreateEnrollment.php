@@ -279,18 +279,25 @@ class CreateEnrollment extends CreateRecord
             return;
         }
 
-        // Obtener las próximas clases del taller
-        $workshopClasses = \App\Models\WorkshopClass::where('instructor_workshop_id', $enrollment->instructor_workshop_id)
-            ->where('class_date', '>=', now()->format('Y-m-d'))
+        // Obtener el workshop a través del instructor_workshop
+        $instructorWorkshop = $enrollment->instructorWorkshop;
+        $workshop = $instructorWorkshop->workshop;
+
+        // Buscar las clases disponibles del workshop para el período de la inscripción
+        $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $workshop->id)
+            ->where('monthly_period_id', $enrollment->monthly_period_id)
+            ->where('class_date', '>=', $enrollment->enrollment_date)
             ->orderBy('class_date', 'asc')
             ->limit($numberOfClasses)
             ->get();
 
-        // Si no hay suficientes clases futuras, obtener las clases más recientes
+        // Si no hay suficientes clases futuras, completar con clases más recientes
         if ($workshopClasses->count() < $numberOfClasses) {
             $remainingClasses = $numberOfClasses - $workshopClasses->count();
-            $pastClasses = \App\Models\WorkshopClass::where('instructor_workshop_id', $enrollment->instructor_workshop_id)
-                ->where('class_date', '<', now()->format('Y-m-d'))
+            
+            $pastClasses = \App\Models\WorkshopClass::where('workshop_id', $workshop->id)
+                ->where('monthly_period_id', $enrollment->monthly_period_id)
+                ->where('class_date', '<', $enrollment->enrollment_date)
                 ->orderBy('class_date', 'desc')
                 ->limit($remainingClasses)
                 ->get();
@@ -298,16 +305,16 @@ class CreateEnrollment extends CreateRecord
             $workshopClasses = $workshopClasses->merge($pastClasses)->sortBy('class_date');
         }
 
-        // Obtener el precio por clase del taller
-        $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($enrollment->instructor_workshop_id);
-        $classFee = $instructorWorkshop ? $instructorWorkshop->workshop->standard_monthly_fee : 0;
+        // Calcular precio por clase
+        $pricePerClass = $enrollment->total_amount / $numberOfClasses;
 
         // Crear los registros en enrollment_classes
         foreach ($workshopClasses as $workshopClass) {
             \App\Models\EnrollmentClass::create([
                 'student_enrollment_id' => $enrollment->id,
                 'workshop_class_id' => $workshopClass->id,
-                'class_fee' => $classFee,
+                'class_fee' => $pricePerClass,
+                'attendance_status' => 'enrolled',
             ]);
         }
     }

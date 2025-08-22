@@ -38,11 +38,7 @@ class InstructorWorkshop extends Model
     public function workshop()
     {
         return $this->belongsTo(Workshop::class);
-    }
-    public function classes()
-    {
-        return $this->hasMany(WorkshopClass::class);
-    }
+    }    
     public function enrollments()
     {
         return $this->hasMany(StudentEnrollment::class);

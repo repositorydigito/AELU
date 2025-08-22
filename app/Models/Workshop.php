@@ -8,11 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
 
 class Workshop extends Model
-{
-    public function instructor()
-    {
-        return $this->belongsTo(\App\Models\Instructor::class);
-    }
+{    
     protected $fillable = [
         'name',
         'description',
@@ -25,6 +21,7 @@ class Workshop extends Model
         'capacity',
         'number_of_classes',
         'place',
+        'monthly_period_id',
     ];
 
     protected $casts = [
@@ -39,11 +36,9 @@ class Workshop extends Model
     {
         return $this->hasMany(InstructorWorkshop::class);
     }
-    public function instructors()
+    public function instructor()
     {
-        return $this->belongsToMany(Instructor::class, 'instructor_workshops')
-                    ->withPivot('day_of_week', 'start_time', 'end_time', 'is_active')
-                    ->withTimestamps();
+        return $this->belongsTo(Instructor::class);
     }
     public function workshopPricings()
     {
@@ -53,10 +48,13 @@ class Workshop extends Model
     {
         return $this->hasManyThrough(StudentEnrollment::class, InstructorWorkshop::class);
     }
-
     public function workshopClasses()
     {
-        return $this->hasManyThrough(WorkshopClass::class, InstructorWorkshop::class);
+        return $this->hasMany(WorkshopClass::class);
+    }
+    public function monthlyPeriod()
+    {
+        return $this->belongsTo(MonthlyPeriod::class);
     }
 
     /**
@@ -66,7 +64,6 @@ class Workshop extends Model
     {
         return 1 + ($this->pricing_surcharge_percentage / 100);
     }
-
     /**
      * Obtiene el precio base por clase (sin recargo)
      */
@@ -74,7 +71,6 @@ class Workshop extends Model
     {
         return $this->standard_monthly_fee / 4;
     }
-
     /**
      * Obtiene el precio por clase con recargo aplicado
      */
@@ -82,7 +78,6 @@ class Workshop extends Model
     {
         return $this->base_per_class * $this->surcharge_multiplier;
     }
-
     /**
      * Verifica si el taller tiene tarifas generadas
      */
@@ -90,7 +85,6 @@ class Workshop extends Model
     {
         return $this->workshopPricings()->count() > 0;
     }
-
     /**
      * Obtiene las tarifas para instructores voluntarios
      */
@@ -98,25 +92,13 @@ class Workshop extends Model
     {
         return $this->workshopPricings()->where('for_volunteer_workshop', true)->orderBy('number_of_classes')->get();
     }
-
     /**
      * Obtiene las tarifas para instructores no voluntarios
      */
     public function getNonVolunteerPricings()
     {
         return $this->workshopPricings()->where('for_volunteer_workshop', false)->orderBy('number_of_classes')->get();
-    }
-
-    /**
-     * Regenera las tarifas del taller
-     */
-    /* public function regeneratePricings(): void
-    {
-        // Disparar el observer manualmente
-        $observer = new \App\Observers\WorkshopObserver();
-        $observer->syncPricing($this);
-    } */
-
+    }   
     /**
      * Obtiene la tarifa por cantidad de clases y tipo de instructor
      */
@@ -127,7 +109,6 @@ class Workshop extends Model
             ->where('for_volunteer_workshop', $isVolunteerWorkshop)
             ->first();
     }
-
     protected function endTime(): Attribute
     {
         return Attribute::make(
@@ -141,4 +122,10 @@ class Workshop extends Model
             }
         );
     }
+    public function hasEnrollments(): bool
+    {
+        return $this->instructorWorkshops()
+            ->whereHas('enrollments')
+            ->exists();
+    }    
 }

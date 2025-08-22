@@ -21,7 +21,6 @@ class StudentEnrollmentController extends Controller
             'creator', // Cargar la relación con el usuario
             'instructorWorkshop.workshop',
             'instructorWorkshop.instructor',
-            'instructorWorkshop.classes',
             'monthlyPeriod',
             'enrollmentClasses.workshopClass',
         ])->findOrFail($enrollmentId);
@@ -48,38 +47,33 @@ class StudentEnrollmentController extends Controller
         }
 
         // 5. Rellenar el calendario con las clases inscritas
-        foreach ($enrollment->enrollmentClasses as $enrollmentClass) {
-            $workshopClass = $enrollmentClass->workshopClass;
+        if ($enrollment->enrollmentClasses) {
+            foreach ($enrollment->enrollmentClasses as $enrollmentClass) {
+                $workshopClass = $enrollmentClass->workshopClass;
 
-            // Asegurarse de que la clase pertenece al periodo mensual de la inscripción
-            if ($workshopClass->monthly_period_id !== $enrollment->monthly_period_id) {
-                continue; // Saltar clases que no corresponden al periodo de la inscripción
-            }
+                // Asegurarse de que la clase pertenece al periodo mensual de la inscripción
+                if ($workshopClass->monthly_period_id !== $enrollment->monthly_period_id) {
+                    continue; // Saltar clases que no corresponden al periodo de la inscripción
+                }
 
-            $classDate = Carbon::parse($workshopClass->class_date);
-            $dayOfWeek = ucfirst($classDate->translatedFormat('l')); 
-            $startHour = Carbon::parse($workshopClass->start_time)->format('H'); // Obtiene la hora de inicio (ej. "08")
+                $classDate = Carbon::parse($workshopClass->class_date);
+                $dayOfWeek = ucfirst($classDate->translatedFormat('l')); 
+                $startHour = Carbon::parse($workshopClass->start_time)->format('H'); // Obtiene la hora de inicio (ej. "08")
 
-            // Si el día y la hora están dentro de nuestro rango de calendario, añadimos la clase.
-            if (in_array($dayOfWeek, $daysOfWeek) && in_array($startHour, $timeSlots)) {
-                $calendarData[$dayOfWeek][$startHour][] = [
-                    'start_time' => $workshopClass->start_time,
-                    'end_time' => $workshopClass->end_time,
-                    'workshop_name' => $enrollment->instructorWorkshop->workshop->name,
-                    'class_date' => $workshopClass->class_date,
-                ];
+                // Si el día y la hora están dentro de nuestro rango de calendario, añadimos la clase.
+                if (in_array($dayOfWeek, $daysOfWeek) && in_array($startHour, $timeSlots)) {
+                    $calendarData[$dayOfWeek][$startHour][] = [
+                        'start_time' => $workshopClass->start_time,
+                        'end_time' => $workshopClass->end_time,
+                        'workshop_name' => $enrollment->instructorWorkshop->workshop->name,
+                        'class_date' => $workshopClass->class_date,
+                    ];
+                }
             }
         }
 
         // 6. Obtener información del usuario que creó la inscripción
-        // Asumiendo que hay un campo created_by o similar en el modelo
-        $created_by_user = 'Mayra'; // Por defecto
-        
-        // Si tienes un campo created_by en la tabla enrollment_batches:
-        // $created_by_user = $enrollmentBatch->creator ? $enrollmentBatch->creator->name : Auth::user()->name ?? 'Mayra';
-        
-        // O si quieres usar el usuario autenticado:
-        // $created_by_user = Auth::user() ? Auth::user()->name : 'Mayra';
+        $created_by_user = $enrollment->created_by_name ?? 'Mayra';
 
         // 7. Convertir el monto total a palabras
         $totalInWords = NumberToWordsHelper::convert($enrollment->total_amount);
@@ -122,7 +116,6 @@ class StudentEnrollmentController extends Controller
             'creator', // Cargar la relación con el usuario
             'enrollments.instructorWorkshop.workshop',
             'enrollments.instructorWorkshop.instructor',
-            'enrollments.instructorWorkshop.classes',
             'enrollments.monthlyPeriod',
             'enrollments.enrollmentClasses.workshopClass',
         ])->findOrFail($batchId);
@@ -150,32 +143,34 @@ class StudentEnrollmentController extends Controller
 
         // 5. Rellenar el calendario con las clases de todas las inscripciones del lote
         foreach ($enrollmentBatch->enrollments as $enrollment) {
-            foreach ($enrollment->enrollmentClasses as $enrollmentClass) {
-                $workshopClass = $enrollmentClass->workshopClass;
+            if ($enrollment->enrollmentClasses) {
+                foreach ($enrollment->enrollmentClasses as $enrollmentClass) {
+                    $workshopClass = $enrollmentClass->workshopClass;
 
-                // Asegurarse de que la clase pertenece al periodo mensual de la inscripción
-                if ($workshopClass->monthly_period_id !== $enrollment->monthly_period_id) {
-                    continue; // Saltar clases que no corresponden al periodo de la inscripción
-                }
+                    // Asegurarse de que la clase pertenece al periodo mensual de la inscripción
+                    if ($workshopClass->monthly_period_id !== $enrollment->monthly_period_id) {
+                        continue; // Saltar clases que no corresponden al periodo de la inscripción
+                    }
 
-                $classDate = \Carbon\Carbon::parse($workshopClass->class_date);
-                $dayOfWeek = ucfirst($classDate->translatedFormat('l')); 
-                $startHour = \Carbon\Carbon::parse($workshopClass->start_time)->format('H'); // Obtiene la hora de inicio (ej. "08")
+                    $classDate = \Carbon\Carbon::parse($workshopClass->class_date);
+                    $dayOfWeek = ucfirst($classDate->translatedFormat('l')); 
+                    $startHour = \Carbon\Carbon::parse($workshopClass->start_time)->format('H'); // Obtiene la hora de inicio (ej. "08")
 
-                // Si el día y la hora están dentro de nuestro rango de calendario, añadimos la clase.
-                if (in_array($dayOfWeek, $daysOfWeek) && in_array($startHour, $timeSlots)) {
-                    $calendarData[$dayOfWeek][$startHour][] = [
-                        'start_time' => $workshopClass->start_time,
-                        'end_time' => $workshopClass->end_time,
-                        'workshop_name' => $enrollment->instructorWorkshop->workshop->name,
-                        'class_date' => $workshopClass->class_date,
-                    ];
+                    // Si el día y la hora están dentro de nuestro rango de calendario, añadimos la clase.
+                    if (in_array($dayOfWeek, $daysOfWeek) && in_array($startHour, $timeSlots)) {
+                        $calendarData[$dayOfWeek][$startHour][] = [
+                            'start_time' => $workshopClass->start_time,
+                            'end_time' => $workshopClass->end_time,
+                            'workshop_name' => $enrollment->instructorWorkshop->workshop->name,
+                            'class_date' => $workshopClass->class_date,
+                        ];
+                    }
                 }
             }
         }
 
         // 6. Obtener información del usuario que creó la inscripción
-        $created_by_user = $enrollment->created_by_name;
+        $created_by_user = $enrollmentBatch->created_by_name ?? 'Mayra';
 
         // 7. Convertir el monto total a palabras
         $totalInWords = NumberToWordsHelper::convert($enrollmentBatch->total_amount);

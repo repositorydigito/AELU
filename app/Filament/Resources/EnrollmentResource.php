@@ -104,7 +104,7 @@ class EnrollmentResource extends Resource
 
                                     $previousWorkshops = $findPreviousWorkshops($studentId, $state);
 
-                                    $set('selected_workshops', json_encode($previousWorkshops));
+                                    $set('selected_workshops', '[]');
                                     $set('previous_workshops', json_encode($previousWorkshops));
                                 })
                                 ->validationMessages(['required' => 'El período mensual es obligatorio.'])
@@ -210,7 +210,7 @@ class EnrollmentResource extends Resource
                                     $previousWorkshops = $findPreviousWorkshops($state, $selectedMonthlyPeriodId);
 
                                     // Actualizar campos
-                                    $set('selected_workshops', json_encode($previousWorkshops));
+                                    $set('selected_workshops', '[]');
                                     $set('previous_workshops', json_encode($previousWorkshops));
 
                                     // Este foreach es para la pre-selección automática de talleres previos
@@ -226,7 +226,7 @@ class EnrollmentResource extends Resource
                                             'enrollment_date' => now()->format('Y-m-d'),
                                         ];
                                     }
-                                    $set('workshop_details', $workshopDetails);
+                                    $set('workshop_details', []);
                                 })
                                 ->columnSpanFull(),
 
@@ -247,7 +247,7 @@ class EnrollmentResource extends Resource
                                                 $workshopDetails[] = [
                                                     'instructor_workshop_id' => $workshopId,
                                                     'enrollment_type' => 'full_month',
-                                                    'number_of_classes' => 1,
+                                                    'number_of_classes' => 4,
                                                     'enrollment_date' => now()->format('Y-m-d'),
                                                 ];
                                             }
