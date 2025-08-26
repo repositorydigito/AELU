@@ -25,7 +25,7 @@ class WorkshopResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Gestión';
 
-    public static function form(Form $form): Form
+    /* public static function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -229,6 +229,379 @@ class WorkshopResource extends Resource
                         Forms\Components\Hidden::make('schedule_data')
                             ->default([])
                             ->dehydrated(false), // No se guarda en la base de datos
+                    ])
+                    ->columns(1),
+            ]);
+    } */
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                // Sección de Período Mensual (nueva)
+                Forms\Components\Section::make('Período del Taller')
+                    ->description('Selecciona el mes para el cual se creará este taller')
+                    ->schema([
+                        Forms\Components\Select::make('monthly_period_id')
+                            ->label('Período Mensual')
+                            ->options(function () {
+                                $currentDate = now();
+                                return \App\Models\MonthlyPeriod::where('month', '>=', $currentDate->month)
+                                    ->where('year', '<=', $currentDate->year + 2)
+                                    ->orderBy('year', 'asc')
+                                    ->orderBy('month', 'asc')
+                                    ->get()
+                                    ->mapWithKeys(function ($period) {
+                                        $date = \Carbon\Carbon::create($period->year, $period->month, 1);
+                                        return [$period->id => $date->translatedFormat('F Y')];
+                                    });
+                            })
+                            ->required()
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                // Limpiar fechas cuando cambie el período
+                                $set('temp_start_date', null);
+                                $set('schedule_data', []);
+                            })
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            )
+                            ->helperText(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments() 
+                                    ? '⚠️ No se puede editar porque ya hay inscripciones'
+                                    : 'Selecciona el mes del taller'
+                            )
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible()
+                    ->collapsed(false),
+
+                // Sección de Información del Taller (modificada)
+                Forms\Components\Section::make('Información del Taller')
+                    ->schema([
+                        Forms\Components\Hidden::make('pricing_surcharge_percentage')
+                            ->default(20),
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nombre del taller')
+                            ->required()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\Select::make('instructor_id')
+                            ->label('Profesor')
+                            ->options(\App\Models\Instructor::all()->pluck('full_name', 'id'))
+                            ->searchable()
+                            ->required()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\Select::make('day_of_week')
+                            ->label('Día del taller')
+                            ->options([
+                                'Lunes' => 'Lunes',
+                                'Martes' => 'Martes',
+                                'Miércoles' => 'Miércoles',
+                                'Jueves' => 'Jueves',
+                                'Viernes' => 'Viernes',
+                                'Sábado' => 'Sábado',
+                                'Domingo' => 'Domingo',
+                            ])
+                            ->required()
+                            ->live()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\TimePicker::make('start_time')
+                            ->label('Hora')
+                            ->withoutSeconds()
+                            ->required()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\TextInput::make('duration')
+                            ->label('Duración de la Clase')
+                            ->numeric()
+                            ->minValue(1)
+                            ->suffix('minutos')
+                            ->required()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\TextInput::make('capacity')
+                            ->label('Número de cupos (Aforo)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->required()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\TextInput::make('number_of_classes')
+                            ->label('Número de clases')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(8)
+                            ->required()
+                            ->live()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\TextInput::make('standard_monthly_fee')
+                            ->label('Tarifa del Mes')
+                            ->prefix('S/.')
+                            ->numeric()
+                            ->minValue(0)
+                            ->required()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\TextInput::make('place')
+                            ->label('Localización')
+                            ->nullable()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                        Forms\Components\Select::make('modality')
+                            ->label('Modalidad')
+                            ->options([
+                                'Presencial' => 'Presencial',
+                                'Virtual' => 'Virtual',
+                            ])
+                            ->nullable()
+                            ->disabled(fn ($livewire) => 
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                $livewire->record->hasEnrollments()
+                            ),
+                    ])
+                    ->columns(5),
+
+                // Resto de secciones (Vista Previa de Tarifas y Horarios) sin cambios
+                Forms\Components\Section::make('Vista Previa de Tarifas')
+                    ->schema([
+                        Forms\Components\Placeholder::make('recargo_actual')
+                            ->content(fn(Get $get) => 'Valor actual del porcentaje de recargo: ' . ($get('pricing_surcharge_percentage') ?? '20') . '%')
+                            ->extraAttributes(['style' => 'margin-bottom: 8px;'])
+                            ->live(),
+                        Forms\Components\Actions::make([
+                            Forms\Components\Actions\Action::make('Ajustes')
+                                ->visible(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord)
+                                ->label('Ajustes')
+                                ->icon('heroicon-o-cog-6-tooth')
+                                ->modalHeading('Ajustes')
+                                ->modalSubmitActionLabel('Aplicar')
+                                ->modalCancelActionLabel('Cancelar')
+                                ->requiresConfirmation(false)
+                                ->form([
+                                    Forms\Components\TextInput::make('modal_pricing_surcharge_percentage')
+                                        ->label('Porcentaje de recargo por clases sueltas')
+                                        ->numeric()
+                                        ->suffix('%')
+                                        ->minValue(0)
+                                        ->maxValue(100)
+                                        ->step(0.01)
+                                        ->default(fn(Get $get) => $get('pricing_surcharge_percentage') ?? 20)
+                                        ->required(),
+                                ])
+                                ->fillForm(fn(Get $get): array => [
+                                    'modal_pricing_surcharge_percentage' => $get('pricing_surcharge_percentage') ?? 20,
+                                ])
+                                ->action(function (array $data, Set $set) {
+                                    $set('pricing_surcharge_percentage', $data['modal_pricing_surcharge_percentage']);
+                                }),
+                        ]),
+                        Forms\Components\Placeholder::make('pricing_preview')
+                            ->label('Tarifas que se generarán')
+                            ->content(function (Get $get) {
+                                return new \Illuminate\Support\HtmlString(self::generatePricingPreview($get));
+                            })
+                            ->live(),
+                    ])
+                    ->collapsible()
+                    ->collapsed(false),
+
+                Forms\Components\Section::make('Horarios del Taller')
+                    ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\DatePicker::make('temp_start_date')
+                                    ->label('Fecha de Inicio')
+                                    ->required()
+                                    ->live()
+                                    ->dehydrated(false)
+                                    ->default(function ($livewire) {
+                                        // Al editar, tomar la primera fecha de workshop_classes
+                                        if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
+                                            $firstClass = $livewire->record->workshopClasses()
+                                                ->orderBy('class_date', 'asc')
+                                                ->first();
+                                            return $firstClass ? $firstClass->class_date : null;
+                                        }
+                                        return null;
+                                    })
+                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                        self::calculateScheduleDates($get, $set);
+                                    })
+                                    ->rules([
+                                        function (Get $get) {
+                                            return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                                $monthlyPeriodId = $get('monthly_period_id');
+                                                if (!$monthlyPeriodId || !$value) return;
+
+                                                $period = \App\Models\MonthlyPeriod::find($monthlyPeriodId);
+                                                if (!$period) return;
+
+                                                $selectedDate = \Carbon\Carbon::parse($value);
+                                                $startDate = \Carbon\Carbon::parse($period->start_date);
+                                                $endDate = \Carbon\Carbon::parse($period->end_date);
+
+                                                if ($selectedDate->lt($startDate) || $selectedDate->gt($endDate)) {
+                                                    $monthName = $startDate->translatedFormat('F Y');
+                                                    $fail("La fecha debe estar dentro del período seleccionado ({$monthName})");
+                                                }
+                                            };
+                                        }
+                                    ])
+                                    ->disabled(fn ($livewire) => 
+                                        $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                        $livewire->record->hasEnrollments()
+                                    ),
+
+                                Forms\Components\Actions::make([
+                                    Forms\Components\Actions\Action::make('calcular_horarios')
+                                        ->label('Calcular Horarios')
+                                        ->color('success')
+                                        ->action(function (Get $get, Set $set) {
+                                            self::calculateScheduleDates($get, $set);
+                                        })
+                                        ->disabled(fn ($livewire) => 
+                                            $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                            $livewire->record->hasEnrollments()
+                                        ),
+                                ])->extraAttributes(['class' => 'flex items-end justify-end']),
+                            ]),
+
+                        Forms\Components\Placeholder::make('schedule_table')
+                            ->label('Clases')
+                            ->content(function (Get $get) {
+                                return new \Illuminate\Support\HtmlString(self::generateScheduleTable($get));
+                            })
+                            ->columnSpanFull()
+                            ->live(),
+
+                        Forms\Components\Actions::make([
+                            Forms\Components\Actions\Action::make('ajustar_fechas')
+                                ->label('Ajustes')
+                                ->icon('heroicon-o-cog-6-tooth')
+                                ->color('gray')
+                                ->visible(fn(Get $get, $livewire) => !empty($get('schedule_data')) && ($livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord))
+                                ->modalHeading('Ajustes')
+                                ->modalSubmitActionLabel('Aplicar')
+                                ->modalCancelActionLabel('Cancelar')
+                                ->form(function (Get $get) {
+                                    $scheduleData = $get('schedule_data') ?? [];
+                                    $fields = [];
+
+                                    foreach ($scheduleData as $index => $class) {
+                                        $fields[] = Forms\Components\DatePicker::make("class_date_{$index}")
+                                            ->label('Clase ' . ($index + 1) . ' *')
+                                            ->default($class['raw_date'])
+                                            ->required()
+                                            ->rules([
+                                                function (Get $get) {
+                                                    return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                                        $monthlyPeriodId = $get('monthly_period_id');
+                                                        if (!$monthlyPeriodId || !$value) return;
+
+                                                        $period = \App\Models\MonthlyPeriod::find($monthlyPeriodId);
+                                                        if (!$period) return;
+
+                                                        $selectedDate = \Carbon\Carbon::parse($value);
+                                                        $startDate = \Carbon\Carbon::parse($period->start_date);
+                                                        $endDate = \Carbon\Carbon::parse($period->end_date);
+
+                                                        if ($selectedDate->lt($startDate) || $selectedDate->gt($endDate)) {
+                                                            $monthName = $startDate->translatedFormat('F Y');
+                                                            $fail("La fecha debe estar dentro del período ({$monthName})");
+                                                        }
+                                                    };
+                                                }
+                                            ]);
+                                    }
+
+                                    return $fields;
+                                })
+                                ->fillForm(function (Get $get): array {
+                                    $scheduleData = $get('schedule_data') ?? [];
+                                    $formData = [];
+
+                                    foreach ($scheduleData as $index => $class) {
+                                        $formData["class_date_{$index}"] = $class['raw_date'];
+                                    }
+
+                                    return $formData;
+                                })
+                                ->action(function (array $data, Set $set, Get $get, $livewire) {
+                                    $scheduleData = $get('schedule_data') ?? [];
+                                    $updatedScheduleData = [];
+
+                                    foreach ($scheduleData as $index => $class) {
+                                        $newDate = $data["class_date_{$index}"];
+                                        $carbonDate = \Carbon\Carbon::parse($newDate);
+
+                                        $updatedScheduleData[] = [
+                                            'class_number' => $class['class_number'],
+                                            'date' => $carbonDate->format('d/m/Y'),
+                                            'raw_date' => $carbonDate->format('Y-m-d'),
+                                            'day' => $class['day'],
+                                            'is_holiday' => $class['is_holiday'],
+                                        ];
+                                    }
+
+                                    $set('schedule_data', $updatedScheduleData);
+
+                                    // Si estamos editando, actualizar workshop_classes
+                                    if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
+                                        self::updateWorkshopClassesInDatabase($livewire->record, $updatedScheduleData);
+                                    }
+                                })
+                                ->disabled(fn ($livewire) => 
+                                    $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                    $livewire->record->hasEnrollments()
+                                ),
+                        ])
+                        ->extraAttributes(['class' => 'flex justify-center mt-4']),
+
+                        Forms\Components\Hidden::make('schedule_data')
+                            ->default(function ($livewire) {
+                                // Al editar, cargar las clases existentes
+                                if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
+                                    $classes = $livewire->record->workshopClasses()
+                                        ->orderBy('class_date', 'asc')
+                                        ->get();
+                                    
+                                    return $classes->map(function ($class, $index) use ($livewire) {
+                                        return [
+                                            'class_number' => $index + 1,
+                                            'date' => \Carbon\Carbon::parse($class->class_date)->format('d/m/Y'),
+                                            'raw_date' => $class->class_date,
+                                            'day' => $livewire->record->day_of_week,
+                                            'is_holiday' => false,
+                                        ];
+                                    })->toArray();
+                                }
+                                return [];
+                            })
+                            ->dehydrated(true),
                     ])
                     ->columns(1),
             ]);
@@ -542,45 +915,25 @@ class WorkshopResource extends Resource
 
         return $html;
     }
-
     private static function updateWorkshopClassesInDatabase(Workshop $workshop, array $scheduleData): void
     {
-        // Obtener las clases existentes del taller
-        $workshopClasses = \App\Models\WorkshopClass::whereHas('instructorWorkshop', function ($query) use ($workshop) {
-            $query->where('workshop_id', $workshop->id);
-        })
-        ->orderBy('class_date')
-        ->get();
+        // 1. Obtener las clases existentes del taller directamente
+        $workshopClasses = $workshop->workshopClasses()
+            ->orderBy('class_date')
+            ->get();
 
-        // Actualizar cada clase con la nueva fecha
+        // 2. Actualizar cada clase con la nueva fecha
         foreach ($scheduleData as $index => $classData) {
             if (isset($workshopClasses[$index])) {
                 $workshopClass = $workshopClasses[$index];
-                $newDate = \Carbon\Carbon::parse($classData['raw_date']);
-
-                // Encontrar el período mensual correcto para la nueva fecha
-                $monthlyPeriod = \App\Models\MonthlyPeriod::where('start_date', '<=', $newDate)
-                    ->where('end_date', '>=', $newDate)
-                    ->first();
-
-                // Si no existe un período mensual, crear uno para ese mes
-                if (!$monthlyPeriod) {
-                    $monthlyPeriod = \App\Models\MonthlyPeriod::create([
-                        'year' => $newDate->year,
-                        'month' => $newDate->month,
-                        'start_date' => $newDate->startOfMonth()->format('Y-m-d'),
-                        'end_date' => $newDate->endOfMonth()->format('Y-m-d'),
-                        'is_active' => true,
-                        'auto_generate_classes' => false,
-                    ]);
-                }
-
-                // Actualizar la clase
+                
+                // 3. Actualizar la clase con los nuevos datos
                 $workshopClass->update([
                     'class_date' => $classData['raw_date'],
-                    'monthly_period_id' => $monthlyPeriod->id,
+                    'start_time' => $workshop->start_time,
+                    'end_time' => $workshop->end_time,
                 ]);
             }
         }
-    }
+    }    
 }

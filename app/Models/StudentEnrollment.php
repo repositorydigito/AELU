@@ -86,31 +86,7 @@ class StudentEnrollment extends Model
     public function enrollmentBatch()
     {
         return $this->belongsTo(EnrollmentBatch::class);
-    }
-    
-    // Relaciones indirectas
-    public function instructor()
-    {
-        return $this->hasOneThrough(
-            Instructor::class,
-            InstructorWorkshop::class,
-            'id',
-            'id',
-            'instructor_workshop_id',
-            'instructor_id'
-        );
-    }
-    public function workshop()
-    {
-        return $this->hasOneThrough(
-            Workshop::class,
-            InstructorWorkshop::class,
-            'id',
-            'id',
-            'instructor_workshop_id',
-            'workshop_id'
-        );
-    }
+    }       
 
     public function getCreatedByNameAttribute()
     {

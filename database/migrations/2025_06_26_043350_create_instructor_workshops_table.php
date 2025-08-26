@@ -13,10 +13,10 @@ return new class extends Migration
             $table->foreignId('instructor_id')->constrained()->onDelete('cascade');
             $table->foreignId('workshop_id')->constrained()->onDelete('cascade');
             $table->foreignId('initial_monthly_period_id')->nullable()->constrained('monthly_periods')->onDelete('set null');
-            $table->tinyInteger('day_of_week');
-            $table->time('start_time');
-            $table->time('end_time');
-            $table->integer('max_capacity');
+            $table->tinyInteger('day_of_week')->nullable();
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
+            $table->integer('max_capacity')->nullable();
             $table->string('place')->nullable();
             $table->boolean('is_active')->default(true);
             $table->enum('payment_type', ['volunteer', 'hourly']);

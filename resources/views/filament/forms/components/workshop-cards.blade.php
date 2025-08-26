@@ -61,12 +61,9 @@
         }
     </style>
 
-    <!-- Notificación de cupos agotados (dentro del componente) -->
+    <!-- Notificación de cupos agotados -->
     <div x-cloak x-show="showNotification"
-         class="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 notification-fade"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 transform translate-x-full"
-         x-transition:enter-end="opacity-100 transform translate-x-0">
+         class="fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 notification-fade">
         <div class="flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
@@ -108,7 +105,8 @@
                     <div>
                         <h3 class="text-lg font-semibold text-blue-800">Talleres del Mes Anterior ({{ $previousMonthName }})</h3>
                         <p class="text-sm text-blue-700">
-                            <span x-text="previousWorkshops.length"></span> talleres ya inscritos
+                            <span x-text="previousWorkshops.length"></span> talleres - 
+                            <span x-text="selectedPreviousCount"></span> seleccionados para continuar
                         </p>
                     </div>
                 </div>
@@ -116,49 +114,71 @@
                 <!-- Grid de talleres previos -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template x-for="workshop in previousWorkshops" x-bind:key="'prev_' + workshop.id">
-                        <div class="border border-blue-300 bg-blue-100 rounded-lg p-4 relative">
+                        <div 
+                            class="workshop-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md relative"
+                            x-bind:class="{
+                                'border-blue-500 bg-blue-100 ring-2 ring-blue-200': selectedWorkshops.includes(workshop.id),
+                                'border-blue-300 bg-blue-50 hover:border-blue-400': !selectedWorkshops.includes(workshop.id)
+                            }"
+                            x-on:click="toggleWorkshop(workshop.id)"
+                        >
                             <!-- Badge de taller previo -->
-                            <div class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
+                            <div class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium z-5">
                                 Mes Anterior
                             </div>
 
-                            <!-- Icono de confirmación -->
-                            <div class="absolute -top-2 -left-2 bg-green-500 text-white rounded-full p-1 z-10">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                </svg>
+                            <!-- Header del taller (igual que el grid principal) -->
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-blue-900 text-lg" x-text="workshop.name"></h4>
+                                    <div class="flex items-center mt-1">
+                                        <svg class="w-4 h-4 text-gray-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                        </svg>
+                                        <span class="text-sm text-blue-800" x-text="workshop.instructor"></span>
+                                    </div>
+                                </div>
+                                <div class="ml-2">
+                                    <div
+                                        class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
+                                        x-bind:class="{
+                                            'border-primary-500 bg-primary-500': selectedWorkshops.includes(workshop.id),
+                                            'border-gray-300': !selectedWorkshops.includes(workshop.id)
+                                        }"
+                                    >
+                                        <svg
+                                            class="w-4 h-4 text-white"
+                                            x-cloak
+                                            x-show="selectedWorkshops.includes(workshop.id)"
+                                            fill="currentColor"
+                                            viewBox="0 0 20 20"
+                                        >
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Contenido del taller previo -->
-                            <div class="mt-2">
-                                <h4 class="font-semibold text-blue-900 text-lg" x-text="workshop.name"></h4>
-                                <div class="flex items-center mt-2">
-                                    <svg class="w-4 h-4 text-blue-600 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            <!-- Información del horario -->
+                            <div class="space-y-1 mt-3">
+                                <div class="flex items-center text-sm text-blue-700">
+                                    <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                     </svg>
-                                    <span class="text-sm text-blue-800" x-text="workshop.instructor"></span>
+                                    <span x-text="workshop.day"></span>
                                 </div>
-
-                                <div class="space-y-1 mt-3">
-                                    <div class="flex items-center text-sm text-blue-700">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                        </svg>
-                                        <span x-text="workshop.day"></span>
-                                    </div>
-                                    <div class="flex items-center text-sm text-blue-700">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        <span x-text="workshop.start_time + ' - ' + workshop.end_time"></span>
-                                    </div>
+                                <div class="flex items-center text-sm text-blue-700">
+                                    <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span x-text="workshop.start_time + ' - ' + workshop.end_time"></span>
                                 </div>
+                            </div>
 
-                                <div class="border-t border-blue-200 pt-2 mt-3">
-                                    <div class="flex justify-between items-center text-sm">
-                                        <span class="text-blue-700">Precio:</span>
-                                        <span class="font-semibold text-blue-900" x-text="'S/ ' + parseFloat(workshop.price).toFixed(2)"></span>
-                                    </div>
+                            <div class="border-t border-blue-200 pt-2 mt-3">
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-blue-700">Precio:</span>
+                                    <span class="font-semibold text-blue-900" x-text="'S/ ' + parseFloat(workshop.price).toFixed(2)"></span>
                                 </div>
                             </div>
                         </div>
@@ -196,15 +216,6 @@
                     class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="Buscar talleres por nombre, instructor o día de la semana..."
                 />
-                <!-- Botón limpiar búsqueda -->
-                <div x-cloak x-show="searchQuery.length > 0" class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <button
-                        x-on:click="clearSearch()"
-                        type="button"
-                        class="text-gray-400 hover:text-gray-600 focus:outline-none"
-                    >
-                    </button>
-                </div>
             </div>
 
             <!-- Contador de resultados -->
@@ -432,55 +443,26 @@
         return {
             allWorkshops: @json($workshopsForJs),
             selectedWorkshops: @json($selectedWorkshopsForJs),
-            previousWorkshopIds: [], // Lo inicializamos vacío y lo llenamos en init()
-
-            // Añadir una propiedad para trackear cambios
+            previousWorkshopIds: [],
             lastStudentId: null,
-
-            // Estado de búsqueda y paginación
             searchQuery: '',
             currentPage: 1,
             perPage: 6,
-
-            // Estado de notificaciones (compatible con Livewire)
             showNotification: false,
             notificationMessage: '',
 
-            init() {
-                this.updatePreviousWorkshops();
-
-                // Escuchar cambios en el DOM para detectar actualizaciones
-                const observer = new MutationObserver(() => {
-                    this.updatePreviousWorkshops();
-                });
-
-                observer.observe(this.$el, {
-                    attributes: true,
-                    attributeFilter: ['data-previous-workshops', 'data-student-id']
-                });
+            get selectedCount() {
+                return this.selectedWorkshops.length;
             },
 
-            updatePreviousWorkshops() {
-                // Leer studentId actual
-                const currentStudentId = this.$el.getAttribute('data-student-id');
+            get selectedPreviousCount() {
+                return this.previousWorkshops.filter(workshop => 
+                    this.selectedWorkshops.includes(workshop.id)
+                ).length;
+            },
 
-                // Solo actualizar si el estudiante cambió
-                if (currentStudentId !== this.lastStudentId) {
-                    this.lastStudentId = currentStudentId;
-
-                    // Leer previousWorkshopIds desde data attribute
-                    const dataAttr = this.$el.getAttribute('data-previous-workshops');
-                    if (dataAttr) {
-                        try {
-                            this.previousWorkshopIds = JSON.parse(dataAttr);
-                        } catch (e) {
-                            console.error('Error parsing data-previous-workshops:', e);
-                            this.previousWorkshopIds = [];
-                        }
-                    } else {
-                        this.previousWorkshopIds = [];
-                    }
-                }
+            get selectedWorkshopsJson() {
+                return JSON.stringify(this.selectedWorkshops);
             },
 
             get filteredWorkshops() {
@@ -506,14 +488,6 @@
                 );
             },
 
-            get selectedCount() {
-                return this.selectedWorkshops.length;
-            },
-
-            get selectedWorkshopsJson() {
-                return JSON.stringify(this.selectedWorkshops);
-            },
-
             get totalPages() {
                 return Math.ceil(this.filteredWorkshops.length / this.perPage);
             },
@@ -522,6 +496,39 @@
                 const start = (this.currentPage - 1) * this.perPage;
                 const end = start + this.perPage;
                 return this.filteredWorkshops.slice(start, end);
+            },
+
+            init() {
+                this.updatePreviousWorkshops();
+
+                const observer = new MutationObserver(() => {
+                    this.updatePreviousWorkshops();
+                });
+
+                observer.observe(this.$el, {
+                    attributes: true,
+                    attributeFilter: ['data-previous-workshops', 'data-student-id']
+                });
+            },
+
+            updatePreviousWorkshops() {
+                const currentStudentId = this.$el.getAttribute('data-student-id');
+
+                if (currentStudentId !== this.lastStudentId) {
+                    this.lastStudentId = currentStudentId;
+
+                    const dataAttr = this.$el.getAttribute('data-previous-workshops');
+                    if (dataAttr) {
+                        try {
+                            this.previousWorkshopIds = JSON.parse(dataAttr);
+                        } catch (e) {
+                            console.error('Error parsing data-previous-workshops:', e);
+                            this.previousWorkshopIds = [];
+                        }
+                    } else {
+                        this.previousWorkshopIds = [];
+                    }
+                }
             },
 
             clearSearch() {
@@ -554,7 +561,6 @@
                     this.selectedWorkshops.push(workshopId);
                 }
 
-                // Actualizar el campo hidden y sincronizar con Filament
                 this.$nextTick(() => {
                     const namedInput = document.querySelector('input[name="selected_workshops"]');
                     if (namedInput) {
@@ -563,19 +569,16 @@
                         namedInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
 
-                    // Forzar actualización en Filament
                     if (window.Livewire) {
                         window.Livewire.emit('workshopsUpdated', this.selectedWorkshops);
                     }
                 });
             },
 
-            // Función de notificación compatible con Livewire
             showCapacityAlert(workshopName) {
                 this.notificationMessage = `El taller "${workshopName}" no tiene cupos disponibles`;
                 this.showNotification = true;
 
-                // Ocultar automáticamente después de 3 segundos
                 setTimeout(() => {
                     this.showNotification = false;
                 }, 3000);

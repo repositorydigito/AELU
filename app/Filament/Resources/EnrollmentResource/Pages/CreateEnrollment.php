@@ -68,7 +68,7 @@ class CreateEnrollment extends CreateRecord
 
         // 🔥 OBTENER INFORMACIÓN DEL ESTUDIANTE PARA VERIFICAR SI ES PRE-PAMA
         $student = \App\Models\Student::find($data['student_id']);
-        $isPrepama = $student && $student->category_partner === 'Individual PRE-PAMA';
+        $isPrepama = $student && in_array($student->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
 
         // Determinar el estado de pago final
         $finalPaymentStatus = $paymentMethod === 'cash' ? 'completed' : 'pending';
@@ -172,8 +172,36 @@ class CreateEnrollment extends CreateRecord
                 ->danger()
                 ->send();
 
-            throw new \Exception('No se crearon inscripciones');
+            throw new \Exception('No se crearon inscripciones válidas');
         } */
+        if (empty($validWorkshopDetails)) {
+            $skippedCount = count($skippedWorkshops);
+            
+            if ($skippedCount > 0) {
+                $reasons = array_unique($skippedWorkshops);
+                $reasonsText = implode(', ', array_slice($reasons, 0, 3));
+                if (count($reasons) > 3) {
+                    $reasonsText .= '...';
+                }
+                
+                Notification::make()
+                    ->title('No se pudieron procesar las inscripciones')
+                    ->body("Se omitieron {$skippedCount} talleres: {$reasonsText}")
+                    ->warning()
+                    ->persistent()
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('Error en la inscripción')
+                    ->body('No se pudo crear ninguna inscripción válida.')
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            }
+
+            // Usar halt() en lugar de throw Exception
+            $this->halt();
+        }
 
         // Crear el lote de inscripciones
         $enrollmentBatch = \App\Models\EnrollmentBatch::create([
@@ -213,13 +241,12 @@ class CreateEnrollment extends CreateRecord
         // Mostrar notificación de éxito (con información PRE-PAMA si aplica)
         $count = count($createdEnrollments);
         $student = \App\Models\Student::find($data['student_id']);
-        $prepamaMessage = $isPrepama ? " (Estudiante PRE-PAMA: 50% adicional aplicado)" : "";
 
         if ($paymentMethod === 'cash') {
             // Pago en efectivo - Estado: Inscrito - Generar PDF
             Notification::make()
                 ->title('¡Inscripciones completadas!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: Inscrito. Se generará el ticket PDF.")
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: Inscrito. Se generará el ticket PDF.")
                 ->success()
                 ->actions([
                     \Filament\Notifications\Actions\Action::make('download_ticket')
@@ -234,7 +261,7 @@ class CreateEnrollment extends CreateRecord
             // Pago con link - Estado: En Proceso
             Notification::make()
                 ->title('¡Inscripciones en proceso!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente{$prepamaMessage}. Estado: En Proceso.")
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: En Proceso.")
                 ->warning()
                 ->send();
         }
@@ -252,18 +279,25 @@ class CreateEnrollment extends CreateRecord
             return;
         }
 
-        // Obtener las próximas clases del taller
-        $workshopClasses = \App\Models\WorkshopClass::where('instructor_workshop_id', $enrollment->instructor_workshop_id)
-            ->where('class_date', '>=', now()->format('Y-m-d'))
+        // Obtener el workshop a través del instructor_workshop
+        $instructorWorkshop = $enrollment->instructorWorkshop;
+        $workshop = $instructorWorkshop->workshop;
+
+        // Buscar las clases disponibles del workshop para el período de la inscripción
+        $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $workshop->id)
+            ->where('monthly_period_id', $enrollment->monthly_period_id)
+            ->where('class_date', '>=', $enrollment->enrollment_date)
             ->orderBy('class_date', 'asc')
             ->limit($numberOfClasses)
             ->get();
 
-        // Si no hay suficientes clases futuras, obtener las clases más recientes
+        // Si no hay suficientes clases futuras, completar con clases más recientes
         if ($workshopClasses->count() < $numberOfClasses) {
             $remainingClasses = $numberOfClasses - $workshopClasses->count();
-            $pastClasses = \App\Models\WorkshopClass::where('instructor_workshop_id', $enrollment->instructor_workshop_id)
-                ->where('class_date', '<', now()->format('Y-m-d'))
+            
+            $pastClasses = \App\Models\WorkshopClass::where('workshop_id', $workshop->id)
+                ->where('monthly_period_id', $enrollment->monthly_period_id)
+                ->where('class_date', '<', $enrollment->enrollment_date)
                 ->orderBy('class_date', 'desc')
                 ->limit($remainingClasses)
                 ->get();
@@ -271,16 +305,16 @@ class CreateEnrollment extends CreateRecord
             $workshopClasses = $workshopClasses->merge($pastClasses)->sortBy('class_date');
         }
 
-        // Obtener el precio por clase del taller
-        $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($enrollment->instructor_workshop_id);
-        $classFee = $instructorWorkshop ? $instructorWorkshop->workshop->standard_monthly_fee : 0;
+        // Calcular precio por clase
+        $pricePerClass = $enrollment->total_amount / $numberOfClasses;
 
         // Crear los registros en enrollment_classes
         foreach ($workshopClasses as $workshopClass) {
             \App\Models\EnrollmentClass::create([
                 'student_enrollment_id' => $enrollment->id,
                 'workshop_class_id' => $workshopClass->id,
-                'class_fee' => $classFee,
+                'class_fee' => $pricePerClass,
+                'attendance_status' => 'enrolled',
             ]);
         }
     }

@@ -20,9 +20,9 @@ return new class extends Migration
             $table->integer('duration')->nullable();
             $table->integer('capacity')->nullable();
             $table->integer('number_of_classes')->nullable();
-            $table->decimal('monthly_fee', 8, 2)->nullable();
             $table->string('place')->nullable();
             $table->string('modality')->nullable();
+            $table->foreignId('monthly_period_id')->constrained()->onDelete('cascade');
 
             $table->foreign('instructor_id')->references('id')->on('instructors')->nullOnDelete();
             $table->timestamps();

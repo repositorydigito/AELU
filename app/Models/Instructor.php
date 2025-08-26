@@ -38,16 +38,13 @@ class Instructor extends Model
     {
         return $this->hasOne(Affidavit::class);
     }
-
     public function instructorWorkshops()
     {
         return $this->hasMany(InstructorWorkshop::class);
     }
     public function workshops()
     {
-        return $this->belongsToMany(Workshop::class, 'instructor_workshops')
-                    ->withPivot('day_of_week', 'start_time', 'end_time', 'is_volunteer', 'is_active')
-                    ->withTimestamps();
+        return $this->hasManyThrough(Workshop::class, InstructorWorkshop::class);
     }
     public function instructorPayments()
     {

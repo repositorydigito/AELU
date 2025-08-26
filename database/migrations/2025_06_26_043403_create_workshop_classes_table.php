@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('workshop_classes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('instructor_workshop_id')->constrained()->onDelete('cascade');
+            $table->foreignId('workshop_id')->constrained()->onDelete('cascade');
             $table->foreignId('monthly_period_id')->constrained()->onDelete('cascade');
             $table->date('class_date');
             $table->time('start_time');
@@ -20,7 +20,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
             
-            $table->unique(['instructor_workshop_id', 'class_date', 'start_time'], 'unique_class');            
+            $table->unique(['workshop_id', 'class_date', 'start_time'], 'unique_class');            
         });
     }
     

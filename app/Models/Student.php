@@ -126,7 +126,7 @@ class Student extends Model
         };
     }
     // Método para verificar si es PRE-PAMA
-    public function isPrePamaAttribute(): bool
+    public function getIsPrePamaAttribute(): bool
     {
         return in_array($this->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
     }

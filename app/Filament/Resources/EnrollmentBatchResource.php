@@ -54,7 +54,7 @@ class EnrollmentBatchResource extends Resource
                             ->label('Método de Pago')
                             ->options([
                                 'cash' => 'Efectivo',
-                                'link' => 'Link de Pago',
+                                'link' => 'Link',
                             ])
                             ->required()
                             ->disabled(),
@@ -213,7 +213,7 @@ class EnrollmentBatchResource extends Resource
                     ->label('Método de Pago')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'cash' => 'Efectivo',
-                        'link' => 'Link de Pago',
+                        'link' => 'Link',
                         default => $state,
                     })
                     ->sortable(),
@@ -250,7 +250,7 @@ class EnrollmentBatchResource extends Resource
                     ->label('Método de Pago')
                     ->options([
                         'cash' => 'Efectivo',
-                        'link' => 'Link de Pago',
+                        'link' => 'Link',
                     ]),
 
                 Tables\Filters\Filter::make('enrollment_date')

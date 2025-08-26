@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class WorkshopClass extends Model
 {
     protected $fillable = [
-        'instructor_workshop_id',
+        'workshop_id',
         'monthly_period_id',
         'class_date',
         'start_time',
@@ -23,9 +23,9 @@ class WorkshopClass extends Model
         'end_time' => 'datetime:H:i:s',
     ];
 
-    public function instructorWorkshop()
+    public function workshop()
     {
-        return $this->belongsTo(InstructorWorkshop::class);
+        return $this->belongsTo(Workshop::class);
     }
     public function monthlyPeriod()
     {
@@ -40,22 +40,11 @@ class WorkshopClass extends Model
     {
         return $this->hasOneThrough(
             Instructor::class, 
-            InstructorWorkshop::class,
-            'id', // Foreign key on instructor_workshops table
-            'id', // Foreign key on instructors table
-            'instructor_workshop_id', // Local key on workshop_classes table
-            'instructor_id' // Local key on instructor_workshops table
-        );
-    }
-    public function workshop()
-    {
-        return $this->hasOneThrough(
-            Workshop::class, 
-            InstructorWorkshop::class,
-            'id', // Foreign key on instructor_workshops table
+            Workshop::class,
             'id', // Foreign key on workshops table
-            'instructor_workshop_id', // Local key on workshop_classes table
-            'workshop_id' // Local key on instructor_workshops table
+            'id', // Foreign key on instructors table
+            'workshop_id', // Local key on workshop_classes table
+            'instructor_id' // Local key on workshops table
         );
-    }
+    }    
 }
