@@ -75,6 +75,11 @@ class StudentEnrollment extends Model
     {
         return $this->hasMany(EnrollmentClass::class);
     }
+    
+    public function attendances()
+    {
+        return $this->hasMany(ClassAttendance::class);
+    }
     public function previousEnrollment()
     {
         return $this->belongsTo(StudentEnrollment::class, 'previous_enrollment_id');

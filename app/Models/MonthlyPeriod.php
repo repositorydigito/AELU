@@ -32,6 +32,11 @@ class MonthlyPeriod extends Model
     {
         return $this->hasMany(WorkshopClass::class);
     }
+    
+    public function workshops()
+    {
+        return $this->hasMany(Workshop::class, 'monthly_period_id');
+    }
     public function enrollments()
     {
         return $this->hasMany(StudentEnrollment::class);

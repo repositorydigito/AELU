@@ -35,6 +35,11 @@ class WorkshopClass extends Model
     {
         return $this->hasMany(EnrollmentClass::class);
     }
+    
+    public function attendances()
+    {
+        return $this->hasMany(ClassAttendance::class);
+    }
     // Relación indirecta al instructor y workshop
     public function instructor()
     {

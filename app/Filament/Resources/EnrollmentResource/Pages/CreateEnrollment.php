@@ -235,7 +235,7 @@ class CreateEnrollment extends CreateRecord
             $createdEnrollments[] = $enrollment;
 
             // Crear registros en enrollment_classes
-            $this->createEnrollmentClasses($enrollment);
+            $this->createEnrollmentClasses($enrollment, $detail);
         }
 
         // Mostrar notificación de éxito (con información PRE-PAMA si aplica)
@@ -270,9 +270,38 @@ class CreateEnrollment extends CreateRecord
         return $enrollmentBatch;
     }
 
-    protected function createEnrollmentClasses($enrollment): void
+    protected function createEnrollmentClasses($enrollment, $workshopDetail): void
     {
-        // Obtener el número de clases seleccionado
+        // Obtener las clases específicas seleccionadas por el usuario
+        $selectedClassIds = $workshopDetail['selected_classes'] ?? [];
+        
+        if (empty($selectedClassIds)) {
+            // Si no hay clases específicas seleccionadas, usar el comportamiento anterior
+            $this->createEnrollmentClassesLegacy($enrollment);
+            return;
+        }
+
+        // Calcular precio por clase
+        $pricePerClass = $enrollment->total_amount / $enrollment->number_of_classes;
+
+        // Crear los registros en enrollment_classes para las clases específicas seleccionadas
+        foreach ($selectedClassIds as $classId) {
+            $workshopClass = \App\Models\WorkshopClass::find($classId);
+            
+            if ($workshopClass) {
+                \App\Models\EnrollmentClass::create([
+                    'student_enrollment_id' => $enrollment->id,
+                    'workshop_class_id' => $workshopClass->id,
+                    'class_fee' => $pricePerClass,
+                    'attendance_status' => 'enrolled',
+                ]);
+            }
+        }
+    }
+
+    protected function createEnrollmentClassesLegacy($enrollment): void
+    {
+        // Método anterior para compatibilidad hacia atrás
         $numberOfClasses = $enrollment->number_of_classes;
 
         if (!$numberOfClasses) {

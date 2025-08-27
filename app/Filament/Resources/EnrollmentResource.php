@@ -361,6 +361,27 @@ class EnrollmentResource extends Resource
                             if (!$selectedMonthlyPeriodId) {
                                 throw ValidationException::withMessages(['selected_monthly_period_id' => 'Debe seleccionar un período mensual']);
                             }
+
+                            // Validar clases específicas para cada taller
+                            $workshopDetails = $get('workshop_details') ?? [];
+                            $errors = [];
+                            
+                            foreach ($workshopDetails as $index => $detail) {
+                                $numberOfClasses = (int)($detail['number_of_classes'] ?? 0);
+                                $selectedClasses = $detail['selected_classes'] ?? [];
+                                
+                                if ($numberOfClasses > 0) {
+                                    if (empty($selectedClasses)) {
+                                        $errors["workshop_details.{$index}.selected_classes"] = 'Debes seleccionar las clases específicas para este taller.';
+                                    } elseif (count($selectedClasses) !== $numberOfClasses) {
+                                        $errors["workshop_details.{$index}.selected_classes"] = "Debes seleccionar exactamente {$numberOfClasses} clase" . ($numberOfClasses > 1 ? 's' : '') . " para este taller.";
+                                    }
+                                }
+                            }
+                            
+                            if (!empty($errors)) {
+                                throw ValidationException::withMessages($errors);
+                            }
                         })
                         ->schema([
                             Forms\Components\Repeater::make('workshop_details')
@@ -407,7 +428,7 @@ class EnrollmentResource extends Resource
                                         })
                                         ->columnSpanFull(),
 
-                                    Forms\Components\Grid::make(3)
+                                    Forms\Components\Grid::make(2)
                                         ->schema([
                                             Forms\Components\Radio::make('enrollment_type')
                                                 ->label('Tipo de Clase')
@@ -437,14 +458,78 @@ class EnrollmentResource extends Resource
                                                     return $options;
                                                 })
                                                 ->required()
+                                                ->live()
+                                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                                    // Limpiar las clases seleccionadas cuando cambie la cantidad
+                                                    $set('selected_classes', []);
+                                                })
                                                 ->placeholder('Seleccionar cantidad'),
-
-                                            Forms\Components\DatePicker::make('enrollment_date')
-                                                ->label('Fecha de Inicio')
-                                                ->default(now())
-                                                ->required()
-                                                ->helperText('Fecha de la primera clase'),
                                         ]),
+
+                                    Forms\Components\Select::make('selected_classes')
+                                        ->label('Clases Específicas')
+                                        ->multiple()
+                                        ->options(function (Forms\Get $get) {
+                                            $workshopId = $get('instructor_workshop_id');
+                                            $selectedMonthlyPeriodId = $get('../../selected_monthly_period_id');
+                                            
+                                            if (!$workshopId || !$selectedMonthlyPeriodId) return [];
+
+                                            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+                                            if (!$instructorWorkshop) return [];
+
+                                            // Obtener las clases del taller para el período seleccionado
+                                            $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $instructorWorkshop->workshop->id)
+                                                ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                                                ->orderBy('class_date', 'asc')
+                                                ->get();
+
+                                            $options = [];
+                                            foreach ($workshopClasses as $class) {
+                                                $dayName = \Carbon\Carbon::parse($class->class_date)->translatedFormat('l');
+                                                $formattedDate = \Carbon\Carbon::parse($class->class_date)->format('d/m/Y');
+                                                $startTime = \Carbon\Carbon::parse($class->start_time)->format('H:i');
+                                                $endTime = \Carbon\Carbon::parse($class->end_time)->format('H:i');
+                                                
+                                                $options[$class->id] = "{$dayName} {$formattedDate} ({$startTime} - {$endTime})";
+                                            }
+
+                                            return $options;
+                                        })
+                                        ->placeholder('Seleccionar clases específicas')
+                                        ->helperText(function (Forms\Get $get) {
+                                            $numberOfClasses = $get('number_of_classes');
+                                            if (!$numberOfClasses) {
+                                                return 'Primero selecciona la cantidad de clases';
+                                            }
+                                            if ($numberOfClasses == 1) {
+                                                return 'Selecciona 1 clase específica';
+                                            }
+                                            return "Selecciona {$numberOfClasses} clases específicas";
+                                        })
+                                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                            $numberOfClasses = (int)$get('number_of_classes');
+                                            $selectedClasses = is_array($state) ? $state : [];
+                                            
+                                            // Validar que no se seleccionen más clases de las permitidas
+                                            if ($numberOfClasses && count($selectedClasses) > $numberOfClasses) {
+                                                // Mantener solo las primeras clases seleccionadas
+                                                $limitedClasses = array_slice($selectedClasses, 0, $numberOfClasses);
+                                                $set('selected_classes', $limitedClasses);
+                                                
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Límite de clases')
+                                                    ->body("Solo puedes seleccionar {$numberOfClasses} clase" . ($numberOfClasses > 1 ? 's' : '') . ". Se han mantenido las primeras seleccionadas.")
+                                                    ->warning()
+                                                    ->send();
+                                            }
+                                        })
+                                        ->validationAttribute('clases específicas')
+                                        ->rules(['nullable'])
+                                        ->columnSpanFull(),
+
+                                    Forms\Components\Hidden::make('enrollment_date')
+                                        ->default(now()->format('Y-m-d')),
                                 ])
                                 ->addable(false)
                                 ->deletable(false)
