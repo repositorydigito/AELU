@@ -6,31 +6,38 @@
     <style>
         body {
             font-family: 'DejaVu Sans', sans-serif; /* Crucial para compatibilidad de caracteres en Dompdf */
-            font-size: 11px;
-            line-height: 1.5;
+            font-size: 10px;
+            line-height: 1.3;
             color: #333;
-            margin: 20mm; /* Márgenes generales */
+            margin: 15mm; /* Márgenes reducidos */
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px; /* Reducido de 30px */
         }
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+            font-size: 22px; /* Reducido de 24px */
+            margin-bottom: 3px; /* Reducido de 5px */
             color: #2c3e50;
         }
         .header h2 {
-            font-size: 18px;
+            font-size: 16px; /* Reducido de 18px */
             margin-top: 0;
+            margin-bottom: 3px; /* Agregado para reducir espacio */
+            color: #2c3e50;
+        }
+        .header h3 {
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 10px;
             color: #2c3e50;
         }
         .section-title {
             font-weight: bold;
-            margin-top: 20px;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            font-size: 13px;
+            margin-top: 15px; /* Reducido de 20px */
+            margin-bottom: 5px; /* Reducido de 8px */
+            padding-bottom: 3px; /* Reducido de 5px */
+            font-size: 12px; /* Reducido de 13px */
         }
         .data-item {
             margin-bottom: 5px;
@@ -43,11 +50,11 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 10px;
+            margin-top: 8px; /* Reducido de 10px */
+            font-size: 9px; /* Reducido de 10px */
         }
         table td {
-            padding: 5px;
+            padding: 3px; /* Reducido de 5px */
             border: 1px solid #eee; /* Borde suave para las celdas */
             vertical-align: top;
         }
@@ -73,7 +80,7 @@
         }
         .signature-area {
             text-align: center;
-            margin-top: 60px;
+            margin-top: 15px; /* Reducido significativamente */
             page-break-inside: avoid; /* Evita que esta sección se corte entre páginas */
         }
         .signature-line {
@@ -87,9 +94,9 @@
             font-size: 10px;
         }
         .signature-image {
-            max-width: 200px; /* Ajusta el tamaño de la imagen */
+            max-width: 120px; /* Reducido de 150px */
             height: auto;
-            margin: 10px auto;
+            margin: 5px auto; /* Reducido de 10px */
             display: block; /* Centrar la imagen */
         }
 
@@ -106,10 +113,12 @@
             $logoPath = collect($logoFiles)->map(fn($file) => public_path($file))->first(fn($path) => file_exists($path));
             $logoMime = $logoPath ? (str_ends_with($logoPath, '.svg') ? 'image/svg+xml' : 'image/png') : null;
         @endphp
-        <div class="header" style="display: flex; align-items: center; justify-content: flex-start; text-align: left;">
-            {!! $logoPath ? '<img src="data:'.$logoMime.';base64,'.base64_encode(file_get_contents($logoPath)).'" alt="Logo AELU" style="height: 50px; margin-bottom: 1rem;">' : '<div style="height: 50px; width: 100px; border: 1px solid #ccc; display: inline-block; text-align: center; line-height: 50px; font-size: 12px;">Logo AELU</div>' !!}
-            <h2>PROGRAMA ADULTO MAYOR AELU (PAMA)</h2>
-            <h3>Ficha Personal Del Asociado Participante</h3>
+        <div class="header" style="display: flex; align-items: center; justify-content: flex-start; text-align: left; margin-bottom: 15px;">
+            {!! $logoPath ? '<img src="data:'.$logoMime.';base64,'.base64_encode(file_get_contents($logoPath)).'" alt="Logo AELU" style="height: 40px; margin-bottom: 0.5rem; margin-right: 15px;">' : '<div style="height: 40px; width: 80px; border: 1px solid #ccc; display: inline-block; text-align: center; line-height: 40px; font-size: 10px; margin-right: 15px;">Logo AELU</div>' !!}
+            <div>
+                <h2 style="margin: 0;">PROGRAMA ADULTO MAYOR AELU (PAMA)</h2>
+                <h3 style="margin: 0;">Ficha Personal Del Asociado Participante</h3>
+            </div>
         </div>
 
         <table style="width: 100%; border-collapse: collapse;">
@@ -149,22 +158,22 @@
                         </tr>
                     </table>
 
-                   <table style="width: 100%; border-collapse: collapse;">
+                   <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
                         <tr>
-                            <td style="padding: 8px; vertical-align: top;">
+                            <td style="padding: 4px; vertical-align: top;">
                                 <strong>Condiciones médicas que padece</strong><br>
                                 {{ implode(', ', (array) ($student->medicalRecord->medical_conditions ?? [])) ?: 'Ninguna' }}
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; vertical-align: top;">
+                            <td style="padding: 4px; vertical-align: top;">
                                 <strong>Alergias</strong><br>
                                 {{ implode(', ', (array) ($student->medicalRecord->allergies ?? [])) ?: 'Ninguna' }}
                                 {{ $student->medicalRecord->allergy_details ? '(' . $student->medicalRecord->allergy_details . ')' : '' }}
                             </td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; vertical-align: top;">
+                            <td style="padding: 4px; vertical-align: top;">
                                 <strong>Operaciones a las que se ha sometido</strong><br>
                                 {{ implode(', ', (array) ($student->medicalRecord->surgical_operations ?? [])) ?: 'Ninguna' }}
                                 {{ $student->medicalRecord->surgical_operation_details ? '(' . $student->medicalRecord->surgical_operation_details . ')' : '' }}
@@ -172,28 +181,28 @@
                         </tr>
                     </table>
 
-                    <p><strong>Medicamentos que toma:</strong></p>
+                    <p style="margin: 8px 0 5px 0;"><strong>Medicamentos que toma:</strong></p>
                     @if ($student->medicalRecord && $student->medicalRecord->medications->isNotEmpty())
-                        <table style="width: 100%; border: 1px solid #ccc; border-collapse: collapse;">
+                        <table style="width: 100%; border: 1px solid #ccc; border-collapse: collapse; font-size: 8px;">
                             <thead>
                                 <tr>
-                                    <th style="border: 1px solid #ccc; padding: 5px;">Medicina</th>
-                                    <th style="border: 1px solid #ccc; padding: 5px;">Dosis</th>
-                                    <th style="border: 1px solid #ccc; padding: 5px;">Horario</th>
+                                    <th style="border: 1px solid #ccc; padding: 3px;">Medicina</th>
+                                    <th style="border: 1px solid #ccc; padding: 3px;">Dosis</th>
+                                    <th style="border: 1px solid #ccc; padding: 3px;">Horario</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($student->medicalRecord->medications as $medication)
                                     <tr>
-                                        <td style="border: 1px solid #ccc; padding: 5px;">{{ $medication->medicine }}</td>
-                                        <td style="border: 1px solid #ccc; padding: 5px;">{{ $medication->dose }}</td>
-                                        <td style="border: 1px solid #ccc; padding: 5px;">{{ $medication->schedule }}</td>
+                                        <td style="border: 1px solid #ccc; padding: 3px;">{{ $medication->medicine }}</td>
+                                        <td style="border: 1px solid #ccc; padding: 3px;">{{ $medication->dose }}</td>
+                                        <td style="border: 1px solid #ccc; padding: 3px;">{{ $medication->schedule }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     @else
-                        <p>Ninguno</p>
+                        <p style="margin: 5px 0;">Ninguno</p>
                     @endif
                 </td>
 
@@ -203,40 +212,54 @@
                         $photoPath = $photoPath && file_exists($photoPath) ? $photoPath : null;
                         $photoMime = $photoPath ? (in_array(strtolower(pathinfo($photoPath, PATHINFO_EXTENSION)), ['jpg', 'jpeg']) ? 'image/jpeg' : 'image/png') : null;
                     @endphp
-                    {!! $photoPath ? '<img src="data:'.$photoMime.';base64,'.base64_encode(file_get_contents($photoPath)).'" alt="Foto del usuario" style="width: 150px; height: auto; border-radius: 8px; margin-bottom: 10px;">' : '<div style="width: 150px; height: 150px; border: 2px solid #ccc; display: inline-block; text-align: center; line-height: 150px; font-size: 14px; margin-bottom: 10px;">Foto del usuario</div>' !!}
-                    <h2>Datos personales</h2>
-                    <div style="text-align: left;">
-                        <p><strong>Apellidos:</strong> {{ $student->last_names }}</p>
-                        <p><strong>Nombres:</strong> {{ $student->first_names }}</p>
-                        <p><strong>Nacionalidad:</strong> {{ $student->nationality ?? 'N/A' }}</p>
-                        <p><strong>Fecha de nacimiento:</strong> {{ $student->birth_date->format('d/m/Y') }}</p>
-                        <p><strong>DNI:</strong> {{ $student->document_number }}</p>
-                        <p><strong>Código de asociado:</strong> {{ $student->student_code ?? 'N/A' }}</p>
-                        <p><strong>Categoría de socio:</strong> {{ $student->category_partner ?? 'N/A' }}</p>
-                        <p><strong>Celular:</strong> {{ $student->cell_phone ?? 'N/A' }}</p>
-                        <p><strong>Teléfono de casa:</strong> {{ $student->home_phone ?? 'N/A' }}</p>
-                        <p><strong>Dirección:</strong> {{ $student->address ?? 'No especificado' }}</p>
+                    {!! $photoPath ? '<img src="data:'.$photoMime.';base64,'.base64_encode(file_get_contents($photoPath)).'" alt="Foto del usuario" style="width: 120px; height: auto; border-radius: 8px; margin-bottom: 8px;">' : '<div style="width: 120px; height: 120px; border: 2px solid #ccc; display: inline-block; text-align: center; line-height: 120px; font-size: 12px; margin-bottom: 8px;">Foto del usuario</div>' !!}
+                    <h2 style="margin: 8px 0;">Datos personales</h2>
+                    <div style="text-align: left; font-size: 9px;">
+                        <p style="margin: 3px 0;"><strong>Apellidos:</strong> {{ $student->last_names }}</p>
+                        <p style="margin: 3px 0;"><strong>Nombres:</strong> {{ $student->first_names }}</p>
+                        <p style="margin: 3px 0;"><strong>Nacionalidad:</strong> {{ $student->nationality ?? 'N/A' }}</p>
+                        <p style="margin: 3px 0;"><strong>Fecha de nacimiento:</strong> {{ $student->birth_date->format('d/m/Y') }}</p>
+                        <p style="margin: 3px 0;"><strong>DNI:</strong> {{ $student->document_number }}</p>
+                        <p style="margin: 3px 0;"><strong>Código de asociado:</strong> {{ $student->student_code ?? 'N/A' }}</p>
+                        <p style="margin: 3px 0;"><strong>Categoría de socio:</strong> {{ $student->category_partner ?? 'N/A' }}</p>
+                        <p style="margin: 3px 0;"><strong>Celular:</strong> {{ $student->cell_phone ?? 'N/A' }}</p>
+                        <p style="margin: 3px 0;"><strong>Teléfono de casa:</strong> {{ $student->home_phone ?? 'N/A' }}</p>
+                        <p style="margin: 3px 0;"><strong>Dirección:</strong> {{ $student->address ?? 'No especificado' }}</p>
                     </div>
                 </td>
             </tr>
         </table>
-        <h3>Contacto de emergencia</h3>
+        
+        <h3 style="margin: 10px 0 5px 0;">Contacto de emergencia</h3>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="width: 33.33%; padding: 8px; vertical-align: top;">
+                <td style="width: 33.33%; padding: 4px; vertical-align: top;">
                     <strong>Familiar responsable</strong><br>
                     {{ $student->emergency_contact_name ?? 'N/A' }}
                 </td>
-                <td style="width: 33.33%; padding: 8px; vertical-align: top;">
+                <td style="width: 33.33%; padding: 4px; vertical-align: top;">
                     <strong>Parentesco o relación</strong><br>
                     {{ $student->emergency_contact_relationship ?? 'N/A' }}
                 </td>
-                <td style="width: 33.33%; padding: 8px; vertical-align: top;">
+                <td style="width: 33.33%; padding: 4px; vertical-align: top;">
                     <strong>Teléfono del familiar</strong><br>
                     {{ $student->emergency_contact_phone ?? 'N/A' }}
                 </td>
             </tr>
         </table>
+
+        <!-- NUEVA SECCIÓN: Firma y huella en la primera página -->
+        <div class="signature-area" style="margin-top: 15px;">
+            @if ($student->affidavit && $student->affidavit->digital_signature_and_fingerprint_path)
+                <img src="{{ asset('storage/' . $student->affidavit->digital_signature_and_fingerprint_path) }}" alt="Firma y Huella Digital" class="signature-image">
+            @else
+                <div style="height: 40px; border: 1px solid #ccc; display: inline-block; text-align: center; line-height: 40px; font-size: 10px; width: 150px; margin: 5px auto;">
+                    Firma y Huella Digital
+                </div>
+            @endif
+            <p style="font-size: 9px; font-weight: bold; margin: 3px 0;">FIRMA Y HUELLA DIGITAL DEL ASOCIADO</p>
+            <p style="font-size: 8px; margin: 2px 0;">DNI: <strong>{{ $student->document_number }}</strong></p>
+        </div>
     </div>
 
     <div class="page-break"></div>
@@ -266,7 +289,7 @@
             </div>
 
             <div class="text-block">
-                <p>1. Que, los datos consignados en la “Ficha Personal Del Asociado Participante” (La Cual Se Encuentra anexada a Esta Página), se ajustan a la realidad.</p>
+                <p>1. Que, los datos consignados en la "Ficha Personal Del Asociado Participante" (La Cual Se Encuentra anexada a Esta Página), se ajustan a la realidad.</p>
                 <p>2. Que, gozo de buena salud física y mental para participar en los talleres del PROGRAMA ADULTO MAYOR AELU (PAMA).</p>
                 <p>3. Que, conozco y acepto realizar las actividades del referido programa por haberlo consultado con mi médico.</p>
                 <p>4. Que, exonero de toda responsabilidad a la ASOCIACIÓN ESTADIO LA UNIÓN - AELU, de cualquier hecho que pudiera afectar mi salud por motivo de la participación en dichos talleres.</p>
@@ -280,13 +303,12 @@
                 @if ($student->affidavit && $student->affidavit->digital_signature_and_fingerprint_path)
                     <img src="{{ asset('storage/' . $student->affidavit->digital_signature_and_fingerprint_path) }}" alt="Firma y Huella Digital" class="signature-image">
                 @else
-                    <p>Firma y Huella Digital no adjuntas.</p>
+                    <div style="height: 80px; border: 1px solid #ccc; display: inline-block; text-align: center; line-height: 80px; font-size: 12px; width: 200px; margin: 10px auto;">
+                        Firma y Huella Digital
+                    </div>
                 @endif
                 <p class="section-title">FIRMA Y HUELLA DIGITAL DEL DECLARANTE</p>
-                <!-- <div class="signature-line"></div>
-                <p class="signature-text">
-                    DNI: <strong>{{ $student->document_number }}</strong>
-                </p> -->
+                <p style="font-size: 10px; margin-top: 5px;">DNI: <strong>{{ $student->document_number }}</strong></p>
             </div>
         </div>
     </div>

@@ -6,31 +6,38 @@
     <style>
         body {
             font-family: 'DejaVu Sans', sans-serif; /* Crucial para compatibilidad de caracteres en Dompdf */
-            font-size: 11px;
-            line-height: 1.5;
+            font-size: 10px;
+            line-height: 1.3;
             color: #333;
-            margin: 20mm; /* Márgenes generales */
+            margin: 15mm; /* Márgenes reducidos */
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px; /* Reducido de 30px */
         }
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+            font-size: 22px; /* Reducido de 24px */
+            margin-bottom: 3px; /* Reducido de 5px */
             color: #2c3e50;
         }
         .header h2 {
-            font-size: 18px;
+            font-size: 16px; /* Reducido de 18px */
             margin-top: 0;
+            margin-bottom: 3px; /* Agregado para reducir espacio */
+            color: #2c3e50;
+        }
+        .header h3 {
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 10px;
             color: #2c3e50;
         }
         .section-title {
             font-weight: bold;
-            margin-top: 20px;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            font-size: 13px;
+            margin-top: 15px; /* Reducido de 20px */
+            margin-bottom: 5px; /* Reducido de 8px */
+            padding-bottom: 3px; /* Reducido de 5px */
+            font-size: 12px; /* Reducido de 13px */
         }
         .data-item {
             margin-bottom: 5px;
@@ -43,11 +50,11 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 10px;
+            margin-top: 8px; /* Reducido de 10px */
+            font-size: 9px; /* Reducido de 10px */
         }
         table td {
-            padding: 5px;
+            padding: 3px; /* Reducido de 5px */
             border: 1px solid #eee; /* Borde suave para las celdas */
             vertical-align: top;
         }
@@ -73,7 +80,7 @@
         }
         .signature-area {
             text-align: center;
-            margin-top: 60px;
+            margin-top: 15px; /* Reducido significativamente */
             page-break-inside: avoid; /* Evita que esta sección se corte entre páginas */
         }
         .signature-line {
@@ -87,9 +94,9 @@
             font-size: 10px;
         }
         .signature-image {
-            max-width: 200px; /* Ajusta el tamaño de la imagen */
+            max-width: 120px; /* Reducido de 200px */
             height: auto;
-            margin: 10px auto;
+            margin: 5px auto; /* Reducido de 10px */
             display: block; /* Centrar la imagen */
         }
 
@@ -107,167 +114,165 @@
             $logoPath = collect($logoFiles)->map(fn($file) => public_path($file))->first(fn($path) => file_exists($path));
             $logoMime = $logoPath ? (str_ends_with($logoPath, '.svg') ? 'image/svg+xml' : 'image/png') : null;
         @endphp
-        <div class="header" style="display: flex; align-items: center; justify-content: flex-start; text-align: left;">
-            <div style="flex: 0 0 auto; margin-right: 20px;">
+        <div class="header" style="display: flex; align-items: center; justify-content: flex-start; text-align: left; margin-bottom: 15px;">
+            <div style="flex: 0 0 auto; margin-right: 15px;">
                 {!! $logoPath
-                    ? '<img src="data:' . $logoMime . ';base64,' . base64_encode(file_get_contents($logoPath)) . '" alt="Logo AELU" style="height: 50px;">'
-                    : '<div style="height: 50px; width: 100px; border: 1px solid #ccc; text-align: center; line-height: 50px; font-size: 12px;">Logo AELU</div>'
+                    ? '<img src="data:' . $logoMime . ';base64,' . base64_encode(file_get_contents($logoPath)) . '" alt="Logo AELU" style="height: 40px;">'
+                    : '<div style="height: 40px; width: 80px; border: 1px solid #ccc; text-align: center; line-height: 40px; font-size: 10px;">Logo AELU</div>'
                 !!}
             </div>
             <div style="flex: 1; text-align: center;">
-                <h2>PROGRAMA ADULTO MAYOR AELU (PAMA)</h2>
-                <h3>Ficha Personal Del Profesor</h3>
+                <h2 style="margin: 0;">PROGRAMA ADULTO MAYOR AELU (PAMA)</h2>
+                <h3 style="margin: 0;">Ficha Personal Del Profesor</h3>
             </div>
         </div>
 
         <div class="content">
-            <div class="section-title">DATOS PERSONALES</div>
             <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-                <td style="width: 60%; vertical-align: top; padding-right: 20px;">
-                    <h2>Ficha Médica</h2>
-                    <table style="width: 100%; margin-bottom: 15px;">
-                         <tr>
-                            <td style="width: 50%; padding: 8px; vertical-align: top;">
-                                <strong>Talla</strong><br>
-                                {{ $instructor->medicalRecord->height ?? 'N/A' }} m
-                            </td>
-                            <td style="width: 50%; padding: 8px; vertical-align: top;">
-                                <strong>Peso</strong><br>
-                                {{ $instructor->medicalRecord->weight ?? 'N/A' }} kg
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; vertical-align: top;">
-                                <strong>Género</strong><br>
-                                {{ $instructor->gender ?? 'N/A' }}
-                            </td>
-                            <td style="padding: 8px; vertical-align: top;">
-                                <strong>¿Fuma?</strong><br>
-                                {{ $instructor->medicalRecord->smokes ? 'Sí' : 'No' }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; vertical-align: top;">
-                                <strong>Nro. de cigarrillos al día</strong><br>
-                                {{ $instructor->medicalRecord->cigarettes_per_day ?? '0' }}
-                            </td>
-                            <td style="padding: 8px; vertical-align: top;">
-                                <strong>Seguro Médico</strong><br>
-                                {{ $instructor->medicalRecord->health_insurance ?? 'N/A' }}
-                            </td>
-                        </tr>
-                    </table>
-
-                   <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px; vertical-align: top;">
-                                <strong>Condiciones médicas que padece</strong><br>
-                                {{ implode(', ', (array) ($instructor->medicalRecord->medical_conditions ?? [])) ?: 'Ninguna' }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; vertical-align: top;">
-                                <strong>Alergias</strong><br>
-                                {{ implode(', ', (array) ($instructor->medicalRecord->allergies ?? [])) ?: 'Ninguna' }}
-                                {{ $instructor->medicalRecord->allergy_details ? '(' . $instructor->medicalRecord->allergy_details . ')' : '' }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px; vertical-align: top;">
-                                <strong>Operaciones a las que se ha sometido</strong><br>
-                                {{ implode(', ', (array) ($instructor->medicalRecord->surgical_operations ?? [])) ?: 'Ninguna' }}
-                                {{ $instructor->medicalRecord->surgical_operation_details ? '(' . $instructor->medicalRecord->surgical_operation_details . ')' : '' }}
-                            </td>
-                        </tr>
-                    </table>
-
-                    <p><strong>Medicamentos que toma:</strong></p>
-                    @if ($instructor->medicalRecord && $instructor->medicalRecord->medications->isNotEmpty())
-                        <table style="width: 100%; border: 1px solid #ccc; border-collapse: collapse;">
-                            <thead>
-                                <tr>
-                                    <th style="border: 1px solid #ccc; padding: 5px;">Medicina</th>
-                                    <th style="border: 1px solid #ccc; padding: 5px;">Dosis</th>
-                                    <th style="border: 1px solid #ccc; padding: 5px;">Horario</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($instructor->medicalRecord->medications as $medication)
-                                    <tr>
-                                        <td style="border: 1px solid #ccc; padding: 5px;">{{ $medication->medicine }}</td>
-                                        <td style="border: 1px solid #ccc; padding: 5px;">{{ $medication->dose }}</td>
-                                        <td style="border: 1px solid #ccc; padding: 5px;">{{ $medication->schedule }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
+                <tr>
+                    <td style="width: 60%; vertical-align: top; padding-right: 20px;">
+                        <h2 style="margin-top: 0; margin-bottom: 10px;">Ficha Médica</h2>
+                        <table style="width: 100%; margin-bottom: 10px;">
+                             <tr>
+                                <td style="width: 50%; padding: 4px; vertical-align: top;">
+                                    <strong>Talla</strong><br>
+                                    {{ $instructor->medicalRecord->height ?? 'N/A' }} m
+                                </td>
+                                <td style="width: 50%; padding: 4px; vertical-align: top;">
+                                    <strong>Peso</strong><br>
+                                    {{ $instructor->medicalRecord->weight ?? 'N/A' }} kg
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Género</strong><br>
+                                    {{ $instructor->gender ?? 'N/A' }}
+                                </td>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>¿Fuma?</strong><br>
+                                    {{ $instructor->medicalRecord->smokes ? 'Sí' : 'No' }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Nro. de cigarrillos al día</strong><br>
+                                    {{ $instructor->medicalRecord->cigarettes_per_day ?? '0' }}
+                                </td>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Seguro Médico</strong><br>
+                                    {{ $instructor->medicalRecord->health_insurance ?? 'N/A' }}
+                                </td>
+                            </tr>
                         </table>
-                    @else
-                        <p>Ninguno</p>
-                    @endif
-                </td>
 
-                <td style="width: 40%; vertical-align: top; text-align: center; padding-left: 20px;">
-                    @php
-                        $photoPath = $instructor->photo ? storage_path('app/public/' . $instructor->photo) : null;
-                        $photoPath = $photoPath && file_exists($photoPath) ? $photoPath : null;
-                        $photoMime = $photoPath ? (in_array(strtolower(pathinfo($photoPath, PATHINFO_EXTENSION)), ['jpg', 'jpeg']) ? 'image/jpeg' : 'image/png') : null;
-                    @endphp
-                    {!! $photoPath ? '<img src="data:'.$photoMime.';base64,'.base64_encode(file_get_contents($photoPath)).'" alt="Foto del usuario" style="width: 150px; height: auto; border-radius: 8px; margin-bottom: 10px;">' : '<div style="width: 150px; height: 150px; border: 2px solid #ccc; display: inline-block; text-align: center; line-height: 150px; font-size: 14px; margin-bottom: 10px;">Foto del usuario</div>' !!}
-                    <h2>Datos personales</h2>
-                    <div style="text-align: left;">
-                        <p><strong>Apellidos:</strong> {{ $instructor->last_names }}</p>
-                        <p><strong>Nombres:</strong> {{ $instructor->first_names }}</p>
-                        <p><strong>Nacionalidad:</strong> {{ $instructor->nationality ?? 'N/A' }}</p>
-                        <p><strong>Fecha de nacimiento:</strong> {{ $instructor->birth_date->format('d/m/Y') }}</p>
-                        <p><strong>DNI:</strong> {{ $instructor->document_number }}</p>
-                        <p><strong>Categoría de socio:</strong> {{ $instructor->category_partner ?? 'N/A' }}</p>
-                        <p><strong>Celular:</strong> {{ $instructor->cell_phone ?? 'N/A' }}</p>
-                        <p><strong>Teléfono de casa:</strong> {{ $instructor->home_phone ?? 'N/A' }}</p>
-                        <p><strong>Dirección:</strong> {{ $instructor->address ?? 'No especificado' }}</p>
-                    </div>
-                </td>
-            </tr>
-        </table>
-        <h3>Contacto de emergencia</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-                <td style="width: 33.33%; padding: 8px; vertical-align: top;">
-                    <strong>Familiar responsable</strong><br>
-                    {{ $instructor->emergency_contact_name ?? 'N/A' }}
-                </td>
-                <td style="width: 33.33%; padding: 8px; vertical-align: top;">
-                    <strong>Parentesco o relación</strong><br>
-                    {{ $instructor->emergency_contact_relationship ?? 'N/A' }}
-                </td>
-                <td style="width: 33.33%; padding: 8px; vertical-align: top;">
-                    <strong>Teléfono del familiar</strong><br>
-                    {{ $instructor->emergency_contact_phone ?? 'N/A' }}
-                </td>
-            </tr>
-        </table>
+                       <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Condiciones médicas que padece</strong><br>
+                                    {{ implode(', ', (array) ($instructor->medicalRecord->medical_conditions ?? [])) ?: 'Ninguna' }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Alergias</strong><br>
+                                    {{ implode(', ', (array) ($instructor->medicalRecord->allergies ?? [])) ?: 'Ninguna' }}
+                                    {{ $instructor->medicalRecord->allergy_details ? '(' . $instructor->medicalRecord->allergy_details . ')' : '' }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Operaciones a las que se ha sometido</strong><br>
+                                    {{ implode(', ', (array) ($instructor->medicalRecord->surgical_operations ?? [])) ?: 'Ninguna' }}
+                                    {{ $instructor->medicalRecord->surgical_operation_details ? '(' . $instructor->medicalRecord->surgical_operation_details . ')' : '' }}
+                                </td>
+                            </tr>
+                        </table>
 
-            @if($instructor->instructorWorkshops && $instructor->instructorWorkshops->count() > 0)
-                <div class="section-title">TALLERES ASIGNADOS</div>
-                <table>
-                    <tr>
-                        <td style="font-weight: bold;">Taller</td>
-                        <td style="font-weight: bold;">Día</td>
-                        <td style="font-weight: bold;">Horario</td>
-                        <td style="font-weight: bold;">Lugar</td>
-                        <td style="font-weight: bold;">Tarifa</td>
-                    </tr>
-                    @foreach($instructor->instructorWorkshops as $workshop)
-                        <tr>
-                            <td>{{ $workshop->workshop->name ?? 'N/A' }}</td>
-                            <td>{{ $workshop->day_of_week ?? 'N/A' }}</td>
-                            <td>{{ $workshop->start_time ? \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A' }} - {{ $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A' }}</td>
-                            <td>{{ $workshop->place ?? 'N/A' }}</td>
-                            <td>S/. {{ $workshop->class_rate ? number_format($workshop->class_rate, 2) : '0.00' }}</td>
-                        </tr>
-                    @endforeach
-                </table>
+                        <p style="margin: 8px 0 5px 0;"><strong>Medicamentos que toma:</strong></p>
+                        @if ($instructor->medicalRecord && $instructor->medicalRecord->medications->isNotEmpty())
+                            <table style="width: 100%; border: 1px solid #ccc; border-collapse: collapse; font-size: 8px;">
+                                <thead>
+                                    <tr>
+                                        <th style="border: 1px solid #ccc; padding: 3px;">Medicina</th>
+                                        <th style="border: 1px solid #ccc; padding: 3px;">Dosis</th>
+                                        <th style="border: 1px solid #ccc; padding: 3px;">Horario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($instructor->medicalRecord->medications as $medication)
+                                        <tr>
+                                            <td style="border: 1px solid #ccc; padding: 3px;">{{ $medication->medicine }}</td>
+                                            <td style="border: 1px solid #ccc; padding: 3px;">{{ $medication->dose }}</td>
+                                            <td style="border: 1px solid #ccc; padding: 3px;">{{ $medication->schedule }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @else
+                            <p style="margin: 5px 0;">Ninguno</p>
+                        @endif
+
+                        <!-- Contacto de emergencia movido aquí -->
+                        <h3 style="margin: 15px 0 5px 0;">Contacto de emergencia</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Familiar responsable</strong><br>
+                                    {{ $instructor->emergency_contact_name ?? 'N/A' }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Parentesco o relación</strong><br>
+                                    {{ $instructor->emergency_contact_relationship ?? 'N/A' }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px; vertical-align: top;">
+                                    <strong>Teléfono del familiar</strong><br>
+                                    {{ $instructor->emergency_contact_phone ?? 'N/A' }}
+                                </td>
+                            </tr>
+                        </table>                        
+                    </td>
+
+                    <td style="width: 40%; vertical-align: top; text-align: center; padding-left: 20px;">
+                        @php
+                            $photoPath = $instructor->photo ? storage_path('app/public/' . $instructor->photo) : null;
+                            $photoPath = $photoPath && file_exists($photoPath) ? $photoPath : null;
+                            $photoMime = $photoPath ? (in_array(strtolower(pathinfo($photoPath, PATHINFO_EXTENSION)), ['jpg', 'jpeg']) ? 'image/jpeg' : 'image/png') : null;
+                        @endphp
+                        {!! $photoPath ? '<img src="data:'.$photoMime.';base64,'.base64_encode(file_get_contents($photoPath)).'" alt="Foto del usuario" style="width: 120px; height: auto; border-radius: 8px; margin-bottom: 8px;">' : '<div style="width: 120px; height: 120px; border: 2px solid #ccc; display: inline-block; text-align: center; line-height: 120px; font-size: 12px; margin-bottom: 8px;">Foto del usuario</div>' !!}
+                        <h2 style="margin: 8px 0;">Datos personales</h2>
+                        <div style="text-align: left; font-size: 9px;">
+                            <p style="margin: 3px 0;"><strong>Apellidos:</strong> {{ $instructor->last_names }}</p>
+                            <p style="margin: 3px 0;"><strong>Nombres:</strong> {{ $instructor->first_names }}</p>
+                            <p style="margin: 3px 0;"><strong>Nacionalidad:</strong> {{ $instructor->nationality ?? 'N/A' }}</p>
+                            <p style="margin: 3px 0;"><strong>Fecha de nacimiento:</strong> {{ $instructor->birth_date ? $instructor->birth_date->format('d/m/Y') : 'N/A' }}</p>
+                            <p style="margin: 3px 0;"><strong>DNI:</strong> {{ $instructor->document_number }}</p>
+                            <p style="margin: 3px 0;"><strong>Categoría de socio:</strong> {{ $instructor->category_partner ?? 'N/A' }}</p>
+                            <p style="margin: 3px 0;"><strong>Celular:</strong> {{ $instructor->cell_phone ?? 'N/A' }}</p>
+                            <p style="margin: 3px 0;"><strong>Teléfono de casa:</strong> {{ $instructor->home_phone ?? 'N/A' }}</p>
+                            <p style="margin: 3px 0;"><strong>Dirección:</strong> {{ $instructor->address ?? 'No especificado' }}</p>
+                        </div>
+
+                        
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <!-- Firma movida aquí para aprovechar mejor el espacio -->
+        <div class="signature-area" style="margin-top: 25px;">
+            @if ($instructor->affidavit && $instructor->affidavit->digital_signature_and_fingerprint_path)
+                <img src="{{ asset('storage/' . $instructor->affidavit->digital_signature_and_fingerprint_path) }}" alt="Firma y Huella Digital" class="signature-image">
+            @else
+                <div style="height: 50px; border: 1px solid #ccc; display: inline-block; text-align: center; line-height: 50px; font-size: 10px; width: 150px; margin: 8px auto;">
+                    Firma y Huella Digital
+                </div>
             @endif
+            <p style="font-size: 9px; font-weight: bold; margin: 5px 0 2px 0;">FIRMA Y HUELLA DIGITAL</p>
+            <p style="font-size: 9px; font-weight: bold; margin: 0;">DEL PROFESOR</p>
+            <p style="font-size: 8px; margin: 3px 0;">DNI: <strong>{{ $instructor->document_number }}</strong></p>
         </div>
     </div>
 
@@ -314,9 +319,12 @@
                 @if ($instructor->affidavit && $instructor->affidavit->digital_signature_and_fingerprint_path)
                     <img src="{{ asset('storage/' . $instructor->affidavit->digital_signature_and_fingerprint_path) }}" alt="Firma y Huella Digital" class="signature-image">
                 @else
-                    <p>Firma y Huella Digital no adjuntas.</p>
+                    <div style="height: 80px; border: 1px solid #ccc; display: inline-block; text-align: center; line-height: 80px; font-size: 12px; width: 200px; margin: 10px auto;">
+                        Firma y Huella Digital
+                    </div>
                 @endif
                 <p class="section-title">FIRMA Y HUELLA DIGITAL DEL DECLARANTE</p>
+                <p style="font-size: 10px; margin-top: 5px;">DNI: <strong>{{ $instructor->document_number }}</strong></p>
             </div>
         </div>
     </div>
