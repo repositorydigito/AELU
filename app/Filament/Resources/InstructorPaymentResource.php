@@ -164,6 +164,13 @@ class InstructorPaymentResource extends Resource
                                     ->nullable(),
                             ]),
 
+                        Forms\Components\TextInput::make('document_number')
+                            ->label('Número de Documento')
+                            ->helperText('Número de recibo, comprobante o documento de pago')
+                            ->placeholder('Ej: REC-001, VOUCHER-123')
+                            ->maxLength(255)
+                            ->visible(fn ($record) => $record?->payment_status === 'paid'),
+
                         Forms\Components\Textarea::make('notes')
                             ->label('Notas')
                             ->nullable()
@@ -240,31 +247,6 @@ class InstructorPaymentResource extends Resource
                         default => $state,
                     }),
 
-                /* Tables\Columns\TextColumn::make('payment_details')
-                    ->label('Detalles de Pago')
-                    ->getStateUsing(function (InstructorPayment $record) {
-                        if ($record->payment_type === 'volunteer') {
-                            $revenue = $record->monthly_revenue ?? 0;
-                            $percentage = ($record->applied_volunteer_percentage ?? 0) * 100;
-                            return "S/ " . number_format($revenue, 2) . " × {$percentage}%";
-                        } else {
-                            $hours = $record->total_hours ?? 0;
-                            $rate = $record->applied_hourly_rate ?? 0;
-                            return "{$hours}h × S/ " . number_format($rate, 2);
-                        }
-                    })
-                    ->description(function (InstructorPayment $record) {
-                        if ($record->payment_type === 'volunteer') {
-                            return ($record->total_students ?? 0) . ' estudiantes';
-                        } else {
-                            $classes = \App\Models\WorkshopClass::where('instructor_workshop_id', $record->instructor_workshop_id)
-                                ->where('monthly_period_id', $record->monthly_period_id)
-                                ->whereIn('status', ['scheduled', 'completed'])
-                                ->count();
-                            return $classes . ' clases dictadas';
-                        }
-                    }), */
-
                 Tables\Columns\TextColumn::make('calculated_amount')
                     ->label('Monto a Pagar')
                     ->prefix('S/ ')
@@ -335,18 +317,28 @@ class InstructorPaymentResource extends Resource
                     ->label('Marcar como Pagado')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->action(function (InstructorPayment $record) {
+                    ->form([
+                        Forms\Components\TextInput::make('document_number')
+                            ->label('Número de Documento')
+                            ->helperText('Número de recibo, comprobante o documento de pago')
+                            ->required()
+                            ->maxLength(255),
+                    ])
+                    ->action(function (InstructorPayment $record, array $data) {
                         $record->update([
                             'payment_status' => 'paid',
                             'payment_date' => now()->toDateString(),
+                            'document_number' => $data['document_number'],
                         ]);
                     })
                     ->visible(fn (InstructorPayment $record) => $record->payment_status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar Pago')
                     ->modalDescription(fn (InstructorPayment $record) =>
-                        "¿Confirmas el pago de S/ " . number_format($record->calculated_amount, 2) . " para {$record->instructor->first_names} {$record->instructor->last_names}?"
-                    ),
+                        "Confirma el pago de S/ " . number_format($record->calculated_amount, 2) . " para {$record->instructor->first_names} {$record->instructor->last_names}"
+                    )
+                    ->modalSubmitActionLabel('Confirmar Pago')
+                    ->modalCancelActionLabel('Cancelar'),
 
                 Tables\Actions\EditAction::make(),
             ])

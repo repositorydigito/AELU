@@ -52,7 +52,7 @@ class ExpenseResource extends Resource
                                     ->options([
                                         'Taller de Cocina' => '👨‍🍳 Taller de Cocina',
                                         'Compra de materiales' => '📦 Compra de materiales',
-                                        'Pago a Profesores' => '👩‍🏫 Pago a profesores',
+                                        // 'Pago a Profesores' => '👩‍🏫 Pago a profesores',
                                         'Otros' => '📋 Otros',
                                     ])
                                     ->required()

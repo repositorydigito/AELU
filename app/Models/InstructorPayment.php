@@ -24,6 +24,7 @@ class InstructorPayment extends Model
         'payment_status',
         'payment_date',
         'notes',
+        'document_number',
     ];
 
     protected $casts = [
@@ -67,5 +68,5 @@ class InstructorPayment extends Model
             'workshop_id'
         );
     }
-    
+
 }

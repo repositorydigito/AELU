@@ -8,6 +8,9 @@ use App\Models\ExpenseDetail;
 
 class InstructorPaymentObserver
 {
+    /**
+     * Handle the InstructorPayment "updated" event.
+     */
     public function updated(InstructorPayment $instructorPayment): void
     {
         // Verificar si el estado cambió a 'paid' y no existía antes
@@ -24,55 +27,21 @@ class InstructorPaymentObserver
      */
     private function createInstructorPaymentExpense(InstructorPayment $instructorPayment): void
     {
-        // Crear el registro principal de gasto
+        // Crear el registro principal de gasto (sin vale_code)
         $expense = Expense::create([
             'concept' => 'Pago a Profesores',
-            'vale_code' => $this->generateValeCode($instructorPayment),
+            'vale_code' => null, // No generar vale automáticamente
         ]);
 
         // Crear el detalle del gasto
         ExpenseDetail::create([
             'expense_id' => $expense->id,
             'date' => $instructorPayment->payment_date ?? now()->toDateString(),
-            'razon_social' => $this->getInstructorFullName($instructorPayment),
-            'document_number' => $this->generateDocumentNumber($instructorPayment),
+            'razon_social' => 'AELU', // Siempre AELU por defecto
+            'document_number' => $instructorPayment->document_number, // Usar el document_number del InstructorPayment
             'amount' => $instructorPayment->calculated_amount,
             'notes' => $this->generatePaymentNotes($instructorPayment),
         ]);
-    }
-
-    /**
-     * Generar código de vale para el pago del instructor
-     */
-    private function generateValeCode(InstructorPayment $instructorPayment): string
-    {
-        $instructor = $instructorPayment->instructor;
-        $period = $instructorPayment->monthlyPeriod;
-
-        return sprintf(
-            'PROF-%s-%04d%02d-%03d',
-            strtoupper(substr($instructor->last_names, 0, 3)),
-            $period->year,
-            $period->month,
-            $instructorPayment->id
-        );
-    }
-
-    /**
-     * Obtener el nombre completo del instructor
-     */
-    private function getInstructorFullName(InstructorPayment $instructorPayment): string
-    {
-        $instructor = $instructorPayment->instructor;
-        return trim("{$instructor->first_names} {$instructor->last_names}");
-    }
-
-    /**
-     * Generar número de documento para el pago
-     */
-    private function generateDocumentNumber(InstructorPayment $instructorPayment): string
-    {
-        return "PAGO-PROF-{$instructorPayment->id}";
     }
 
     /**
