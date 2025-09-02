@@ -31,6 +31,11 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     protected static ?string $navigationGroup = 'Gestión';
     protected static ?int $navigationSort = 4;
 
+    public static function canAccess(): bool
+    {
+        return Auth::user()->can('page_AttendanceManagement');
+    }
+
     public ?array $data = [];
     public $selectedWorkshop = null;
     public $workshops = [];
