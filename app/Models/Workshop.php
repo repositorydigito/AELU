@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
 
 class Workshop extends Model
-{    
+{
     protected $fillable = [
         'name',
         'description',
@@ -23,6 +23,7 @@ class Workshop extends Model
         'number_of_classes',
         'place',
         'monthly_period_id',
+        'additional_comments',
     ];
 
     protected $casts = [
@@ -103,7 +104,7 @@ class Workshop extends Model
     public function getNonVolunteerPricings()
     {
         return $this->workshopPricings()->where('for_volunteer_workshop', false)->orderBy('number_of_classes')->get();
-    }   
+    }
     /**
      * Obtiene la tarifa por cantidad de clases y tipo de instructor
      */

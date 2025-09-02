@@ -32,13 +32,17 @@ class EnrollmentBatch extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($batch) {
-            // Generar batch_code si no existe
+            // Generar batch_code según el método de pago
             if (empty($batch->batch_code)) {
-                $batch->batch_code = 'INS-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+                if ($batch->payment_method === 'link') {
+                    $batch->batch_code = 'Sin código';
+                } else {
+                    $batch->batch_code = 'INS-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+                }
             }
-            
+
             // Guardar el usuario que está creando la inscripción
             if (Auth::check() && empty($batch->created_by)) {
                 $batch->created_by = Auth::id();
@@ -101,7 +105,7 @@ class EnrollmentBatch extends Model
         if ($this->creator) {
             return $this->creator->name;
         }
-        
+
         return 'Sistema';
     }
 }

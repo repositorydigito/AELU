@@ -5,7 +5,7 @@ namespace App\Filament\Resources\EnrollmentResource\Pages;
 use App\Filament\Resources\EnrollmentResource;
 use App\Models\StudentEnrollment;
 use Filament\Resources\Pages\CreateRecord;
-use Filament\Notifications\Notification;
+use Filament\Notifications\Notification;    
 
 class CreateEnrollment extends CreateRecord
 {
@@ -161,7 +161,7 @@ class CreateEnrollment extends CreateRecord
 
             $detail['calculated_total'] = $workshopTotal;
             $detail['price_per_class'] = $workshopTotal / $numberOfClasses;
-            $detail['monthly_period_id'] = $selectedMonthlyPeriodId; 
+            $detail['monthly_period_id'] = $selectedMonthlyPeriodId;
             $validWorkshopDetails[] = $detail;
         }
 
@@ -176,14 +176,14 @@ class CreateEnrollment extends CreateRecord
         } */
         if (empty($validWorkshopDetails)) {
             $skippedCount = count($skippedWorkshops);
-            
+
             if ($skippedCount > 0) {
                 $reasons = array_unique($skippedWorkshops);
                 $reasonsText = implode(', ', array_slice($reasons, 0, 3));
                 if (count($reasons) > 3) {
                     $reasonsText .= '...';
                 }
-                
+
                 Notification::make()
                     ->title('No se pudieron procesar las inscripciones')
                     ->body("Se omitieron {$skippedCount} talleres: {$reasonsText}")
@@ -274,7 +274,7 @@ class CreateEnrollment extends CreateRecord
     {
         // Obtener las clases específicas seleccionadas por el usuario
         $selectedClassIds = $workshopDetail['selected_classes'] ?? [];
-        
+
         if (empty($selectedClassIds)) {
             // Si no hay clases específicas seleccionadas, usar el comportamiento anterior
             $this->createEnrollmentClassesLegacy($enrollment);
@@ -287,7 +287,7 @@ class CreateEnrollment extends CreateRecord
         // Crear los registros en enrollment_classes para las clases específicas seleccionadas
         foreach ($selectedClassIds as $classId) {
             $workshopClass = \App\Models\WorkshopClass::find($classId);
-            
+
             if ($workshopClass) {
                 \App\Models\EnrollmentClass::create([
                     'student_enrollment_id' => $enrollment->id,
@@ -323,7 +323,7 @@ class CreateEnrollment extends CreateRecord
         // Si no hay suficientes clases futuras, completar con clases más recientes
         if ($workshopClasses->count() < $numberOfClasses) {
             $remainingClasses = $numberOfClasses - $workshopClasses->count();
-            
+
             $pastClasses = \App\Models\WorkshopClass::where('workshop_id', $workshop->id)
                 ->where('monthly_period_id', $enrollment->monthly_period_id)
                 ->where('class_date', '<', $enrollment->enrollment_date)

@@ -613,6 +613,7 @@ class StudentRegisterResource extends Resource
                                 ]),
                         ]),
                 ])
+                ->skippable()
                 ->columnSpanFull(),
             ]);
     }
