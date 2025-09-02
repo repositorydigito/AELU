@@ -25,229 +25,40 @@ class WorkshopResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Gestión';
 
-    /* public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Información del Taller')
-                    ->schema([
-                        Forms\Components\Hidden::make('pricing_surcharge_percentage')
-                            ->default(20),
-                        Forms\Components\TextInput::make('name')
-                            ->label('Nombre del taller')
-                            ->required(),
-                        Forms\Components\Select::make('instructor_id')
-                            ->label('Profesor')
-                            ->options(\App\Models\Instructor::all()->pluck('full_name', 'id'))
-                            ->searchable()
-                            ->required(),
-                        Forms\Components\Select::make('day_of_week')
-                            ->label('Día del taller')
-                            ->options([
-                                'Lunes' => 'Lunes',
-                                'Martes' => 'Martes',
-                                'Miércoles' => 'Miércoles',
-                                'Jueves' => 'Jueves',
-                                'Viernes' => 'Viernes',
-                                'Sábado' => 'Sábado',
-                                'Domingo' => 'Domingo',
-                            ])
-                            ->required(),
-                        Forms\Components\TimePicker::make('start_time')
-                            ->label('Hora')
-                            ->withoutSeconds()
-                            ->required(),
-                        Forms\Components\TextInput::make('duration')
-                            ->label('Duración de la Clase')
-                            ->numeric()
-                            ->minValue(1)
-                            ->suffix('minutos')
-                            ->required(),
-                        Forms\Components\TextInput::make('capacity')
-                            ->label('Número de cupos (Aforo)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->required(),
-                        Forms\Components\TextInput::make('number_of_classes')
-                            ->label('Número de clases')
-                            ->numeric()
-                            ->minValue(0)
-                            ->required(),
-                        Forms\Components\TextInput::make('standard_monthly_fee')
-                            ->label('Tarifa del Mes')
-                            ->prefix('S/.')
-                            ->numeric()
-                            ->minValue(0)
-                            ->required(),
-                        Forms\Components\TextInput::make('place')
-                            ->label('Locación')
-                            ->nullable(),
-                        Forms\Components\Select::make('modality')
-                            ->label('Modalidad')
-                            ->options([
-                                'Presencial' => 'Presencial',
-                                'Virtual' => 'Virtual',
-                            ])
-                            ->nullable(),
-                    ])
-                    ->columns(5),
-                Forms\Components\Section::make('Vista Previa de Tarifas')
-                    ->schema([
-                        Forms\Components\Placeholder::make('recargo_actual')
-                            ->content(fn(Get $get) => 'Valor actual del porcentaje de recargo: ' . ($get('pricing_surcharge_percentage') ?? '20') . '%')
-                            ->extraAttributes(['style' => 'margin-bottom: 8px;'])
-                            ->live(),
-                        Forms\Components\Actions::make([
-                            Forms\Components\Actions\Action::make('Ajustes')
-                                ->visible(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord)
-                                ->label('Ajustes')
-                                ->icon('heroicon-o-cog-6-tooth')
-                                ->modalHeading('Ajustes')
-                                ->modalSubmitActionLabel('Aplicar')
-                                ->modalCancelActionLabel('Cancelar')
-                                ->requiresConfirmation(false)
-                                ->form([
-                                    Forms\Components\TextInput::make('modal_pricing_surcharge_percentage')
-                                        ->label('Porcentaje de recargo por clases sueltas')
-                                        ->numeric()
-                                        ->suffix('%')
-                                        ->minValue(0)
-                                        ->maxValue(100)
-                                        ->step(0.01)
-                                        ->default(fn(Get $get) => $get('pricing_surcharge_percentage') ?? 20)
-                                        ->required(),
-                                ])
-                                ->fillForm(fn(Get $get): array => [
-                                    'modal_pricing_surcharge_percentage' => $get('pricing_surcharge_percentage') ?? 20,
-                                ])
-                                ->action(function (array $data, Set $set) {
-                                    // Solo actualizar el valor del porcentaje en el formulario principal
-                                    $set('pricing_surcharge_percentage', $data['modal_pricing_surcharge_percentage']);
-                                }),
-                        ]),
-                        Forms\Components\Placeholder::make('pricing_preview')
-                            ->label('Tarifas que se generarán')
-                            ->content(function (Get $get) {
-                                return new \Illuminate\Support\HtmlString(self::generatePricingPreview($get));
-                            })
-                            ->live(),
-                    ])
-                    ->collapsible()
-                    ->collapsed(false),
-
-                    Forms\Components\Section::make('Horarios del Taller')
-                    ->schema([
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\DatePicker::make('temp_start_date')
-                                    ->label('Fecha de Inicio')
-                                    ->required()
-                                    ->live()
-                                    ->dehydrated(false) // No se guarda en la base de datos
-                                    ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                        self::calculateScheduleDates($get, $set);
-                                    }),
-
-                                Forms\Components\Actions::make([
-                                    Forms\Components\Actions\Action::make('calcular_horarios')
-                                        ->label('Calcular Horarios')
-                                        ->color('success')
-                                        ->action(function (Get $get, Set $set) {
-                                            self::calculateScheduleDates($get, $set);
-                                        }),
-                                ])->extraAttributes(['class' => 'flex items-end justify-end']),
-                            ]),
-
-                        Forms\Components\Placeholder::make('schedule_table')
-                            ->label('Clases')
-                            ->content(function (Get $get) {
-                                return new \Illuminate\Support\HtmlString(self::generateScheduleTable($get));
-                            })
-                            ->columnSpanFull()
-                            ->live(),
-
-                        Forms\Components\Actions::make([
-                            Forms\Components\Actions\Action::make('ajustar_fechas')
-                                ->label('Ajustes')
-                                ->icon('heroicon-o-cog-6-tooth')
-                                ->color('gray')
-                                ->visible(fn(Get $get, $livewire) => !empty($get('schedule_data')) && ($livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord))
-                                ->modalHeading('Ajustes')
-                                ->modalSubmitActionLabel('Aplicar')
-                                ->modalCancelActionLabel('Cancelar')
-                                ->form(function (Get $get) {
-                                    $scheduleData = $get('schedule_data') ?? [];
-                                    $fields = [];
-
-                                    foreach ($scheduleData as $index => $class) {
-                                        $fields[] = Forms\Components\DatePicker::make("class_date_{$index}")
-                                            ->label('Clase ' . ($index + 1) . ' *')
-                                            ->default($class['raw_date'])
-                                            ->required();
-                                    }
-
-                                    return $fields;
-                                })
-                                ->fillForm(function (Get $get): array {
-                                    $scheduleData = $get('schedule_data') ?? [];
-                                    $formData = [];
-
-                                    foreach ($scheduleData as $index => $class) {
-                                        $formData["class_date_{$index}"] = $class['raw_date'];
-                                    }
-
-                                    return $formData;
-                                })
-                                ->action(function (array $data, Set $set, Get $get, $livewire) {
-                                    $scheduleData = $get('schedule_data') ?? [];
-                                    $updatedScheduleData = [];
-
-                                    foreach ($scheduleData as $index => $class) {
-                                        $newDate = $data["class_date_{$index}"];
-                                        $carbonDate = \Carbon\Carbon::parse($newDate);
-
-                                        $updatedScheduleData[] = [
-                                            'class_number' => $class['class_number'],
-                                            'date' => $carbonDate->format('d/m/Y'),
-                                            'raw_date' => $carbonDate->format('Y-m-d'),
-                                            'day' => $class['day'],
-                                            'is_holiday' => $class['is_holiday'],
-                                        ];
-                                    }
-
-                                    // Actualizar schedule_data
-                                    $set('schedule_data', $updatedScheduleData);
-
-                                    // Actualizar en la base de datos si estamos editando
-                                    if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
-                                        self::updateWorkshopClassesInDatabase($livewire->record, $updatedScheduleData);
-                                    }
-                                }),
-                        ])
-                        ->extraAttributes(['class' => 'flex justify-center mt-4']),
-
-                        Forms\Components\Hidden::make('schedule_data')
-                            ->default([])
-                            ->dehydrated(false), // No se guarda en la base de datos
-                    ])
-                    ->columns(1),
-            ]);
-    } */
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                // Sección de Período Mensual (nueva)
                 Forms\Components\Section::make('Período del Taller')
                     ->description('Selecciona el mes para el cual se creará este taller')
                     ->schema([
                         Forms\Components\Select::make('monthly_period_id')
                             ->label('Período Mensual')
-                            ->options(function () {
+                            ->options(function ($livewire) {
                                 $currentDate = now();
-                                return \App\Models\MonthlyPeriod::where('month', '>=', $currentDate->month)
-                                    ->where('year', '<=', $currentDate->year + 2)
-                                    ->orderBy('year', 'asc')
+                                $query = \App\Models\MonthlyPeriod::query();
+
+                                // Si estamos editando, incluir también el período actual del taller
+                                // para que sea visible aunque esté fuera del rango normal
+                                if ($livewire instanceof \Filament\Resources\Pages\EditRecord && $livewire->record->monthly_period_id) {
+                                    $currentWorkshopPeriodId = $livewire->record->monthly_period_id;
+
+                                    $query->where(function ($q) use ($currentDate, $currentWorkshopPeriodId) {
+                                        $q->where(function ($subQ) use ($currentDate) {
+                                            $subQ->where('month', '>=', $currentDate->month)
+                                                ->where('year', '>=', $currentDate->year)
+                                                ->where('year', '<=', $currentDate->year + 2);
+                                        })
+                                        ->orWhere('id', $currentWorkshopPeriodId);
+                                    });
+                                } else {
+                                    // Para crear nuevo taller, solo períodos futuros
+                                    $query->where('month', '>=', $currentDate->month)
+                                        ->where('year', '>=', $currentDate->year)
+                                        ->where('year', '<=', $currentDate->year + 2);
+                                }
+
+                                return $query->orderBy('year', 'asc')
                                     ->orderBy('month', 'asc')
                                     ->get()
                                     ->mapWithKeys(function ($period) {
@@ -263,13 +74,13 @@ class WorkshopResource extends Resource
                                 $set('temp_start_date', null);
                                 $set('schedule_data', []);
                             })
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             )
-                            ->helperText(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
-                                $livewire->record->hasEnrollments() 
+                            ->helperText(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
+                                $livewire->record->hasEnrollments()
                                     ? '⚠️ No se puede editar porque ya hay inscripciones'
                                     : 'Selecciona el mes del taller'
                             )
@@ -278,7 +89,6 @@ class WorkshopResource extends Resource
                     ->collapsible()
                     ->collapsed(false),
 
-                // Sección de Información del Taller (modificada)
                 Forms\Components\Section::make('Información del Taller')
                     ->schema([
                         Forms\Components\Hidden::make('pricing_surcharge_percentage')
@@ -286,8 +96,8 @@ class WorkshopResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del taller')
                             ->required()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\Select::make('instructor_id')
@@ -295,8 +105,8 @@ class WorkshopResource extends Resource
                             ->options(\App\Models\Instructor::all()->pluck('full_name', 'id'))
                             ->searchable()
                             ->required()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\Select::make('day_of_week')
@@ -312,16 +122,16 @@ class WorkshopResource extends Resource
                             ])
                             ->required()
                             ->live()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\TimePicker::make('start_time')
                             ->label('Hora')
                             ->withoutSeconds()
                             ->required()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\TextInput::make('duration')
@@ -330,8 +140,8 @@ class WorkshopResource extends Resource
                             ->minValue(1)
                             ->suffix('minutos')
                             ->required()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\TextInput::make('capacity')
@@ -339,8 +149,8 @@ class WorkshopResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->required()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\TextInput::make('number_of_classes')
@@ -350,8 +160,8 @@ class WorkshopResource extends Resource
                             ->maxValue(8)
                             ->required()
                             ->live()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\TextInput::make('standard_monthly_fee')
@@ -360,15 +170,15 @@ class WorkshopResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->required()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\TextInput::make('place')
                             ->label('Localización')
                             ->nullable()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\Select::make('modality')
@@ -378,14 +188,13 @@ class WorkshopResource extends Resource
                                 'Virtual' => 'Virtual',
                             ])
                             ->nullable()
-                            ->disabled(fn ($livewire) => 
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                            ->disabled(fn ($livewire) =>
+                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                     ])
                     ->columns(5),
 
-                // Resto de secciones (Vista Previa de Tarifas y Horarios) sin cambios
                 Forms\Components\Section::make('Vista Previa de Tarifas')
                     ->schema([
                         Forms\Components\Placeholder::make('recargo_actual')
@@ -471,8 +280,8 @@ class WorkshopResource extends Resource
                                             };
                                         }
                                     ])
-                                    ->disabled(fn ($livewire) => 
-                                        $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                    ->disabled(fn ($livewire) =>
+                                        $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                         $livewire->record->hasEnrollments()
                                     ),
 
@@ -483,8 +292,8 @@ class WorkshopResource extends Resource
                                         ->action(function (Get $get, Set $set) {
                                             self::calculateScheduleDates($get, $set);
                                         })
-                                        ->disabled(fn ($livewire) => 
-                                            $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                        ->disabled(fn ($livewire) =>
+                                            $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                             $livewire->record->hasEnrollments()
                                         ),
                                 ])->extraAttributes(['class' => 'flex items-end justify-end']),
@@ -574,8 +383,8 @@ class WorkshopResource extends Resource
                                         self::updateWorkshopClassesInDatabase($livewire->record, $updatedScheduleData);
                                     }
                                 })
-                                ->disabled(fn ($livewire) => 
-                                    $livewire instanceof \Filament\Resources\Pages\EditRecord && 
+                                ->disabled(fn ($livewire) =>
+                                    $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                     $livewire->record->hasEnrollments()
                                 ),
                         ])
@@ -588,7 +397,7 @@ class WorkshopResource extends Resource
                                     $classes = $livewire->record->workshopClasses()
                                         ->orderBy('class_date', 'asc')
                                         ->get();
-                                    
+
                                     return $classes->map(function ($class, $index) use ($livewire) {
                                         return [
                                             'class_number' => $index + 1,
@@ -602,6 +411,14 @@ class WorkshopResource extends Resource
                                 return [];
                             })
                             ->dehydrated(true),
+
+                        Forms\Components\Textarea::make('additional_comments')
+                            ->label('Comentarios Adicionales')
+                            ->helperText('Agrega comentarios sobre feriados, eventos especiales o cualquier información relevante para este taller')
+                            ->rows(3)
+                            ->maxLength(100)
+                            ->columnSpanFull()
+                            ->nullable(),
                     ])
                     ->columns(1),
             ]);
@@ -926,7 +743,7 @@ class WorkshopResource extends Resource
         foreach ($scheduleData as $index => $classData) {
             if (isset($workshopClasses[$index])) {
                 $workshopClass = $workshopClasses[$index];
-                
+
                 // 3. Actualizar la clase con los nuevos datos
                 $workshopClass->update([
                     'class_date' => $classData['raw_date'],
@@ -935,5 +752,5 @@ class WorkshopResource extends Resource
                 ]);
             }
         }
-    }    
+    }
 }

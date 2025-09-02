@@ -38,7 +38,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     public $studentEnrollments = [];
     public $attendanceData = [];
     public $selectedWorkshopData = null;
-    
+
     // Filtros
     public $searchName = '';
     public $selectedPeriod = null;
@@ -154,7 +154,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
                 ];
             })
             ->toArray();
-            
+
         // Aplicar filtros después de cargar los talleres
         $this->applyFilters();
     }
@@ -192,10 +192,10 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         foreach ($enrollments as $enrollment) {
             // Obtener los IDs de las clases específicas a las que el estudiante está inscrito
             $enrolledClassIds = $enrollment->enrollmentClasses->pluck('workshop_class_id')->toArray();
-            
+
             $enrollmentData = $enrollment->toArray();
             $enrollmentData['enrolled_class_ids'] = $enrolledClassIds;
-            
+
             $this->studentEnrollments[] = $enrollmentData;
         }
 
@@ -226,7 +226,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
             foreach ($this->workshopClasses as $class) {
                 $key = $enrollment['id'] . '_' . $class['id'];
                 $attendance = $existingAttendances->get($key)?->first();
-                
+
                 $this->attendanceData[$key] = [
                     'is_present' => $attendance ? $attendance->is_present : false,
                     'comments' => $attendance ? $attendance->comments : '',
@@ -267,14 +267,21 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         }
 
         $savedCount = 0;
-        
+        $restrictedCount = 0;
+
         foreach ($this->studentEnrollments as $enrollment) {
             foreach ($this->workshopClasses as $class) {
                 // Solo procesar si el estudiante está inscrito en esta clase específica
                 if (!$this->isStudentEnrolledInClass($enrollment, $class['id'])) {
                     continue;
                 }
-                
+
+                // NUEVA VALIDACIÓN: Verificar restricción por fecha antes de guardar
+                if (!$this->canEditAttendanceForDate($class['class_date'])) {
+                    $restrictedCount++;
+                    continue;
+                }
+
                 $key = $enrollment['id'] . '_' . $class['id'];
                 $attendanceInfo = $this->attendanceData[$key] ?? [];
 
@@ -289,14 +296,19 @@ class AttendanceManagement extends Page implements HasForms, HasActions
                         'recorded_by' => Auth::id(),
                     ]
                 );
-                
+
                 $savedCount++;
             }
         }
 
+        $message = "Asistencia guardada correctamente. Se procesaron {$savedCount} registros.";
+        if ($restrictedCount > 0) {
+            $message .= " {$restrictedCount} registros fueron omitidos por restricción de fecha.";
+        }
+
         Notification::make()
             ->title('Éxito')
-            ->body("Asistencia guardada correctamente. Se procesaron {$savedCount} registros.")
+            ->body($message)
             ->success()
             ->send();
     }
@@ -305,7 +317,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     {
         // Buscar el enrollment para verificar si está inscrito en esta clase
         $enrollment = collect($this->studentEnrollments)->firstWhere('id', $enrollmentId);
-        
+
         if (!$enrollment || !$this->isStudentEnrolledInClass($enrollment, $classId)) {
             Notification::make()
                 ->title('Error')
@@ -314,7 +326,19 @@ class AttendanceManagement extends Page implements HasForms, HasActions
                 ->send();
             return;
         }
-        
+
+        // NUEVA VALIDACIÓN: Verificar restricción por fecha
+        $class = collect($this->workshopClasses)->firstWhere('id', $classId);
+        if (!$class || !$this->canEditAttendanceForDate($class['class_date'])) {
+            $restrictionMessage = $this->getRestrictionMessageForDate($class['class_date']);
+            Notification::make()
+                ->title('No se puede editar')
+                ->body($restrictionMessage ?: 'Ya no se puede modificar la asistencia para esta clase.')
+                ->warning()
+                ->send();
+            return;
+        }
+
         $key = $enrollmentId . '_' . $classId;
         $this->attendanceData[$key]['is_present'] = !($this->attendanceData[$key]['is_present'] ?? false);
     }
@@ -340,9 +364,6 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         return in_array($classId, $enrollmentData['enrolled_class_ids'] ?? []);
     }
 
-    /**
-     * Helper method to format time values safely
-     */
     private function formatTime($time): string
     {
         if (!$time) {
@@ -363,9 +384,6 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         return (string) $time;
     }
 
-    /**
-     * Helper method to generate period name from month and year
-     */
     private function generatePeriodName($month, $year): string
     {
         $monthNames = [
@@ -373,8 +391,36 @@ class AttendanceManagement extends Page implements HasForms, HasActions
             5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
             9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
         ];
-        
+
         $monthName = $monthNames[$month] ?? 'Mes ' . $month;
         return $monthName . ' ' . $year;
+    }
+
+    /**
+     * Verificar si se puede editar la asistencia para una fecha específica de clase
+     */
+    public function canEditAttendanceForDate($classDate): bool
+    {
+        $classDate = \Carbon\Carbon::parse($classDate);
+        $today = \Carbon\Carbon::today();
+        $oneDayAfterClass = $classDate->copy()->addDay();
+
+        // Permitir editar hasta 1 día después de la fecha de clase
+        return $today->gte($classDate) && $today->lte($oneDayAfterClass);
+    }
+
+    /**
+     * Obtener el mensaje de restricción para una fecha específica
+     */
+    public function getRestrictionMessageForDate($classDate): string
+    {
+        $classDate = \Carbon\Carbon::parse($classDate);
+        $oneDayAfterClass = $classDate->copy()->addDay();
+
+        if (\Carbon\Carbon::today()->gt($oneDayAfterClass)) {
+            return "La asistencia para esta clase expiró el " . $oneDayAfterClass->format('d/m/Y');
+        }
+
+        return "";
     }
 }

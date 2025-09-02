@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Notifications\Notification;
 
 class EnrollmentBatchResource extends Resource
 {
@@ -223,16 +224,9 @@ class EnrollmentBatchResource extends Resource
                     ->prefix('S/')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('payment_due_date')
-                    ->label('Fecha Límite')
-                    ->date('d/m/Y')
-                    ->placeholder('No definida')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('payment_date')
-                    ->label('Fecha de Pago')
-                    ->date('d/m/Y')
-                    ->placeholder('No pagado')
+                Tables\Columns\TextColumn::make('batch_code')
+                    ->label('Código de Lote')
+                    ->placeholder('Sin código')
                     ->sortable(),
             ])
             ->filters([
@@ -283,6 +277,34 @@ class EnrollmentBatchResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'completed' && $record->payment_method === 'cash')
                     ->color('success'),
+                Tables\Actions\Action::make('register_batch_code')
+                    ->label('Registrar Código')
+                    ->icon('heroicon-o-hashtag')
+                    ->form([
+                        Forms\Components\TextInput::make('batch_code')
+                            ->label('Código de Lote')
+                            ->required()
+                            ->maxLength(50),
+                    ])
+                    ->action(function (EnrollmentBatch $record, array $data): void {
+                        $record->update([
+                            'batch_code' => $data['batch_code'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Código registrado')
+                            ->body("Se ha registrado el código de lote: {$data['batch_code']}")
+                            ->success()
+                            ->send();
+                    })
+                    ->modalHeading('Registrar Código de Lote')
+                    ->modalDescription('Ingresa el código de lote generado por el sistema de pagos')
+                    ->modalSubmitActionLabel('Registrar Código')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->visible(fn (EnrollmentBatch $record): bool =>
+                        $record->payment_method === 'link'
+                    )
+                    ->color('info'),
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
                     ->requiresConfirmation()

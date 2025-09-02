@@ -109,17 +109,12 @@ class ExpenseResource extends Resource
                                             ->label('Monto')
                                             ->required()
                                             ->numeric()
-                                            ->prefix('S/.')
-                                            ->step(0.01)
+                                            ->prefix('S/')
                                             ->minValue(0.01)
                                             ->placeholder('0.00')
                                             ->prefixIcon('heroicon-o-banknotes')
-                                            ->live()
-                                            ->afterStateUpdated(function ($state, $set) {
-                                                if ($state) {
-                                                    $set('amount', number_format((float)$state, 2, '.', ''));
-                                                }
-                                            }),
+                                            ->inputMode('decimal')
+                                            ->rules(['numeric', 'min:0.01']),
 
                                         Textarea::make('notes')
                                             ->label('Observaciones')
@@ -131,14 +126,13 @@ class ExpenseResource extends Resource
                             ])
                             ->itemLabel(fn (array $state): ?string =>
                                 !empty($state['razon_social']) && !empty($state['amount'])
-                                    ? $state['razon_social'] . ' - S/. ' . number_format((float)$state['amount'], 2)
+                                    ? $state['razon_social'] . ' - S/ ' . number_format(floatval($state['amount'] ?? 0), 2)
                                     : 'Nuevo Gasto'
                             )
                             ->defaultItems(1)
                             ->addActionLabel('➕ Agregar otro gasto')
                             ->cloneable()
                             ->reorderable()
-                            ->collapsed()
                             ->columnSpanFull()
                             ->minItems(1),
 
@@ -147,8 +141,10 @@ class ExpenseResource extends Resource
                             ->label('Total Estimado')
                             ->content(function ($get) {
                                 $details = $get('expense_entries') ?? [];
-                                $total = collect($details)->sum('amount');
-                                return 'S/. ' . number_format($total, 2);
+                                $total = collect($details)->sum(function ($item) {
+                                    return floatval($item['amount'] ?? 0);
+                                });
+                                return 'S/ ' . number_format($total, 2);
                             })
                             ->live()
                             ->extraAttributes(['class' => 'text-lg font-bold text-primary-600']),
@@ -192,14 +188,16 @@ class ExpenseResource extends Resource
                 // Columna para el Concepto
                 TextColumn::make('concept')
                     ->label('Concepto')
-                    ->searchable() // Permite buscar por este campo
-                    ->sortable(), // Permite ordenar por este campo
+                    ->searchable()
+                    ->sortable(),
 
                 // Mostrar el monto total de todos los detalles del gasto
                 TextColumn::make('total_amount')
                     ->label('Monto Total')
-                    ->getStateUsing(fn ($record) => $record->expenseDetails->sum('amount'))
-                    ->money('PEN') // Formato de moneda para Soles Peruanos
+                    ->getStateUsing(fn ($record) => $record->expenseDetails->sum(function ($detail) {
+                        return floatval($detail->amount ?? 0);
+                    }))
+                    ->money('PEN')
                     ->sortable(),
 
                 // Opcional: Mostrar la cantidad de ítems de detalle
@@ -216,7 +214,7 @@ class ExpenseResource extends Resource
                 // Columna para el Código de Vale
                 TextColumn::make('vale_code')
                     ->label('Cód. Vale')
-                    ->toggleable(isToggledHiddenByDefault: true) // Oculto por defecto, se puede mostrar
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->searchable(),
             ])
             ->filters([

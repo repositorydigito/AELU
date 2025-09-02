@@ -375,7 +375,7 @@ class InstructorResource extends Resource
                                                                     if ($workshop->day_of_week && $workshop->start_time) {
                                                                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i A');
                                                                         $endTime = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i A') : 'N/A';
-                                                                        
+
                                                                         return "{$workshop->day_of_week}: {$startTime} - {$endTime}";
                                                                     }
 
@@ -596,6 +596,7 @@ class InstructorResource extends Resource
                                 ]),
                         ]),
                 ])
+                ->skippable()
                 ->columnSpanFull(),
             ]);
     }
@@ -605,8 +606,8 @@ class InstructorResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('last_names')->label('Apellidos')->searchable(),
-                TextColumn::make('first_names')->label('Nombres')->searchable(),                
-                                
+                TextColumn::make('first_names')->label('Nombres')->searchable(),
+
                 TextColumn::make('unique_workshops')
                     ->label('Talleres')
                     ->getStateUsing(function (Instructor $record) {
@@ -629,16 +630,16 @@ class InstructorResource extends Resource
                                 $schedules = $workshops->map(function ($iw) {
                                     $workshop = $iw->workshop;
                                     if (!$workshop) return 'Horario no disponible';
-                                    
-                                    $startTime = $workshop->start_time ? 
+
+                                    $startTime = $workshop->start_time ?
                                         \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
-                                    $endTime = $workshop->end_time ? 
+                                    $endTime = $workshop->end_time ?
                                         \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
                                     $day = $workshop->day_of_week ?? 'N/A';
-                                    
+
                                     return "{$day} {$startTime}-{$endTime}";
                                 })->unique()->implode(', ');
-                                
+
                                 return "{$workshopName}: {$schedules}";
                             })
                             ->implode("\n");

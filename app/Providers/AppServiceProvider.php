@@ -9,6 +9,8 @@ use App\Models\StudentEnrollment;
 use App\Observers\StudentEnrollmentObserver;
 use App\Models\Student;
 use App\Observers\StudentObserver;
+use App\Models\InstructorPayment;
+use App\Observers\InstructorPaymentObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,7 +28,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Workshop::observe(WorkshopObserver::class);
-        StudentEnrollment::observe(StudentEnrollmentObserver::class);   
-        Student::observe(StudentObserver::class);     
+        StudentEnrollment::observe(StudentEnrollmentObserver::class);
+        Student::observe(StudentObserver::class);
+        InstructorPayment::observe(InstructorPaymentObserver::class);
     }
 }

@@ -21,8 +21,8 @@
                                 Buscar por nombre
                             </label>
                             <div class="relative">
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     id="searchName"
                                     wire:model.live="searchName"
                                     placeholder="Nombre del taller..."
@@ -37,7 +37,7 @@
                             <label for="selectedPeriod" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Filtrar por período
                             </label>
-                            <select 
+                            <select
                                 id="selectedPeriod"
                                 wire:model.live="selectedPeriod"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -51,7 +51,7 @@
 
                         {{-- Botón limpiar filtros --}}
                         <div class="flex items-end">
-                            <button 
+                            <button
                                 wire:click="clearFilters"
                                 class="w-full px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors duration-200 flex items-center justify-center"
                             >
@@ -93,7 +93,7 @@
                 @else
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
                         @foreach($filteredWorkshops as $workshop)
-                            <div 
+                            <div
                                 wire:click="selectWorkshop({{ $workshop['id'] }})"
                                 class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-primary-500 hover:shadow-md transition-all duration-200 group"
                             >
@@ -175,7 +175,7 @@
             {{-- Tabla de asistencia --}}
             @if(!empty($workshopClasses) && !empty($studentEnrollments))
                 {{-- Información de resumen --}}
-                <x-filament::card>
+                {{-- <x-filament::card>
                     <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4">
                         <div class="flex items-center mb-2">
                             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,12 +186,28 @@
                             </h3>
                         </div>
                         <p class="text-sm text-blue-700 dark:text-blue-300">
-                            <strong>Nota:</strong> Los checkboxes solo están habilitados para las fechas específicas que cada estudiante seleccionó durante su inscripción. 
+                            <strong>Nota:</strong> Los checkboxes solo están habilitados para las fechas específicas que cada estudiante seleccionó durante su inscripción.
                             Las fechas marcadas con "−" indican que el estudiante no se inscribió en esa clase específica.
                         </p>
                     </div>
+                </x-filament::card> --}}
+                <x-filament::card>
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-4">
+                        <div class="flex items-center mb-2">
+                            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                                Información de Asistencia y Restricciones
+                            </h3>
+                        </div>
+                        <div class="text-sm text-amber-700 dark:text-amber-300 space-y-1">
+                            <p><strong>• Inscripciones específicas:</strong> Los checkboxes solo están habilitados para las fechas que cada estudiante seleccionó durante su inscripción.</p>
+                            <p><strong>• Restricción temporal:</strong> Solo se puede modificar la asistencia hasta 1 día después de la fecha de clase.</p>
+                        </div>
+                    </div>
                 </x-filament::card>
-                
+
                 <x-filament::card>
                     <div class="overflow-x-auto">
                         <div class="min-w-full">
@@ -200,13 +216,23 @@
                                     <tr class="bg-gray-50 dark:bg-gray-700">
                                         <th class="sticky left-0 z-10 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 min-w-[60px]">Foto</th>
                                         <th class="sticky left-[60px] z-10 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 min-w-[200px]">Nombre</th>
-                                        <th class="sticky left-[260px] z-10 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 min-w-[120px]">Documento</th>
+                                        <th class="sticky left-[260px] z-10 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 min-w-[120px]">Código</th>
                                         <th class="sticky left-[380px] z-10 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600 min-w-[80px]">N° Clases</th>
                                         @foreach($workshopClasses as $index => $class)
-                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">
+                                            @php
+                                                $canEditDate = $this->canEditAttendanceForDate($class['class_date']);
+                                                $classDate = \Carbon\Carbon::parse($class['class_date']);
+                                                $headerClass = $canEditDate ? 'text-gray-500 dark:text-gray-300' : 'text-red-500 dark:text-red-400';
+                                            @endphp
+                                            <th class="px-3 py-2 text-center text-xs font-medium {{ $headerClass }} uppercase tracking-wider border-r border-gray-200 dark:border-gray-600">
                                                 <div class="flex flex-col items-center">
                                                     <span>Clase {{ $index + 1 }}</span>
-                                                    <span class="text-xs text-gray-400 dark:text-gray-500 font-normal">{{ \Carbon\Carbon::parse($class['class_date'])->format('d/m') }}</span>
+                                                    <span class="text-xs text-gray-400 dark:text-gray-500 font-normal">
+                                                        {{ $classDate->format('d/m') }}
+                                                        @if(!$canEditDate)
+                                                            <span class="ml-1" title="Fecha expirada para editar">🔒</span>
+                                                        @endif
+                                                    </span>
                                                 </div>
                                             </th>
                                         @endforeach
@@ -228,28 +254,38 @@
                                                 @endif
                                             </td>
                                             <td class="sticky left-[60px] z-10 bg-white dark:bg-gray-800 px-3 py-2 border-r border-gray-200 dark:border-gray-600 min-w-[200px]"><div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $enrollment['student']['last_names'] }}, {{ $enrollment['student']['first_names'] }}</div></td>
-                                            <td class="sticky left-[260px] z-10 bg-white dark:bg-gray-800 px-3 py-2 border-r border-gray-200 dark:border-gray-600 min-w-[120px]"><div class="text-sm text-gray-900 dark:text-gray-100">{{ $enrollment['student']['document_number'] }}</div></td>
+                                            <td class="sticky left-[260px] z-10 bg-white dark:bg-gray-800 px-3 py-2 border-r border-gray-200 dark:border-gray-600 min-w-[120px]"><div class="text-sm text-gray-900 dark:text-gray-100">{{ $enrollment['student']['student_code'] }}</div></td>
                                             <td class="sticky left-[380px] z-10 bg-white dark:bg-gray-800 px-3 py-2 border-r border-gray-200 dark:border-gray-600 min-w-[80px]"><div class="text-sm text-center text-gray-900 dark:text-gray-100">{{ $enrollment['number_of_classes'] }}</div></td>
                                             @foreach($workshopClasses as $class)
-                                                @php 
-                                                    $key = $enrollment['id'] . '_' . $class['id']; 
+                                                @php
+                                                    $key = $enrollment['id'] . '_' . $class['id'];
                                                     $isPresent = $attendanceData[$key]['is_present'] ?? false;
                                                     $isEnrolledInClass = $this->isStudentEnrolledInClass($enrollment, $class['id']);
+                                                    $canEditDate = $this->canEditAttendanceForDate($class['class_date']);
                                                 @endphp
                                                 <td class="px-3 py-2 text-center border-r border-gray-200 dark:border-gray-600">
                                                     <div class="flex justify-center items-center h-6">
-                                                        @if($isEnrolledInClass)
-                                                            {{-- Checkbox habilitado para clases en las que está inscrito --}}
-                                                            <input 
-                                                                type="checkbox" 
-                                                                @if($isPresent) checked @endif 
+                                                        @if($isEnrolledInClass && $canEditDate)
+                                                            {{-- Checkbox habilitado para clases inscritas y dentro del rango de fecha --}}
+                                                            <input
+                                                                type="checkbox"
+                                                                @if($isPresent) checked @endif
                                                                 wire:click="toggleAttendance({{ $enrollment['id'] }}, {{ $class['id'] }})"
                                                                 class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                                            >
+                                                        @elseif($isEnrolledInClass && !$canEditDate)
+                                                            {{-- Checkbox deshabilitado por restricción de fecha pero mostrar estado actual --}}
+                                                            <input
+                                                                type="checkbox"
+                                                                @if($isPresent) checked @endif
+                                                                disabled
+                                                                title="No se puede modificar: {{ $this->getRestrictionMessageForDate($class['class_date']) }}"
+                                                                class="w-4 h-4 text-red-400 bg-red-100 border-red-300 rounded opacity-50 cursor-not-allowed"
                                                             >
                                                         @else
                                                             {{-- Indicador visual para clases no inscritas --}}
                                                             <div class="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 flex items-center justify-center" title="No inscrito en esta clase">
-                                                                <span class="text-gray-400 dark:text-gray-500 text-xs font-bold">−</span>
+                                                                <span class="text-gray-400 dark:text-gray-500 text-xs font-bold">∅</span>
                                                             </div>
                                                         @endif
                                                     </div>

@@ -231,7 +231,7 @@ class EnrollmentResource extends Resource
                                 ->columnSpanFull(),
 
                             // Separador visual
-                            Forms\Components\Section::make('')                                
+                            Forms\Components\Section::make('')
                                 ->schema([
                                     // Campo oculto para almacenar los talleres seleccionados
                                     Forms\Components\Hidden::make('selected_workshops')
@@ -241,7 +241,7 @@ class EnrollmentResource extends Resource
                                             // Sincronizar los talleres seleccionados con el paso 2
                                             $selectedWorkshops = json_decode($state ?? '[]', true);
                                             $workshopDetails = [];
-                                            
+
                                             // Este foreach es cuando el usuario interactua manualmente con los talleres
                                             foreach ($selectedWorkshops as $workshopId) {
                                                 $workshopDetails[] = [
@@ -365,11 +365,11 @@ class EnrollmentResource extends Resource
                             // Validar clases específicas para cada taller
                             $workshopDetails = $get('workshop_details') ?? [];
                             $errors = [];
-                            
+
                             foreach ($workshopDetails as $index => $detail) {
                                 $numberOfClasses = (int)($detail['number_of_classes'] ?? 0);
                                 $selectedClasses = $detail['selected_classes'] ?? [];
-                                
+
                                 if ($numberOfClasses > 0) {
                                     if (empty($selectedClasses)) {
                                         $errors["workshop_details.{$index}.selected_classes"] = 'Debes seleccionar las clases específicas para este taller.';
@@ -378,7 +378,7 @@ class EnrollmentResource extends Resource
                                     }
                                 }
                             }
-                            
+
                             if (!empty($errors)) {
                                 throw ValidationException::withMessages($errors);
                             }
@@ -428,6 +428,42 @@ class EnrollmentResource extends Resource
                                         })
                                         ->columnSpanFull(),
 
+                                    // NUEVA SECCIÓN: Comentarios adicionales del workshop
+                                    Forms\Components\Placeholder::make('workshop_comments_section')
+                                        ->label('')
+                                        ->content(function (Forms\Get $get) {
+                                            $workshopId = $get('instructor_workshop_id');
+                                            if (!$workshopId) return '';
+
+                                            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+                                            if (!$instructorWorkshop || empty($instructorWorkshop->workshop->additional_comments)) {
+                                                return '';
+                                            }
+
+                                            return new \Illuminate\Support\HtmlString("
+                                                <div style='background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 16px;'>
+                                                    <div style='display: flex; align-items: flex-start;'>
+                                                        <div style='margin-left: 12px;'>
+                                                            <h3 style='font-size: 14px; font-weight: 500; color: #15803d;'>
+                                                                Comentarios adicionales del Taller
+                                                            </h3>
+                                                            <div style='margin-top: 8px; font-size: 14px; color: #166534;'>
+                                                                <p>" . nl2br(e($instructorWorkshop->workshop->additional_comments)) . "</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ");
+                                        })
+                                        ->visible(function (Forms\Get $get) {
+                                            $workshopId = $get('instructor_workshop_id');
+                                            if (!$workshopId) return false;
+
+                                            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+                                            return $instructorWorkshop && !empty($instructorWorkshop->workshop->additional_comments);
+                                        })
+                                        ->columnSpanFull(),
+
                                     Forms\Components\Grid::make(2)
                                         ->schema([
                                             Forms\Components\Radio::make('enrollment_type')
@@ -472,7 +508,7 @@ class EnrollmentResource extends Resource
                                         ->options(function (Forms\Get $get) {
                                             $workshopId = $get('instructor_workshop_id');
                                             $selectedMonthlyPeriodId = $get('../../selected_monthly_period_id');
-                                            
+
                                             if (!$workshopId || !$selectedMonthlyPeriodId) return [];
 
                                             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
@@ -490,7 +526,7 @@ class EnrollmentResource extends Resource
                                                 $formattedDate = \Carbon\Carbon::parse($class->class_date)->format('d/m/Y');
                                                 $startTime = \Carbon\Carbon::parse($class->start_time)->format('H:i');
                                                 $endTime = \Carbon\Carbon::parse($class->end_time)->format('H:i');
-                                                
+
                                                 $options[$class->id] = "{$dayName} {$formattedDate} ({$startTime} - {$endTime})";
                                             }
 
@@ -510,13 +546,13 @@ class EnrollmentResource extends Resource
                                         ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                             $numberOfClasses = (int)$get('number_of_classes');
                                             $selectedClasses = is_array($state) ? $state : [];
-                                            
+
                                             // Validar que no se seleccionen más clases de las permitidas
                                             if ($numberOfClasses && count($selectedClasses) > $numberOfClasses) {
                                                 // Mantener solo las primeras clases seleccionadas
                                                 $limitedClasses = array_slice($selectedClasses, 0, $numberOfClasses);
                                                 $set('selected_classes', $limitedClasses);
-                                                
+
                                                 \Filament\Notifications\Notification::make()
                                                     ->title('Límite de clases')
                                                     ->body("Solo puedes seleccionar {$numberOfClasses} clase" . ($numberOfClasses > 1 ? 's' : '') . ". Se han mantenido las primeras seleccionadas.")
@@ -585,7 +621,7 @@ class EnrollmentResource extends Resource
                                                                 <p><strong>Código:</strong> {$student->student_code}</p>
                                                             </div>
                                                             <div>
-                                                                <p><strong>Categoría:</strong> {$categoryText}</p>                                                                
+                                                                <p><strong>Categoría:</strong> {$categoryText}</p>
                                                             </div>
                                                         </div>
                                                     </div>
