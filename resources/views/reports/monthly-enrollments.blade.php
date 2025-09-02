@@ -79,37 +79,7 @@
         <p><strong>Período: {{ $period_name }}</strong></p>
         <p>Generado el {{ $generated_at }}</p>
     </div>
-
-    <div class="summary">
-        <h3>Resumen del Período</h3>
-        <div class="summary-grid">
-            <div class="summary-item">
-                <div class="summary-value">{{ $summary['total_enrollments'] ?? 0 }}</div>
-                <div class="summary-label">Total Inscripciones</div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-value">{{ $summary['total_students'] ?? 0 }}</div>
-                <div class="summary-label">Estudiantes</div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-value">{{ $summary['total_workshops'] ?? 0 }}</div>
-                <div class="summary-label">Talleres</div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-value">S/ {{ number_format($summary['total_amount'] ?? 0, 2) }}</div>
-                <div class="summary-label">Monto Total</div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-value">{{ $summary['cash_payments'] ?? 0 }}</div>
-                <div class="summary-label">Pago Efectivo</div>
-            </div>
-            <div class="summary-item">
-                <div class="summary-value">{{ $summary['link_payments'] ?? 0 }}</div>
-                <div class="summary-label">Pago Link</div>
-            </div>
-        </div>
-    </div>
-
+    
     <table class="table">
         <thead>
             <tr>

@@ -43,25 +43,18 @@ class EnrollmentsReport1 extends Page implements HasForms, HasActions
             ->schema([
                 Select::make('student_id')
                     ->label('Seleccionar Alumno')
-                    ->placeholder('Buscar alumno por nombre o documento...')
-                    ->searchable()
-                    ->getSearchResultsUsing(function (string $search): array {
-                        return Student::where('first_names', 'like', "%{$search}%")
-                            ->orWhere('last_names', 'like', "%{$search}%")
-                            ->orWhere('document_number', 'like', "%{$search}%")
-                            ->limit(50)
+                    ->placeholder('Selecciona un alumno...')
+                    ->options(
+                        Student::orderBy('last_names')
                             ->get()
                             ->mapWithKeys(function ($student) {
                                 return [
-                                    $student->id => $student->first_names . ' ' . $student->last_names . ' - ' . $student->document_number
+                                    $student->id => $student->last_names . ' ' . $student->first_names . ' - ' . $student->document_number
                                 ];
                             })
-                            ->toArray();
-                    })
-                    ->getOptionLabelUsing(function ($value): ?string {
-                        $student = Student::find($value);
-                        return $student ? $student->first_names . ' ' . $student->last_names . ' - ' . $student->document_number : null;
-                    })
+                            ->toArray()
+                    )
+                    ->searchable()
                     ->live()
                     ->afterStateUpdated(function ($state) {
                         $this->selectedStudent = $state;

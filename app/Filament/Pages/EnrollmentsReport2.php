@@ -44,71 +44,20 @@ class EnrollmentsReport2 extends Page implements HasForms, HasActions
             ->schema([
                 Select::make('period_id')
                     ->label('Seleccionar Período Mensual')
-                    ->placeholder('Buscar período (ej: Enero 2025)...')
-                    ->searchable()
-                    ->getSearchResultsUsing(function (string $search): array {
-                        // Si no hay búsqueda, mostrar solo períodos recientes (últimos 2 años)
-                        if (empty($search)) {
-                            return MonthlyPeriod::where('year', '>=', now()->year - 1)
-                                ->orderBy('year', 'asc')
-                                ->orderBy('month', 'asc')
-                                ->limit(24)
-                                ->get()
-                                ->mapWithKeys(function ($period) {
-                                    $periodName = $this->generatePeriodName($period->month, $period->year);
-                                    return [$period->id => $periodName];
-                                })
-                                ->toArray();
-                        }
-
-                        // Buscar por año o nombre de mes
-                        $query = MonthlyPeriod::query();
-
-                        // Si busca un año específico
-                        if (is_numeric($search)) {
-                            $query->where('year', 'like', "%{$search}%");
-                        } else {
-                            // Buscar por nombre de mes
-                            $monthNames = [
-                                'enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4,
-                                'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
-                                'septiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12
-                            ];
-
-                            $searchLower = strtolower($search);
-                            $monthFound = null;
-
-                            foreach ($monthNames as $monthName => $monthNumber) {
-                                if (str_contains($monthName, $searchLower)) {
-                                    $monthFound = $monthNumber;
-                                    break;
-                                }
-                            }
-
-                            if ($monthFound) {
-                                $query->where('month', $monthFound);
-                            }
-
-                            // También buscar por año si está incluido en la búsqueda
-                            if (preg_match('/\d{4}/', $search, $matches)) {
-                                $query->where('year', $matches[0]);
-                            }
-                        }
-
-                        return $query->orderBy('year', 'desc')
+                    ->placeholder('Selecciona un período...')
+                    ->options(
+                        MonthlyPeriod::where('year', '>=', now()->year - 2) // Últimos 2 años
+                            ->where('year', '<=', now()->year + 1) // Hasta el próximo año
+                            ->orderBy('year', 'desc')
                             ->orderBy('month', 'desc')
-                            ->limit(50)
                             ->get()
                             ->mapWithKeys(function ($period) {
                                 $periodName = $this->generatePeriodName($period->month, $period->year);
                                 return [$period->id => $periodName];
                             })
-                            ->toArray();
-                    })
-                    ->getOptionLabelUsing(function ($value): ?string {
-                        $period = MonthlyPeriod::find($value);
-                        return $period ? $this->generatePeriodName($period->month, $period->year) : null;
-                    })
+                            ->toArray()
+                    )
+                    ->searchable() // Búsqueda del lado del cliente
                     ->live()
                     ->afterStateUpdated(function ($state) {
                         $this->selectedPeriod = $state;
