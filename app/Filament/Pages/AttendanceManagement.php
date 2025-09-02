@@ -372,23 +372,27 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     }
 
     /**
-     * Verificar si se puede editar la asistencia para una fecha específica
+     * Verificar si se puede editar la asistencia para una fecha específica de clase
      */
     public function canEditAttendanceForDate($classDate): bool
     {
-        $classDate = Carbon::parse($classDate);
-        $now = Carbon::now();
-        // Se puede editar hasta 1 día después de la clase
-        return $now->lessThanOrEqualTo($classDate->copy()->addDay());
+        $classDate = \Carbon\Carbon::parse($classDate);
+        $today = \Carbon\Carbon::today();
+        $oneDayAfterClass = $classDate->copy()->addDay();
+        // Permitir editar hasta 1 día después de la fecha de clase
+        return $today->gte($classDate) && $today->lte($oneDayAfterClass);
     }
-
     /**
-     * Obtener mensaje de restricción para una fecha específica
+     * Obtener el mensaje de restricción para una fecha específica
      */
     public function getRestrictionMessageForDate($classDate): string
     {
-        $classDate = Carbon::parse($classDate);
-        return "No se puede modificar la asistencia después de 1 día de la fecha de clase ({$classDate->format('d/m/Y')})";
+        $classDate = \Carbon\Carbon::parse($classDate);
+        $oneDayAfterClass = $classDate->copy()->addDay();
+        if (\Carbon\Carbon::today()->gt($oneDayAfterClass)) {
+            return "La asistencia para esta clase expiró el " . $oneDayAfterClass->format('d/m/Y');
+        }
+        return "";
     }
 
     /**
