@@ -145,22 +145,22 @@
         @else
             {{-- Header con información del taller seleccionado --}}
             <x-filament::card>
-                <div class="flex items-center justify-between">
-                    <div>
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex-1">
                         <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
                             {{ $selectedWorkshopData['name'] ?? 'Taller Seleccionado' }}
                         </h2>
-                        <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mt-2 text-sm text-gray-600 dark:text-gray-400 gap-1 md:gap-0">
                             <span>{{ $selectedWorkshopData['instructor_name'] ?? 'Sin instructor' }}</span>
-                            <span>•</span>
+                            <span class="hidden md:inline">•</span>
                             <span>{{ $selectedWorkshopData['day_of_week'] ?? '' }}</span>
-                            <span>•</span>
+                            <span class="hidden md:inline">•</span>
                             <span>{{ $selectedWorkshopData['start_time'] ?? '' }} - {{ $selectedWorkshopData['end_time'] ?? '' }}</span>
-                            <span>•</span>
+                            <span class="hidden md:inline">•</span>
                             <span>{{ $selectedWorkshopData['enrolled_students'] ?? 0 }} estudiantes</span>
                         </div>
                     </div>
-                    <div class="flex space-x-2">
+                    <div class="flex md:justify-end">
                         <x-filament::button
                             wire:click="backToSelection"
                             color="gray"
