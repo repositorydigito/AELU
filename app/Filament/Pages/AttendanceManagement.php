@@ -18,11 +18,13 @@ use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 
 class AttendanceManagement extends Page implements HasForms, HasActions
 {
     use InteractsWithForms;
     use InteractsWithActions;
+    use HasPageShield;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     protected static string $view = 'filament.pages.attendance-management';
@@ -30,11 +32,6 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     protected static ?string $title = 'Asistencia por Clase';
     protected static ?string $navigationGroup = 'Gestión';
     protected static ?int $navigationSort = 4;
-
-    public static function canAccess(): bool
-    {
-        return Auth::user()->can('page_AttendanceManagement');
-    }
 
     public ?array $data = [];
     public $selectedWorkshop = null;
@@ -44,7 +41,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     public $studentEnrollments = [];
     public $attendanceData = [];
     public $selectedWorkshopData = null;
-    
+
     // Filtros
     public $searchName = '';
     public $selectedPeriod = null;
@@ -125,15 +122,15 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         // Verificar si el usuario tiene rol super_admin o Administrador
         $user = Auth::user();
         $isAdmin = $user->hasRole(['super_admin', 'Administrador']);
-        
+
         // Construir la consulta de talleres
         $workshopQuery = Workshop::query()->with(['monthlyPeriod', 'instructor', 'workshopClasses']);
-        
+
         // Si no es admin, filtrar solo los talleres donde el usuario es delegado
         if (!$isAdmin) {
             $workshopQuery->where('delegate_user_id', Auth::id());
         }
-        
+
         // Cargar los talleres según los criterios
         $this->workshops = $workshopQuery
             ->get()
@@ -172,7 +169,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
                 ];
             })
             ->toArray();
-            
+
         // Aplicar filtros después de cargar los talleres
         $this->applyFilters();
     }
@@ -210,10 +207,10 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         foreach ($enrollments as $enrollment) {
             // Obtener los IDs de las clases específicas a las que el estudiante está inscrito
             $enrolledClassIds = $enrollment->enrollmentClasses->pluck('workshop_class_id')->toArray();
-            
+
             $enrollmentData = $enrollment->toArray();
             $enrollmentData['enrolled_class_ids'] = $enrolledClassIds;
-            
+
             $this->studentEnrollments[] = $enrollmentData;
         }
 
@@ -244,7 +241,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
             foreach ($this->workshopClasses as $class) {
                 $key = $enrollment['id'] . '_' . $class['id'];
                 $attendance = $existingAttendances->get($key)?->first();
-                
+
                 $this->attendanceData[$key] = [
                     'is_present' => $attendance ? $attendance->is_present : false,
                     'comments' => $attendance ? $attendance->comments : '',
@@ -285,19 +282,19 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         }
 
         $savedCount = 0;
-        
+
         foreach ($this->studentEnrollments as $enrollment) {
             foreach ($this->workshopClasses as $class) {
                 // Solo procesar si el estudiante está inscrito en esta clase específica
                 if (!$this->isStudentEnrolledInClass($enrollment, $class['id'])) {
                     continue;
                 }
-                
+
                 // Verificar si se puede editar la asistencia para esta fecha
                 if (!$this->canEditAttendanceForDate($class['class_date'])) {
                     continue;
                 }
-                
+
                 $key = $enrollment['id'] . '_' . $class['id'];
                 $attendanceInfo = $this->attendanceData[$key] ?? [];
 
@@ -312,7 +309,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
                         'recorded_by' => Auth::id(),
                     ]
                 );
-                
+
                 $savedCount++;
             }
         }
@@ -328,7 +325,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     {
         // Buscar el enrollment para verificar si está inscrito en esta clase
         $enrollment = collect($this->studentEnrollments)->firstWhere('id', $enrollmentId);
-        
+
         if (!$enrollment || !$this->isStudentEnrolledInClass($enrollment, $classId)) {
             Notification::make()
                 ->title('Error')
@@ -337,7 +334,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
                 ->send();
             return;
         }
-        
+
         // Verificar si se puede editar la asistencia para esta fecha
         $class = collect($this->workshopClasses)->firstWhere('id', $classId);
         if ($class && !$this->canEditAttendanceForDate($class['class_date'])) {
@@ -348,7 +345,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
                 ->send();
             return;
         }
-        
+
         $key = $enrollmentId . '_' . $classId;
         $this->attendanceData[$key]['is_present'] = !($this->attendanceData[$key]['is_present'] ?? false);
     }
@@ -427,7 +424,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
             5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
             9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
         ];
-        
+
         $monthName = $monthNames[$month] ?? 'Mes ' . $month;
         return $monthName . ' ' . $year;
     }
