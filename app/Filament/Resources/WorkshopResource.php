@@ -109,6 +109,12 @@ class WorkshopResource extends Resource
                                 $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
+                        Forms\Components\Select::make('delegate_user_id')
+                            ->label('Elegir delegado')
+                            ->options(\App\Models\User::all()->pluck('name', 'id'))
+                            ->searchable()
+                            ->placeholder('Seleccionar delegado')
+                            ->nullable(),
                         Forms\Components\Select::make('day_of_week')
                             ->label('Día del taller')
                             ->options([

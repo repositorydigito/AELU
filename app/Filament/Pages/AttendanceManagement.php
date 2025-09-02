@@ -116,7 +116,9 @@ class AttendanceManagement extends Page implements HasForms, HasActions
 
     public function loadWorkshops(): void
     {
+        // Cargar solo los talleres donde el usuario actual es el delegado
         $this->workshops = Workshop::query()
+            ->where('delegate_user_id', Auth::id()) // Solo talleres donde el usuario es delegado
             ->with(['monthlyPeriod', 'instructor', 'workshopClasses'])
             ->get()
             ->map(function ($workshop) {

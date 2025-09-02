@@ -15,6 +15,7 @@ class Workshop extends Model
         'standard_monthly_fee',
         'pricing_surcharge_percentage',
         'instructor_id',
+        'delegate_user_id',
         'day_of_week',
         'start_time',
         'duration',
@@ -40,6 +41,10 @@ class Workshop extends Model
     public function instructor()
     {
         return $this->belongsTo(Instructor::class);
+    }
+    public function delegate()
+    {
+        return $this->belongsTo(User::class, 'delegate_user_id');
     }
     public function workshopPricings()
     {
