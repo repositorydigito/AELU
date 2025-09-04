@@ -750,12 +750,7 @@ class EnrollmentResource extends Resource
                                         ->required()
                                         ->live()
                                         ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            // Actualizar el estado de pago según el método seleccionado
-                                            if ($state === 'cash') {
-                                                $set('payment_status', 'completed');
-                                            } elseif ($state === 'link') {
-                                                $set('payment_status', 'pending');
-                                            }
+                                            $set('payment_status', 'pending');
                                         })
                                         ->columnSpanFull(),
 

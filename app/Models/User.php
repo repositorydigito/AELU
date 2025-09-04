@@ -47,4 +47,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function paymentRegisteredBatches()
+    {
+        return $this->hasMany(EnrollmentBatch::class, 'payment_registered_by_user_id');
+    }
 }

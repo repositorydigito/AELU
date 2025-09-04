@@ -45,7 +45,7 @@ class StudentEnrollment extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($enrollment) {
             // Guardar el usuario que está creando la inscripción individual
             if (Auth::check() && empty($enrollment->created_by)) {
@@ -75,7 +75,7 @@ class StudentEnrollment extends Model
     {
         return $this->hasMany(EnrollmentClass::class);
     }
-    
+
     public function attendances()
     {
         return $this->hasMany(ClassAttendance::class);
@@ -87,18 +87,47 @@ class StudentEnrollment extends Model
     public function nextEnrollment()
     {
         return $this->hasOne(StudentEnrollment::class, 'previous_enrollment_id');
-    }    
+    }
     public function enrollmentBatch()
     {
         return $this->belongsTo(EnrollmentBatch::class);
-    }       
+    }
 
     public function getCreatedByNameAttribute()
     {
         if ($this->creator) {
             return $this->creator->name;
         }
-        
+
         return 'Sistema';
+    }
+    // Accessor para obtener el código de pago a través de la relación
+    public function getBatchCodeAttribute(): ?string
+    {
+        return $this->enrollmentBatch ? $this->enrollmentBatch->batch_code : null;
+    }
+    // Accessor para obtener quién registró el pago a través de la relación
+    public function getPaymentRegisteredByNameAttribute(): ?string
+    {
+        return $this->enrollmentBatch && $this->enrollmentBatch->paymentRegisteredByUser
+            ? $this->enrollmentBatch->paymentRegisteredByUser->name
+            : null;
+    }
+    // Accessor para obtener cuándo se registró el pago a través de la relación
+    public function getPaymentRegisteredAtAttribute(): ?string
+    {
+        return $this->enrollmentBatch && $this->enrollmentBatch->payment_registered_at
+            ? $this->enrollmentBatch->payment_registered_at
+            : null;
+    }
+    // Accessor para mostrar información completa del registro de pago
+    public function getPaymentRegisteredByDisplayAttribute(): ?string
+    {
+        if (!$this->enrollmentBatch || !$this->enrollmentBatch->payment_registered_by_user_id || !$this->enrollmentBatch->payment_registered_at) {
+            return null;
+        }
+
+        $userName = $this->enrollmentBatch->paymentRegisteredByUser ? $this->enrollmentBatch->paymentRegisteredByUser->name : 'Usuario eliminado';
+        return $userName . ' - ' . $this->enrollmentBatch->payment_registered_at->format('d/m/Y H:i');
     }
 }

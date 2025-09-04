@@ -234,10 +234,7 @@ class EnrollmentBatchResource extends Resource
                     ->label('Estado de Pago')
                     ->options([
                         'pending' => 'En Proceso',
-                        'to_pay' => 'Por Pagar',
                         'completed' => 'Inscrito',
-                        'credit_favor' => 'Crédito a Favor',
-                        'refunded' => 'Devuelto',
                     ]),
 
                 Tables\Filters\SelectFilter::make('payment_method')
@@ -268,8 +265,7 @@ class EnrollmentBatchResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->label('Editar'),
+                /* Tables\Actions\EditAction::make()->label('Editar'), */
                 Tables\Actions\Action::make('download_ticket')
                     ->label('Descargar Ticket')
                     ->icon('heroicon-o-document-arrow-down')
@@ -277,7 +273,98 @@ class EnrollmentBatchResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'completed' && $record->payment_method === 'cash')
                     ->color('success'),
-                Tables\Actions\Action::make('register_batch_code')
+                Tables\Actions\Action::make('register_payment')
+                    ->label('Pago')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->form(function (EnrollmentBatch $record) {
+                        if ($record->payment_method === 'link') {
+                            return [
+                                Forms\Components\TextInput::make('batch_code')
+                                    ->label('Código de Lote/Ticket')
+                                    ->required()
+                                    ->maxLength(50)
+                                    ->helperText('Ingresa el código del voucher/boleta/ticket de pago por link'),
+
+                                Forms\Components\Textarea::make('payment_notes')
+                                    ->label('Observaciones del Pago')
+                                    ->rows(3)
+                                    ->placeholder('Observaciones adicionales sobre el pago (opcional)'),
+                            ];
+                        } else {
+                            return [
+                                Forms\Components\Placeholder::make('confirmation')
+                                    ->label('')
+                                    ->content(new \Illuminate\Support\HtmlString('
+                                        <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                            <h3 class="font-semibold text-green-800 mb-2">Confirmar Pago en Efectivo</h3>
+                                            <p class="text-sm text-green-700">
+                                                ¿Confirmas que has recibido el pago en efectivo por el monto total de
+                                                <strong>S/ ' . number_format($record->total_amount, 2) . '</strong>?
+                                            </p>
+                                        </div>
+                                    ')),
+
+                                Forms\Components\Textarea::make('payment_notes')
+                                    ->label('Observaciones del Pago')
+                                    ->rows(3)
+                                    ->placeholder('Observaciones adicionales sobre el pago (opcional)'),
+                            ];
+                        }
+                    })
+                    ->action(function (EnrollmentBatch $record, array $data): void {
+                        $updates = [
+                            'payment_status' => 'completed',
+                            'payment_date' => now(),
+                            'payment_registered_by_user_id' => auth()->id(),
+                            'payment_registered_at' => now(),
+                        ];
+
+                        // Si es pago por link, también actualizar el código
+                        if ($record->payment_method === 'link' && isset($data['batch_code'])) {
+                            $updates['batch_code'] = $data['batch_code'];
+                        }
+
+                        // Agregar notas si se proporcionaron
+                        if (!empty($data['payment_notes'])) {
+                            $existingNotes = $record->notes ? $record->notes . "\n\n" : '';
+                            $updates['notes'] = $existingNotes . "Pago registrado por " . auth()->user()->name . " el " . now()->format('d/m/Y H:i') . ":\n" . $data['payment_notes'];
+                        }
+
+                        $record->update($updates);
+
+                        // También actualizar todas las inscripciones individuales del lote
+                        $record->enrollments()->update([
+                            'payment_status' => 'completed',
+                            'payment_date' => now(),
+                        ]);
+
+                        $message = $record->payment_method === 'link'
+                            ? "Pago registrado exitosamente. Código: {$data['batch_code']}"
+                            : "Pago en efectivo confirmado exitosamente";
+
+                        Notification::make()
+                            ->title('Pago Registrado')
+                            ->body($message)
+                            ->success()
+                            ->send();
+                    })
+                    ->modalHeading(function (EnrollmentBatch $record) {
+                        return $record->payment_method === 'link'
+                            ? 'Registrar Pago por Link'
+                            : 'Confirmar Pago en Efectivo';
+                    })
+                    ->modalDescription(function (EnrollmentBatch $record) {
+                        return $record->payment_method === 'link'
+                            ? 'Ingresa el código del voucher/boleta/ticket generado por el sistema de pagos'
+                            : 'Confirma que has recibido el pago en efectivo del estudiante';
+                    })
+                    ->modalSubmitActionLabel('Registrar Pago')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->visible(fn (EnrollmentBatch $record): bool =>
+                        $record->payment_status === 'pending'
+                    )
+                    ->color('success'),
+                /* Tables\Actions\Action::make('register_batch_code')
                     ->label('Registrar Código')
                     ->icon('heroicon-o-hashtag')
                     ->form([
@@ -304,7 +391,7 @@ class EnrollmentBatchResource extends Resource
                     ->visible(fn (EnrollmentBatch $record): bool =>
                         $record->payment_method === 'link'
                     )
-                    ->color('info'),
+                    ->color('info'), */
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
                     ->requiresConfirmation()
@@ -319,7 +406,7 @@ class EnrollmentBatchResource extends Resource
                         ->label('Eliminar seleccionados'),
                 ]),
             ])
-            ->defaultSort('enrollment_date', 'desc');
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getRelations(): array

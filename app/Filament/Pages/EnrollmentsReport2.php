@@ -86,6 +86,7 @@ class EnrollmentsReport2 extends Page implements HasForms, HasActions
                 'student',
                 'instructorWorkshop.workshop',
                 'instructorWorkshop.instructor',
+                'enrollmentBatch.paymentRegisteredByUser',
                 'enrollmentBatch',
                 'creator'
             ])
@@ -97,7 +98,7 @@ class EnrollmentsReport2 extends Page implements HasForms, HasActions
             $workshop = $enrollment->instructorWorkshop->workshop ?? null;
             $instructor = $enrollment->instructorWorkshop->instructor ?? null;
             $batch = $enrollment->enrollmentBatch ?? null;
-            $cashier = $enrollment->creator ?? null;
+            $cashier = $enrollment->enrollmentBatch->paymentRegisteredByUser ?? null;
 
             return [
                 'id' => $enrollment->id,

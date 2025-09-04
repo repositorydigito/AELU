@@ -5,7 +5,7 @@ namespace App\Filament\Resources\EnrollmentResource\Pages;
 use App\Filament\Resources\EnrollmentResource;
 use App\Models\StudentEnrollment;
 use Filament\Resources\Pages\CreateRecord;
-use Filament\Notifications\Notification;    
+use Filament\Notifications\Notification;
 
 class CreateEnrollment extends CreateRecord
 {
@@ -71,7 +71,7 @@ class CreateEnrollment extends CreateRecord
         $isPrepama = $student && in_array($student->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
 
         // Determinar el estado de pago final
-        $finalPaymentStatus = $paymentMethod === 'cash' ? 'completed' : 'pending';
+        $finalPaymentStatus = $paymentMethod === 'cash' ? 'pending' : 'pending';
 
         // Calcular el total de todas las inscripciones
         $totalAmount = 0;
@@ -245,16 +245,16 @@ class CreateEnrollment extends CreateRecord
         if ($paymentMethod === 'cash') {
             // Pago en efectivo - Estado: Inscrito - Generar PDF
             Notification::make()
-                ->title('¡Inscripciones completadas!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: Inscrito. Se generará el ticket PDF.")
+                ->title('¡Inscripciones en proceso!')
+                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: En Proceso.")
                 ->success()
-                ->actions([
+                /* ->actions([
                     \Filament\Notifications\Actions\Action::make('download_ticket')
                         ->label('Descargar Ticket')
                         ->url(route('enrollment.batch.ticket', ['batchId' => $enrollmentBatch->id]))
                         ->openUrlInNewTab()
                         ->button(),
-                ])
+                ]) */
                 ->persistent()
                 ->send();
         } else {

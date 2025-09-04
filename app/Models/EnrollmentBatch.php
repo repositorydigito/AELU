@@ -18,6 +18,8 @@ class EnrollmentBatch extends Model
         'payment_due_date',
         'payment_date',
         'payment_document',
+        'payment_registered_by_user_id',   // NUEVO
+        'payment_registered_at',
         'enrollment_date',
         'notes',
     ];
@@ -27,6 +29,7 @@ class EnrollmentBatch extends Model
         'enrollment_date' => 'date',
         'payment_due_date' => 'date',
         'payment_date' => 'date',
+        'payment_registered_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -62,6 +65,10 @@ class EnrollmentBatch extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+    public function paymentRegisteredByUser()
+    {
+        return $this->belongsTo(User::class, 'payment_registered_by_user_id');
     }
 
     // Métodos auxiliares
@@ -107,5 +114,18 @@ class EnrollmentBatch extends Model
         }
 
         return 'Sistema';
+    }
+    public function getPaymentRegisteredByDisplayAttribute(): ?string
+    {
+        if (!$this->payment_registered_by_user_id || !$this->payment_registered_at) {
+            return null;
+        }
+
+        $userName = $this->paymentRegisteredByUser ? $this->paymentRegisteredByUser->name : 'Usuario eliminado';
+        return $userName . ' - ' . $this->payment_registered_at->format('d/m/Y H:i');
+    }
+    public function getPaymentRegisteredByNameAttribute(): ?string
+    {
+        return $this->paymentRegisteredByUser ? $this->paymentRegisteredByUser->name : null;
     }
 }

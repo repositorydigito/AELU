@@ -82,8 +82,9 @@ class EnrollmentsReport1 extends Page implements HasForms, HasActions
                 'instructorWorkshop.workshop',
                 'instructorWorkshop.instructor',
                 'monthlyPeriod',
+                'enrollmentBatch.paymentRegisteredByUser',
                 'enrollmentBatch', // Para obtener el documento/ticket
-                'creator' // Para obtener el cajero
+                'creator'
             ])
             ->orderBy('enrollment_date', 'desc')
             ->get()
@@ -92,7 +93,7 @@ class EnrollmentsReport1 extends Page implements HasForms, HasActions
                 $instructor = $enrollment->instructorWorkshop->instructor ?? null;
                 $period = $enrollment->monthlyPeriod ?? null;
                 $batch = $enrollment->enrollmentBatch ?? null;
-                $cashier = $enrollment->creator ?? null;
+                $cashier = $enrollment->enrollmentBatch->paymentRegisteredByUser ?? null;
 
                 return [
                     'id' => $enrollment->id,
