@@ -134,4 +134,52 @@ class Workshop extends Model
             ->whereHas('enrollments')
             ->exists();
     }
+
+    /**
+     * Calcula los cupos disponibles para un período específico
+     */
+    public function getAvailableSpotsForPeriod($monthlyPeriodId): int
+    {
+        $totalCapacity = $this->capacity;
+        
+        // Contar inscripciones activas para este período
+        $currentEnrollments = $this->enrollments()
+            ->where('monthly_period_id', $monthlyPeriodId)
+            ->whereIn('payment_status', ['completed', 'pending'])
+            ->distinct('student_id')
+            ->count();
+            
+        return max(0, $totalCapacity - $currentEnrollments);
+    }
+
+    /**
+     * Verifica si el taller está lleno para un período específico
+     */
+    public function isFullForPeriod($monthlyPeriodId): bool
+    {
+        return $this->getAvailableSpotsForPeriod($monthlyPeriodId) <= 0;
+    }
+
+    /**
+     * Obtiene información completa de cupos para un período específico
+     */
+    public function getCapacityInfoForPeriod($monthlyPeriodId): array
+    {
+        $totalCapacity = $this->capacity;
+        $currentEnrollments = $this->enrollments()
+            ->where('monthly_period_id', $monthlyPeriodId)
+            ->whereIn('payment_status', ['completed', 'pending'])
+            ->distinct('student_id')
+            ->count();
+        
+        $availableSpots = max(0, $totalCapacity - $currentEnrollments);
+        
+        return [
+            'total_capacity' => $totalCapacity,
+            'current_enrollments' => $currentEnrollments,
+            'available_spots' => $availableSpots,
+            'is_full' => $availableSpots <= 0,
+            'is_almost_full' => $availableSpots <= 3 && $availableSpots > 0,
+        ];
+    }
 }

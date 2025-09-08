@@ -276,20 +276,24 @@ class EnrollmentResource extends Resource
                                                 ->get()
                                                 ->map(function ($instructorWorkshop) use ($selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshops) {
 
-                                                    // CALCULAR CUPOS DISPONIBLES
-                                                    $capacity = $instructorWorkshop->max_capacity ?? $instructorWorkshop->workshop->capacity ?? 0;
+                                                    // CALCULAR CUPOS DISPONIBLES usando los nuevos métodos
+                                                    $capacity = $instructorWorkshop->getEffectiveCapacity();
                                                     $currentEnrollments = 0;
                                                     $availableSpots = $capacity;
 
                                                     // Si hay período seleccionado, calcular inscripciones actuales
-                                                    if ($selectedMonthlyPeriodId) {
-                                                        $currentEnrollments = \App\Models\StudentEnrollment::where('instructor_workshop_id', $instructorWorkshop->id)
-                                                            ->where('monthly_period_id', $selectedMonthlyPeriodId)
-                                                            ->whereIn('payment_status', ['completed', 'pending'])
-                                                            ->distinct('student_id')
-                                                            ->count();
-
-                                                        $availableSpots = $capacity - $currentEnrollments;
+                                                    // Si no hay período seleccionado, usar el período actual por defecto
+                                                    $periodToUse = $selectedMonthlyPeriodId;
+                                                    if (!$periodToUse) {
+                                                        $currentPeriod = \App\Models\MonthlyPeriod::where('year', now()->year)
+                                                            ->where('month', now()->month)
+                                                            ->first();
+                                                        $periodToUse = $currentPeriod?->id;
+                                                    }
+                                                    
+                                                    if ($periodToUse) {
+                                                        $currentEnrollments = $instructorWorkshop->getCurrentEnrollmentsForPeriod($periodToUse);
+                                                        $availableSpots = $instructorWorkshop->getAvailableSpotsForPeriod($periodToUse);
                                                     }
 
                                                     // Convertir día de la semana (número) a texto en español
@@ -332,7 +336,10 @@ class EnrollmentResource extends Resource
                                             ];
                                         })
                                         ->live()
-                                        ->key(fn (Forms\Get $get) => 'workshops_' . md5($get('previous_workshops') . $get('student_id') . $get('selected_monthly_period_id')))
+                                        ->key(function (Forms\Get $get) {
+                                            // Usar timestamp para forzar actualización en cada carga
+                                            return 'workshops_' . md5($get('previous_workshops') . $get('student_id') . $get('selected_monthly_period_id') . time());
+                                        })
                                         ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
@@ -360,6 +367,15 @@ class EnrollmentResource extends Resource
                             $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
                             if (!$selectedMonthlyPeriodId) {
                                 throw ValidationException::withMessages(['selected_monthly_period_id' => 'Debe seleccionar un período mensual']);
+                            }
+
+                            // Validar cupos disponibles para cada taller seleccionado
+                            foreach ($selectedWorkshops as $workshopId) {
+                                $instructorWorkshop = \App\Models\InstructorWorkshop::find($workshopId);
+                                if ($instructorWorkshop && $instructorWorkshop->isFullForPeriod($selectedMonthlyPeriodId)) {
+                                    $workshopName = $instructorWorkshop->workshop->name ?? 'Taller desconocido';
+                                    throw ValidationException::withMessages(['selected_workshops' => "El taller '{$workshopName}' no tiene cupos disponibles para el período seleccionado."]);
+                                }
                             }
 
                             // Validar clases específicas para cada taller

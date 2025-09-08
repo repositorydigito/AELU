@@ -111,7 +111,7 @@ class WorkshopResource extends Resource
                             ),
                         Forms\Components\Select::make('delegate_user_id')
                             ->label('Elegir delegado')
-                            ->options(\App\Models\User::all()->pluck('name', 'id'))
+                            ->options(\App\Models\User::role('Delegado')->pluck('name', 'id'))
                             ->searchable()
                             ->placeholder('Seleccionar delegado')
                             ->nullable(),
@@ -526,6 +526,44 @@ class WorkshopResource extends Resource
                     ->label('Tarifa Mensual')
                     ->prefix('S/. ')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('capacity')
+                    ->label('Capacidad')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('current_period_enrollments')
+                    ->label('Cupos Actuales')
+                    ->getStateUsing(function (Workshop $record) {
+                        // Obtener el período actual
+                        $currentPeriod = \App\Models\MonthlyPeriod::where('year', now()->year)
+                            ->where('month', now()->month)
+                            ->first();
+                        
+                        if (!$currentPeriod) {
+                            return 'N/A';
+                        }
+                        
+                        $capacityInfo = $record->getCapacityInfoForPeriod($currentPeriod->id);
+                        return "{$capacityInfo['available_spots']}/{$capacityInfo['total_capacity']}";
+                    })
+                    ->badge()
+                    ->color(function (Workshop $record) {
+                        $currentPeriod = \App\Models\MonthlyPeriod::where('year', now()->year)
+                            ->where('month', now()->month)
+                            ->first();
+                        
+                        if (!$currentPeriod) {
+                            return 'gray';
+                        }
+                        
+                        $capacityInfo = $record->getCapacityInfoForPeriod($currentPeriod->id);
+                        
+                        if ($capacityInfo['is_full']) {
+                            return 'danger';
+                        } elseif ($capacityInfo['is_almost_full']) {
+                            return 'warning';
+                        } else {
+                            return 'success';
+                        }
+                    }),
             ])
             ->defaultSort('name', 'asc')
             ->filters([
