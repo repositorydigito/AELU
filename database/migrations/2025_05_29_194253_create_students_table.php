@@ -13,9 +13,9 @@ return new class extends Migration
             $table->string('last_names');
             $table->string('first_names');
             $table->string('photo')->nullable();
-            $table->string('document_type');
-            $table->string('document_number')->unique();
-            $table->date('birth_date');
+            $table->string('document_type')->nullable();
+            $table->string('document_number')->nullable();
+            $table->date('birth_date')->nullable();
             $table->string('nationality')->nullable();
             $table->string('student_code')->nullable();
             $table->string('category_partner')->nullable();

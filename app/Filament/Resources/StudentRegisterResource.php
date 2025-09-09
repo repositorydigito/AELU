@@ -740,11 +740,11 @@ class StudentRegisterResource extends Resource
                     }),
             ])
             ->headerActions([
-                /* Action::make('import')
+                Action::make('import')
                     ->label('Importar Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn () => static::getUrl('import'))
-                    ->color('primary') */
+                    ->color('primary')
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
