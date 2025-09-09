@@ -332,7 +332,12 @@
                                     <span class="text-sm text-gray-600">Cupos disponibles:</span>
                                     <span
                                         class="text-sm font-medium"
-                                        x-text="workshop.current_enrollments + '/' + workshop.capacity"
+                                        x-bind:class="{
+                                            'text-red-600': workshop.available_spots <= 0,
+                                            'text-yellow-600': workshop.available_spots <= 3 && workshop.available_spots > 0,
+                                            'text-green-600': workshop.available_spots > 3
+                                        }"
+                                        x-text="workshop.available_spots + '/' + workshop.capacity"
                                     ></span>
                                 </div>
                             </div>

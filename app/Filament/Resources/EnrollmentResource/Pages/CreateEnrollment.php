@@ -70,6 +70,27 @@ class CreateEnrollment extends CreateRecord
         $student = \App\Models\Student::find($data['student_id']);
         $isPrepama = $student && in_array($student->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
 
+        // 🔥 VALIDACIÓN PREVIA DE CUPOS PARA TODOS LOS TALLERES SELECCIONADOS
+        $capacityErrors = [];
+        foreach ($selectedWorkshops as $workshopId) {
+            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+            if ($instructorWorkshop && $instructorWorkshop->isFullForPeriod($selectedMonthlyPeriodId)) {
+                $capacityErrors[] = $instructorWorkshop->workshop->name;
+            }
+        }
+
+        if (!empty($capacityErrors)) {
+            $workshopNames = implode(', ', $capacityErrors);
+            Notification::make()
+                ->title('Cupos agotados')
+                ->body("Los siguientes talleres no tienen cupos disponibles: {$workshopNames}")
+                ->danger()
+                ->persistent()
+                ->send();
+            
+            $this->halt();
+        }
+
         // Determinar el estado de pago final
         $finalPaymentStatus = $paymentMethod === 'cash' ? 'pending' : 'pending';
 

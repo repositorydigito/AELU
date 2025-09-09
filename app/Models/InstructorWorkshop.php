@@ -75,4 +75,50 @@ class InstructorWorkshop extends Model
         }
         return null;
     }
+
+    /**
+     * Obtiene la capacidad efectiva del taller
+     */
+    public function getEffectiveCapacity(): int
+    {
+        // Priorizar la capacidad del workshop, luego max_capacity del instructor_workshop
+        return $this->workshop->capacity ?? $this->max_capacity ?? 0;
+    }
+
+    /**
+     * Calcula los cupos disponibles para un período específico
+     */
+    public function getAvailableSpotsForPeriod($monthlyPeriodId): int
+    {
+        $totalCapacity = $this->getEffectiveCapacity();
+        
+        // Contar inscripciones activas para este período
+        $currentEnrollments = $this->enrollments()
+            ->where('monthly_period_id', $monthlyPeriodId)
+            ->whereIn('payment_status', ['completed', 'pending'])
+            ->distinct('student_id')
+            ->count();
+            
+        return max(0, $totalCapacity - $currentEnrollments);
+    }
+
+    /**
+     * Obtiene el número actual de inscripciones para un período específico
+     */
+    public function getCurrentEnrollmentsForPeriod($monthlyPeriodId): int
+    {
+        return $this->enrollments()
+            ->where('monthly_period_id', $monthlyPeriodId)
+            ->whereIn('payment_status', ['completed', 'pending'])
+            ->distinct('student_id')
+            ->count();
+    }
+
+    /**
+     * Verifica si el taller está lleno para un período específico
+     */
+    public function isFullForPeriod($monthlyPeriodId): bool
+    {
+        return $this->getAvailableSpotsForPeriod($monthlyPeriodId) <= 0;
+    }
 }
