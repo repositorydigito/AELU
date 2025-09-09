@@ -225,7 +225,7 @@ class EnrollmentBatchResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('batch_code')
-                    ->label('Código de Lote')
+                    ->label('Nº Documento')
                     ->placeholder('Sin código')
                     ->sortable(),
             ])

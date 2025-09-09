@@ -92,7 +92,7 @@
                 <th>Monto</th>
                 <th>Método Pago</th>
                 <th>Modalidad</th>
-                <th>Ticket</th>
+                <th>N° Documento</th>
                 <th>Cajero</th>
             </tr>
         </thead>
