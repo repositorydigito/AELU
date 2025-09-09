@@ -67,7 +67,7 @@ class EnrollmentBatchResource extends Resource
                                 'to_pay' => 'Por Pagar',
                                 'completed' => 'Inscrito',
                                 'credit_favor' => 'Crédito a Favor',
-                                'refunded' => 'Devuelto',
+                                'refunded' => 'Anulado',
                             ])
                             ->required(),
 
@@ -196,7 +196,7 @@ class EnrollmentBatchResource extends Resource
                         'to_pay' => 'Por Pagar',
                         'completed' => 'Inscrito',
                         'credit_favor' => 'Crédito a Favor',
-                        'refunded' => 'Devuelto',
+                        'refunded' => 'Anulado',
                         default => $state,
                     })
                     ->badge()
@@ -205,7 +205,7 @@ class EnrollmentBatchResource extends Resource
                         'to_pay' => 'danger',
                         'completed' => 'success',
                         'credit_favor' => 'info',
-                        'refunded' => 'gray',
+                        'refunded' => 'danger',
                         default => 'gray',
                     })
                     ->sortable(),
@@ -235,6 +235,7 @@ class EnrollmentBatchResource extends Resource
                     ->options([
                         'pending' => 'En Proceso',
                         'completed' => 'Inscrito',
+                        'refunded' => 'Anulado',
                     ]),
 
                 Tables\Filters\SelectFilter::make('payment_method')
@@ -364,41 +365,81 @@ class EnrollmentBatchResource extends Resource
                         $record->payment_status === 'pending'
                     )
                     ->color('success'),
-                /* Tables\Actions\Action::make('register_batch_code')
-                    ->label('Registrar Código')
-                    ->icon('heroicon-o-hashtag')
+                Tables\Actions\Action::make('cancel_enrollment')
+                    ->label('Anular')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Anular Inscripción')
+                    ->modalDescription(function (EnrollmentBatch $record) {
+                        $statusText = match($record->payment_status) {
+                            'pending' => 'en proceso',
+                            'completed' => 'inscrito',
+                            default => $record->payment_status
+                        };
+
+                        return "¿Estás seguro de que deseas anular esta inscripción? El estado actual es '{$statusText}'. Esta acción liberará los cupos ocupados y marcará la inscripción como anulada.";
+                    })
+                    ->modalSubmitActionLabel('Sí, anular inscripción')
+                    ->modalCancelActionLabel('Cancelar')
                     ->form([
-                        Forms\Components\TextInput::make('batch_code')
-                            ->label('Código de Lote')
-                            ->required()
-                            ->maxLength(50),
+                        Forms\Components\Textarea::make('cancellation_reason')
+                            ->label('Motivo de la anulación')
+                            ->nullable()
+                            ->rows(3),
                     ])
                     ->action(function (EnrollmentBatch $record, array $data): void {
-                        $record->update([
-                            'batch_code' => $data['batch_code'],
-                        ]);
+                        try {
+                            // Obtener información de los talleres ANTES de la transacción
+                            $workshops = $record->enrollments()
+                                ->with(['instructorWorkshop.workshop'])
+                                ->get()
+                                ->pluck('instructorWorkshop.workshop.name')
+                                ->unique()
+                                ->take(3)
+                                ->implode(', ');
 
-                        Notification::make()
-                            ->title('Código registrado')
-                            ->body("Se ha registrado el código de lote: {$data['batch_code']}")
-                            ->success()
-                            ->send();
+                            if ($record->enrollments()->count() > 3) {
+                                $workshops .= '...';
+                            }
+
+                            $totalEnrollments = $record->enrollments()->count();
+
+                            \DB::transaction(function () use ($record, $data) {
+                                // Actualizar el estado del lote
+                                $record->update([
+                                    'payment_status' => 'refunded',
+                                    'cancelled_at' => now(),
+                                    'cancelled_by_user_id' => auth()->id(),
+                                    'cancellation_reason' => $data['cancellation_reason'],
+                                    'notes' => ($record->notes ? $record->notes . "\n\n" : '') .
+                                            "Anulación registrada por " . auth()->user()->name . " el " . now()->format('d/m/Y H:i') .
+                                            ":\nMotivo: " . $data['cancellation_reason']
+                                ]);
+
+                                // Actualizar todas las inscripciones individuales del lote
+                                $record->enrollments()->update([
+                                    'payment_status' => 'refunded',
+                                ]);
+                            });
+
+                            Notification::make()
+                                ->title('Inscripción anulada exitosamente')
+                                ->body("Se han liberado {$totalEnrollments} cupo(s) en: {$workshops}")
+                                ->success()
+                                ->send();
+
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Error al anular inscripción')
+                                ->body('Hubo un problema al procesar la anulación: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
                     })
-                    ->modalHeading('Registrar Código de Lote')
-                    ->modalDescription('Ingresa el código de lote generado por el sistema de pagos')
-                    ->modalSubmitActionLabel('Registrar Código')
-                    ->modalCancelActionLabel('Cancelar')
                     ->visible(fn (EnrollmentBatch $record): bool =>
-                        $record->payment_method === 'link'
-                    )
-                    ->color('info'), */
-                Tables\Actions\DeleteAction::make()
-                    ->label('Eliminar')
-                    ->requiresConfirmation()
-                    ->modalHeading('Eliminar Lote de Inscripciones')
-                    ->modalDescription('¿Estás seguro de que deseas eliminar este lote de inscripciones? Esta acción eliminará todas las inscripciones asociadas y no se puede deshacer.')
-                    ->modalSubmitActionLabel('Sí, eliminar')
-                    ->modalCancelActionLabel('Cancelar'),
+                        in_array($record->payment_status, ['pending', 'completed'])
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

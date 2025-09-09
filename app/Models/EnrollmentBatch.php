@@ -18,10 +18,13 @@ class EnrollmentBatch extends Model
         'payment_due_date',
         'payment_date',
         'payment_document',
-        'payment_registered_by_user_id',   // NUEVO
+        'payment_registered_by_user_id',
         'payment_registered_at',
         'enrollment_date',
         'notes',
+        'cancelled_at',
+        'cancelled_by_user_id',
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -30,6 +33,7 @@ class EnrollmentBatch extends Model
         'payment_due_date' => 'date',
         'payment_date' => 'date',
         'payment_registered_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -69,6 +73,10 @@ class EnrollmentBatch extends Model
     public function paymentRegisteredByUser()
     {
         return $this->belongsTo(User::class, 'payment_registered_by_user_id');
+    }
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
 
     // Métodos auxiliares
