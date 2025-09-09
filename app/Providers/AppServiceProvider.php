@@ -11,6 +11,8 @@ use App\Models\Student;
 use App\Observers\StudentObserver;
 use App\Models\InstructorPayment;
 use App\Observers\InstructorPaymentObserver;
+use App\Models\InstructorWorkshop;
+use App\Observers\InstructorWorkshopObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,5 +33,6 @@ class AppServiceProvider extends ServiceProvider
         StudentEnrollment::observe(StudentEnrollmentObserver::class);
         Student::observe(StudentObserver::class);
         InstructorPayment::observe(InstructorPaymentObserver::class);
+        InstructorWorkshop::observe(InstructorWorkshopObserver::class);
     }
 }

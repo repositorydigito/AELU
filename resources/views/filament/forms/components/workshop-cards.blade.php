@@ -1,6 +1,7 @@
 <div x-data="workshopSelector()"
      data-previous-workshops="{{ json_encode($getViewData()['previous_workshops'] ?? []) }}"
-     data-student-id="{{ $getViewData()['student_id'] ?? '' }}">
+     data-student-id="{{ $getViewData()['student_id'] ?? '' }}"
+     data-workshops="{{ json_encode($workshops->values()->toArray()) }}">
     @php
         $workshops = $getViewData()['workshops'] ?? collect();
         $studentId = $getViewData()['student_id'] ?? null;
@@ -105,7 +106,7 @@
                     <div>
                         <h3 class="text-lg font-semibold text-blue-800">Talleres del Mes Anterior ({{ $previousMonthName }})</h3>
                         <p class="text-sm text-blue-700">
-                            <span x-text="previousWorkshops.length"></span> talleres - 
+                            <span x-text="previousWorkshops.length"></span> talleres -
                             <span x-text="selectedPreviousCount"></span> seleccionados para continuar
                         </p>
                     </div>
@@ -114,7 +115,7 @@
                 <!-- Grid de talleres previos -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template x-for="workshop in previousWorkshops" x-bind:key="'prev_' + workshop.id">
-                        <div 
+                        <div
                             class="workshop-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md relative"
                             x-bind:class="{
                                 'border-blue-500 bg-blue-100 ring-2 ring-blue-200': selectedWorkshops.includes(workshop.id),
@@ -461,7 +462,7 @@
             },
 
             get selectedPreviousCount() {
-                return this.previousWorkshops.filter(workshop => 
+                return this.previousWorkshops.filter(workshop =>
                     this.selectedWorkshops.includes(workshop.id)
                 ).length;
             },
@@ -517,6 +518,16 @@
             },
 
             updatePreviousWorkshops() {
+                // Actualizar workshops desde el DOM
+                const workshopsAttr = this.$el.getAttribute('data-workshops');
+                if (workshopsAttr) {
+                    try {
+                        this.allWorkshops = JSON.parse(workshopsAttr);
+                    } catch (e) {
+                        console.error('Error parsing data-workshops:', e);
+                    }
+                }
+
                 const currentStudentId = this.$el.getAttribute('data-student-id');
 
                 if (currentStudentId !== this.lastStudentId) {

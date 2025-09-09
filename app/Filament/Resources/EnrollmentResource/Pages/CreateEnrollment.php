@@ -87,7 +87,7 @@ class CreateEnrollment extends CreateRecord
                 ->danger()
                 ->persistent()
                 ->send();
-            
+
             $this->halt();
         }
 
@@ -98,6 +98,24 @@ class CreateEnrollment extends CreateRecord
         $totalAmount = 0;
         $validWorkshopDetails = [];
         $skippedWorkshops = [];
+
+        // Asegurar que todos los workshops existan para el período seleccionado
+        $workshopIdMapping = [];
+        foreach ($selectedWorkshops as $workshopId) {
+            $newWorkshopId = $this->ensureWorkshopExistsForPeriod($workshopId, $selectedMonthlyPeriodId);
+            $workshopIdMapping[$workshopId] = $newWorkshopId;
+        }
+
+        // Actualizar las referencias en workshopDetails
+        foreach ($workshopDetails as $index => $detail) {
+            $originalWorkshopId = $detail['instructor_workshop_id'];
+            if (isset($workshopIdMapping[$originalWorkshopId])) {
+                $workshopDetails[$index]['instructor_workshop_id'] = $workshopIdMapping[$originalWorkshopId];
+            }
+        }
+
+        // Actualizar selectedWorkshops con los nuevos IDs
+        $selectedWorkshops = array_values($workshopIdMapping);
 
         foreach ($workshopDetails as $detail) {
             if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
@@ -367,6 +385,18 @@ class CreateEnrollment extends CreateRecord
                 'attendance_status' => 'enrolled',
             ]);
         }
+    }
+
+    private function ensureWorkshopExistsForPeriod($originalWorkshopId, $monthlyPeriodId)
+    {
+        $workshopService = new \App\Services\WorkshopAutoCreationService();
+        $instructorWorkshop = $workshopService->findOrCreateInstructorWorkshopForPeriod($originalWorkshopId, $monthlyPeriodId);
+
+        if (!$instructorWorkshop) {
+            throw new \Exception("No se pudo crear el taller para el período: {$monthlyPeriodId}");
+        }
+
+        return $instructorWorkshop->id;
     }
 
     protected function getRedirectUrl(): string

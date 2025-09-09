@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{    
+{
     public function up(): void
     {
         Schema::create('instructor_workshops', function (Blueprint $table) {
@@ -24,11 +24,11 @@ return new class extends Migration
             $table->decimal('duration_hours', 4, 2)->nullable();
             $table->decimal('custom_volunteer_percentage', 5, 2)->nullable();
             $table->timestamps();
-            
-            $table->unique(['instructor_id', 'workshop_id', 'day_of_week', 'start_time'], 'unique_schedule');            
+
+            $table->unique(['instructor_id', 'workshop_id', 'day_of_week', 'start_time','initial_monthly_period_id'], 'unique_schedule');
         });
     }
-   
+
     public function down(): void
     {
         Schema::dropIfExists('instructor_workshops');

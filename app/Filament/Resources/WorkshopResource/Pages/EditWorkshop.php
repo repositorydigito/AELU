@@ -18,13 +18,13 @@ class EditWorkshop extends EditRecord
         ];
     }
     protected function getRedirectUrl(): string
-    {        
-        return WorkshopResource::getUrl('index');     
-    }    
+    {
+        return WorkshopResource::getUrl('index');
+    }
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $workshop = $this->record;
-        
+
         // Cargar las clases existentes
         $workshopClasses = $workshop->workshopClasses()
             ->orderBy('class_date', 'asc')
@@ -33,7 +33,7 @@ class EditWorkshop extends EditRecord
         if ($workshopClasses->isNotEmpty()) {
             // Establecer la fecha de inicio como la primera clase
             $data['temp_start_date'] = $workshopClasses->first()->class_date->format('Y-m-d');
-            
+
             // Generar schedule_data desde las clases existentes
             $scheduleData = [];
             foreach ($workshopClasses as $index => $class) {
@@ -55,22 +55,33 @@ class EditWorkshop extends EditRecord
         $workshop = $this->record;
         $scheduleData = $this->data['schedule_data'] ?? [];
 
-        // Solo actualizar si no hay inscripciones
-        if (!$workshop->hasEnrollments() && !empty($scheduleData) && is_array($scheduleData)) {
-            // Eliminar clases existentes
-            $workshop->workshopClasses()->delete();
-            
-            // Crear nuevas clases
-            foreach ($scheduleData as $classData) {
-                WorkshopClass::create([
-                    'workshop_id' => $workshop->id,
-                    'monthly_period_id' => $workshop->monthly_period_id,
-                    'class_date' => $classData['raw_date'],
-                    'start_time' => $workshop->start_time,
-                    'end_time' => $workshop->end_time,
-                    'status' => 'scheduled',
-                    'max_capacity' => $workshop->capacity,
-                ]);
+        // Permitir actualización de fechas siempre
+        if (!empty($scheduleData) && is_array($scheduleData)) {
+            // Obtener clases existentes para actualizar en lugar de eliminar
+            $existingClasses = $workshop->workshopClasses()
+                ->orderBy('class_date')
+                ->get();
+
+            foreach ($scheduleData as $index => $classData) {
+                if (isset($existingClasses[$index])) {
+                    // Actualizar clase existente
+                    $existingClasses[$index]->update([
+                        'class_date' => $classData['raw_date'],
+                        'start_time' => $workshop->start_time,
+                        'end_time' => $workshop->end_time,
+                    ]);
+                } else {
+                    // Crear nueva clase si no existe
+                    WorkshopClass::create([
+                        'workshop_id' => $workshop->id,
+                        'monthly_period_id' => $workshop->monthly_period_id,
+                        'class_date' => $classData['raw_date'],
+                        'start_time' => $workshop->start_time,
+                        'end_time' => $workshop->end_time,
+                        'status' => 'scheduled',
+                        'max_capacity' => $workshop->capacity,
+                    ]);
+                }
             }
         }
     }

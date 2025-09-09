@@ -104,11 +104,7 @@ class WorkshopResource extends Resource
                             ->label('Profesor')
                             ->options(\App\Models\Instructor::all()->pluck('full_name', 'id'))
                             ->searchable()
-                            ->required()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->required(),
                         Forms\Components\Select::make('delegate_user_id')
                             ->label('Elegir delegado')
                             ->options(\App\Models\User::role('Delegado')->pluck('name', 'id'))
@@ -127,77 +123,45 @@ class WorkshopResource extends Resource
                                 'Domingo' => 'Domingo',
                             ])
                             ->required()
-                            ->live()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->live(),
                         Forms\Components\TimePicker::make('start_time')
                             ->label('Hora')
                             ->withoutSeconds()
-                            ->required()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->required(),
                         Forms\Components\TextInput::make('duration')
                             ->label('Duración de la Clase')
                             ->numeric()
                             ->minValue(1)
                             ->suffix('minutos')
-                            ->required()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->required(),
                         Forms\Components\TextInput::make('capacity')
                             ->label('Número de cupos (Aforo)')
                             ->numeric()
                             ->minValue(0)
-                            ->required()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->required(),
                         Forms\Components\TextInput::make('number_of_classes')
                             ->label('Número de clases')
                             ->numeric()
                             ->minValue(1)
                             ->maxValue(8)
                             ->required()
-                            ->live()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->live(),
                         Forms\Components\TextInput::make('standard_monthly_fee')
                             ->label('Tarifa del Mes')
                             ->prefix('S/.')
                             ->numeric()
                             ->minValue(0)
-                            ->required()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->required(),
                         Forms\Components\TextInput::make('place')
                             ->label('Localización')
-                            ->nullable()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->nullable(),
                         Forms\Components\Select::make('modality')
                             ->label('Modalidad')
                             ->options([
                                 'Presencial' => 'Presencial',
                                 'Virtual' => 'Virtual',
                             ])
-                            ->nullable()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                $livewire->record->hasEnrollments()
-                            ),
+                            ->nullable(),
                     ])
                     ->columns(5),
 
@@ -285,11 +249,11 @@ class WorkshopResource extends Resource
                                                 }
                                             };
                                         }
-                                    ])
-                                    ->disabled(fn ($livewire) =>
+                                    ]),
+                                    /* ->disabled(fn ($livewire) =>
                                         $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                         $livewire->record->hasEnrollments()
-                                    ),
+                                    ), */
 
                                 Forms\Components\Actions::make([
                                     Forms\Components\Actions\Action::make('calcular_horarios')
@@ -297,11 +261,11 @@ class WorkshopResource extends Resource
                                         ->color('success')
                                         ->action(function (Get $get, Set $set) {
                                             self::calculateScheduleDates($get, $set);
-                                        })
-                                        ->disabled(fn ($livewire) =>
+                                        }),
+                                        /* ->disabled(fn ($livewire) =>
                                             $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                             $livewire->record->hasEnrollments()
-                                        ),
+                                        ), */
                                 ])->extraAttributes(['class' => 'flex items-end justify-end']),
                             ]),
 
@@ -388,11 +352,11 @@ class WorkshopResource extends Resource
                                     if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
                                         self::updateWorkshopClassesInDatabase($livewire->record, $updatedScheduleData);
                                     }
-                                })
-                                ->disabled(fn ($livewire) =>
+                                }),
+                                /* ->disabled(fn ($livewire) =>
                                     $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                     $livewire->record->hasEnrollments()
-                                ),
+                                ), */
                         ])
                         ->extraAttributes(['class' => 'flex justify-center mt-4']),
 
@@ -536,11 +500,11 @@ class WorkshopResource extends Resource
                         $currentPeriod = \App\Models\MonthlyPeriod::where('year', now()->year)
                             ->where('month', now()->month)
                             ->first();
-                        
+
                         if (!$currentPeriod) {
                             return 'N/A';
                         }
-                        
+
                         $capacityInfo = $record->getCapacityInfoForPeriod($currentPeriod->id);
                         return "{$capacityInfo['available_spots']}/{$capacityInfo['total_capacity']}";
                     })
@@ -549,13 +513,13 @@ class WorkshopResource extends Resource
                         $currentPeriod = \App\Models\MonthlyPeriod::where('year', now()->year)
                             ->where('month', now()->month)
                             ->first();
-                        
+
                         if (!$currentPeriod) {
                             return 'gray';
                         }
-                        
+
                         $capacityInfo = $record->getCapacityInfoForPeriod($currentPeriod->id);
-                        
+
                         if ($capacityInfo['is_full']) {
                             return 'danger';
                         } elseif ($capacityInfo['is_almost_full']) {

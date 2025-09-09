@@ -40,10 +40,10 @@ class EnrollmentBatchResource extends Resource
                             ->required()
                             ->disabled(),
 
-                        Forms\Components\DatePicker::make('enrollment_date')
-                            ->label('Fecha de Inscripción')
-                            ->required()
-                            ->disabled(),
+                            Forms\Components\DateTimePicker::make('created_at')
+                                ->label('Fecha y Hora de Inscripción')
+                                ->required()
+                                ->disabled(),
 
                         Forms\Components\TextInput::make('total_amount')
                             ->label('Monto Total')
@@ -184,9 +184,9 @@ class EnrollmentBatchResource extends Resource
                     ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Clase' : ' Clases'))
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('enrollment_date')
+                Tables\Columns\TextColumn::make('created_at')
                     ->label('Fecha de Inscripción')
-                    ->date('d/m/Y')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('payment_status')
