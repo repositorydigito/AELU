@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\Instructor;
 use App\Models\InstructorPayment;
+use App\Models\MonthlyPeriod;
 use Filament\Pages\Page;
 use Filament\Forms\Form;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -28,8 +29,10 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
 
     public ?array $data = [];
     public $selectedInstructor = null;
+    public $selectedPeriod = null;
     public $instructorPayments = [];
     public $instructorData = null;
+    public $periodData = null;
 
     public function mount(): void
     {
@@ -42,7 +45,7 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
             ->schema([
                 Select::make('instructor_id')
                     ->label('Seleccionar Profesor')
-                    ->placeholder('Selecciona un profesor...')
+                    ->placeholder('Todos los profesores')
                     ->options(
                         Instructor::orderBy('last_names')
                             ->get()
@@ -59,67 +62,106 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
                         $this->selectedInstructor = $state;
                         $this->loadInstructorPayments();
                     })
-                    ->required(),
+                    ->nullable(),
+
+                Select::make('period_id')
+                    ->label('Período Mensual')
+                    ->placeholder('Todos los períodos')
+                    ->options(
+                        MonthlyPeriod::where('year', '>=', now()->year - 2)
+                            ->where('year', '<=', now()->year + 1)
+                            ->orderBy('year', 'desc')
+                            ->orderBy('month', 'desc')
+                            ->get()
+                            ->mapWithKeys(function ($period) {
+                                $periodName = $this->generatePeriodName($period->month, $period->year);
+                                return [$period->id => $periodName];
+                            })
+                            ->toArray()
+                    )
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(function ($state) {
+                        $this->selectedPeriod = $state;
+                        $this->loadInstructorPayments();
+                    })
+                    ->nullable(),
             ])
-            ->statePath('data');
+            ->statePath('data')
+            ->columns(2);
     }
 
     public function loadInstructorPayments(): void
     {
-        if (!$this->selectedInstructor) {
-            $this->instructorPayments = [];
-            $this->instructorData = null;
+        // Limpiar datos previos
+        $this->instructorPayments = [];
+        $this->instructorData = null;
+        $this->periodData = null;
+
+        // Construir query base
+        $query = InstructorPayment::where('payment_status', 'paid')
+            ->with([
+                'instructor',
+                'instructorWorkshop.workshop',
+                'monthlyPeriod',
+            ]);
+
+        // Aplicar filtros
+        if ($this->selectedInstructor) {
+            $query->where('instructor_id', $this->selectedInstructor);
+            $this->instructorData = Instructor::find($this->selectedInstructor);
+        }
+
+        if ($this->selectedPeriod) {
+            $query->where('monthly_period_id', $this->selectedPeriod);
+            $this->periodData = MonthlyPeriod::find($this->selectedPeriod);
+        }
+
+        // Si no hay filtros, no cargar nada
+        if (!$this->selectedInstructor && !$this->selectedPeriod) {
             return;
         }
 
-        // Cargar datos del instructor
-        $this->instructorData = Instructor::find($this->selectedInstructor);
+        // Ejecutar query y procesar resultados
+        $payments = $query->orderBy('created_at', 'desc')->get();
 
-        // Cargar pagos del instructor con todas las relaciones necesarias
-        $this->instructorPayments = InstructorPayment::where('instructor_id', $this->selectedInstructor)
-            ->where('payment_status', 'paid')
-            ->with([
-                'instructorWorkshop.workshop',
-                'monthlyPeriod',
-            ])
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($payment) {
-                $workshop = $payment->instructorWorkshop->workshop ?? null;
-                $period = $payment->monthlyPeriod ?? null;
+        $this->instructorPayments = $payments->map(function ($payment) {
+            $workshop = $payment->instructorWorkshop->workshop ?? null;
+            $period = $payment->monthlyPeriod ?? null;
+            $instructor = $payment->instructor ?? null;
 
-                // Convertir día de la semana
-                $dayNames = [
-                    0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                    4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'
-                ];
+            // Convertir día de la semana
+            $dayNames = [
+                0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
+                4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'
+            ];
 
-                $dayOfWeek = isset($payment->instructorWorkshop->day_of_week)
-                    ? $dayNames[$payment->instructorWorkshop->day_of_week] ?? 'Desconocido'
-                    : 'N/A';
+            $dayOfWeek = isset($payment->instructorWorkshop->day_of_week)
+                ? $dayNames[$payment->instructorWorkshop->day_of_week] ?? 'Desconocido'
+                : 'N/A';
 
-                $startTime = $payment->instructorWorkshop
-                    ? \Carbon\Carbon::parse($payment->instructorWorkshop->start_time)->format('H:i')
-                    : 'N/A';
+            $startTime = $payment->instructorWorkshop
+                ? \Carbon\Carbon::parse($payment->instructorWorkshop->start_time)->format('H:i')
+                : 'N/A';
 
-                $endTime = $payment->instructorWorkshop
-                    ? \Carbon\Carbon::parse($payment->instructorWorkshop->end_time)->format('H:i')
-                    : 'N/A';
+            $endTime = $payment->instructorWorkshop
+                ? \Carbon\Carbon::parse($payment->instructorWorkshop->end_time)->format('H:i')
+                : 'N/A';
 
-                return [
-                    'id' => $payment->id,
-                    'workshop_name' => $workshop->name ?? 'N/A',
-                    'workshop_schedule' => "{$dayOfWeek} {$startTime}-{$endTime}",
-                    'period_name' => $period ? $this->generatePeriodName($period->month, $period->year) : 'N/A',
-                    'payment_type' => $payment->payment_type === 'volunteer' ? 'Voluntario' : 'Por Horas',
-                    'payment_details' => $this->getPaymentDetails($payment),
-                    'calculated_amount' => $payment->calculated_amount,
-                    'payment_status' => $payment->payment_status === 'paid' ? 'Pagado' : 'Pendiente',
-                    'payment_date' => $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y') : 'Sin fecha',
-                    'document_number' => $payment->document_number ?? 'Sin documento',
-                ];
-            })
-            ->toArray();
+            return [
+                'id' => $payment->id,
+                'instructor_name' => $instructor ? ($instructor->first_names . ' ' . $instructor->last_names) : 'N/A',
+                'workshop_name' => $workshop->name ?? 'N/A',
+                'workshop_schedule' => "{$dayOfWeek} {$startTime}-{$endTime}",
+                'period_name' => $period ? $this->generatePeriodName($period->month, $period->year) : 'N/A',
+                'payment_type' => $payment->payment_type === 'volunteer' ? 'Voluntario' : 'Por Horas',
+                'payment_details' => $this->getPaymentDetails($payment),
+                'calculated_amount' => $payment->calculated_amount,
+                'payment_status' => $payment->payment_status === 'paid' ? 'Pagado' : 'Pendiente',
+                'payment_date' => $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y') : 'Sin fecha',
+                'document_number' => $payment->document_number ?? 'Sin documento',
+            ];
+        })->toArray();
     }
 
     private function getPaymentDetails($payment): string
@@ -158,10 +200,10 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
 
     public function generatePDF()
     {
-        if (!$this->instructorData || empty($this->instructorPayments)) {
+        if (empty($this->instructorPayments)) {
             Notification::make()
                 ->title('Error')
-                ->body('Debe seleccionar un profesor con pagos registrados')
+                ->body('No hay pagos para generar el reporte')
                 ->danger()
                 ->send();
             return;
@@ -172,34 +214,57 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
             $totalAmount = collect($this->instructorPayments)->sum('calculated_amount');
             $totalPayments = count($this->instructorPayments);
 
-            // 1. Renderizar la vista Blade a HTML
+            // Determinar el tipo de reporte
+            $reportTitle = '';
+            $reportSubtitle = '';
+
+            if ($this->selectedInstructor && $this->selectedPeriod) {
+                $reportTitle = 'Pagos por Profesor y Período';
+                $reportSubtitle = $this->instructorData->first_names . ' ' . $this->instructorData->last_names .
+                                ' - ' . $this->generatePeriodName($this->periodData->month, $this->periodData->year);
+            } elseif ($this->selectedInstructor) {
+                $reportTitle = 'Pagos por Profesor';
+                $reportSubtitle = $this->instructorData->first_names . ' ' . $this->instructorData->last_names;
+            } elseif ($this->selectedPeriod) {
+                $reportTitle = 'Pagos por Período';
+                $reportSubtitle = $this->generatePeriodName($this->periodData->month, $this->periodData->year);
+            }
+
+            // Renderizar la vista Blade a HTML
             $html = View::make('reports.instructor-payments', [
                 'instructor' => $this->instructorData,
+                'period' => $this->periodData,
                 'payments' => $this->instructorPayments,
                 'totals' => [
                     'total_amount' => $totalAmount,
                     'total_payments' => $totalPayments,
                 ],
+                'report_title' => $reportTitle,
+                'report_subtitle' => $reportSubtitle,
+                'show_instructor_column' => !$this->selectedInstructor, // Mostrar columna instructor solo si no se filtró por uno específico
                 'generated_at' => now()->format('d/m/Y H:i')
             ])->render();
 
-            // 2. Configurar Dompdf
+            // Configurar Dompdf
             $options = new Options();
             $options->set('isHtml5ParserEnabled', true);
             $options->set('isRemoteEnabled', true);
             $dompdf = new Dompdf($options);
 
             $dompdf->loadHtml($html);
-
-            // 3. Configurar papel
-            $dompdf->setPaper('A4', 'landscape'); // Horizontal para mejor visualización
-
-            // 4. Renderizar el PDF
+            $dompdf->setPaper('A4', 'landscape');
             $dompdf->render();
 
-            $fileName = 'pagos-profesor-' . str($this->instructorData->first_names . '-' . $this->instructorData->last_names)->slug() . '.pdf';
+            // Generar nombre de archivo
+            $fileName = 'pagos-';
+            if ($this->selectedInstructor) {
+                $fileName .= 'profesor-' . str($this->instructorData->first_names . '-' . $this->instructorData->last_names)->slug();
+            }
+            if ($this->selectedPeriod) {
+                $fileName .= ($this->selectedInstructor ? '-' : '') . 'periodo-' . $this->periodData->year . '-' . str_pad($this->periodData->month, 2, '0', STR_PAD_LEFT);
+            }
+            $fileName .= '.pdf';
 
-            // 5. Descargar el PDF
             return response()->stream(function () use ($dompdf) {
                 echo $dompdf->output();
             }, 200, [

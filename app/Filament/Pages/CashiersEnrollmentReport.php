@@ -47,11 +47,7 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
                 Select::make('cashier_id')
                     ->label('Cajero')
                     ->placeholder('Selecciona un cajero...')
-                    ->options(function () {
-                        return User::whereHas('paymentRegisteredBatches')
-                            ->orderBy('name')
-                            ->pluck('name', 'id');
-                    })
+                    ->options(\App\Models\User::role('Cajero')->pluck('name', 'id'))
                     ->searchable()
                     ->live()
                     ->afterStateUpdated(function ($state) {

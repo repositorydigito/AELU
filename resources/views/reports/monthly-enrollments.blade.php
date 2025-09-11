@@ -79,7 +79,7 @@
         <p><strong>Período: {{ $period_name }}</strong></p>
         <p>Generado el {{ $generated_at }}</p>
     </div>
-    
+
     <table class="table">
         <thead>
             <tr>
@@ -92,7 +92,7 @@
                 <th>Monto</th>
                 <th>Método Pago</th>
                 <th>Modalidad</th>
-                <th>N° Documento</th>
+                <th>N° Ticket</th>
                 <th>Cajero</th>
             </tr>
         </thead>

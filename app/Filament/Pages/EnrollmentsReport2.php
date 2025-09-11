@@ -82,6 +82,7 @@ class EnrollmentsReport2 extends Page implements HasForms, HasActions
 
         // Cargar todas las inscripciones del período mensual seleccionado
         $enrollments = StudentEnrollment::where('monthly_period_id', $this->selectedPeriod)
+            ->where('payment_status', 'completed')
             ->with([
                 'student',
                 'instructorWorkshop.workshop',

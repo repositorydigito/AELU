@@ -4,10 +4,10 @@
         <!-- Formulario de selección -->
         <x-filament::section>
             <x-slot name="heading">
-                Seleccionar Profesor
+                Filtros de Búsqueda
             </x-slot>
             <x-slot name="description">
-                Busque y seleccione un profesor para ver su historial de pagos
+                Seleccione un profesor, un período mensual, o ambos para generar el reporte
             </x-slot>
 
             <div class="space-y-4">
@@ -15,29 +15,43 @@
             </div>
         </x-filament::section>
 
-        <!-- Tabla de pagos -->
+        <!-- Resumen y título dinámico -->
         @if(!empty($instructorPayments))
         <x-filament::section>
             <x-slot name="heading">
-                Historial de Pagos - {{ $instructorData->first_names }} {{ $instructorData->last_names }}
+                @if($instructorData && $periodData)
+                    Pagos de {{ $instructorData->first_names }} {{ $instructorData->last_names }} - {{ $this->generatePeriodName($periodData->month, $periodData->year) }}
+                @elseif($instructorData)
+                    Historial de Pagos - {{ $instructorData->first_names }} {{ $instructorData->last_names }}
+                @elseif($periodData)
+                    Pagos del Período - {{ $this->generatePeriodName($periodData->month, $periodData->year) }}
+                @else
+                    Historial de Pagos
+                @endif
             </x-slot>
 
             <div class="overflow-x-auto">
                 <table class="w-full table-auto">
                     <thead>
                         <tr class="bg-gray-50 dark:bg-gray-800">
+                            @if(!$selectedInstructor)
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Instructor</th>
+                            @endif
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taller</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Horario</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Período</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha de Pago</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Documento</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Ticket</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($instructorPayments as $payment)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
+                            @if(!$selectedInstructor)
+                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $payment['instructor_name'] }}</td>
+                            @endif
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $payment['workshop_name'] }}</td>
                             <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $payment['workshop_schedule'] }}</td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $payment['period_name'] }}</td>
@@ -60,11 +74,28 @@
         </x-filament::section>
         @endif
 
-        @if(empty($instructorPayments) && $selectedInstructor)
+        @if(empty($instructorPayments) && ($selectedInstructor || $selectedPeriod))
         <x-filament::section>
             <div class="text-center py-8">
                 <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No hay pagos registrados</h3>
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Este profesor no tiene pagos registrados.</p>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    @if($instructorData && $periodData)
+                        Este profesor no tiene pagos registrados en el período seleccionado.
+                    @elseif($instructorData)
+                        Este profesor no tiene pagos registrados.
+                    @elseif($periodData)
+                        No hay pagos registrados en este período.
+                    @endif
+                </p>
+            </div>
+        </x-filament::section>
+        @endif
+
+        @if(empty($instructorPayments) && !$selectedInstructor && !$selectedPeriod)
+        <x-filament::section>
+            <div class="text-center py-8">
+                <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Seleccione los filtros</h3>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Seleccione al menos un profesor o un período para ver los pagos.</p>
             </div>
         </x-filament::section>
         @endif

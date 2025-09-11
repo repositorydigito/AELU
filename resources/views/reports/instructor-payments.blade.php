@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Pagos - {{ $instructor->first_names }} {{ $instructor->last_names }}</title>
+    <title>{{ $report_title ?? 'Reporte de Pagos' }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 10px;
             line-height: 1.4;
             color: #333;
         }
@@ -20,7 +20,23 @@
         .header h1 {
             color: #333;
             margin: 0;
-            font-size: 18px;
+            font-size: 16px;
+        }
+        .header p {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        .summary {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .summary h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 12px;
         }
         .table {
             width: 100%;
@@ -30,15 +46,15 @@
         .table th {
             background-color: #f5f5f5;
             color: #333;
-            padding: 8px;
+            padding: 6px 4px;
             text-align: left;
-            font-size: 10px;
+            font-size: 8px;
             border: 1px solid #ddd;
         }
         .table td {
             border: 1px solid #ddd;
-            padding: 6px;
-            font-size: 10px;
+            padding: 4px;
+            font-size: 8px;
         }
         .table tr:nth-child(even) {
             background-color: #f9f9f9;
@@ -47,25 +63,32 @@
 </head>
 <body>
     <div class="header">
-        <h1>REPORTE DE PAGOS POR PROFESOR</h1>
-        <p>{{ $instructor->first_names }} {{ $instructor->last_names }}</p>
+        <h1>{{ $report_title ?? 'REPORTE DE PAGOS' }}</h1>
+        <p><strong>{{ $report_subtitle ?? '' }}</strong></p>
+        <p>Generado el {{ $generated_at }}</p>
     </div>
 
     <table class="table">
         <thead>
             <tr>
+                @if($show_instructor_column ?? false)
+                <th>Instructor</th>
+                @endif
                 <th>Taller</th>
                 <th>Horario</th>
                 <th>Período</th>
                 <th>Tipo</th>
                 <th>Monto</th>
                 <th>Fecha de Pago</th>
-                <th>N° Documento</th>
+                <th>N° Ticket</th>
             </tr>
         </thead>
         <tbody>
             @foreach($payments as $payment)
             <tr>
+                @if($show_instructor_column ?? false)
+                <td>{{ $payment['instructor_name'] }}</td>
+                @endif
                 <td>{{ $payment['workshop_name'] }}</td>
                 <td>{{ $payment['workshop_schedule'] }}</td>
                 <td>{{ $payment['period_name'] }}</td>

@@ -49,7 +49,7 @@ class EnrollmentsReport1 extends Page implements HasForms, HasActions
                             ->get()
                             ->mapWithKeys(function ($student) {
                                 return [
-                                    $student->id => $student->last_names . ' ' . $student->first_names . ' - ' . $student->document_number
+                                    $student->id => $student->last_names . ' ' . $student->first_names . ' - ' . $student->student_code
                                 ];
                             })
                             ->toArray()
@@ -78,6 +78,7 @@ class EnrollmentsReport1 extends Page implements HasForms, HasActions
 
         // Cargar inscripciones del estudiante con todas las relaciones necesarias
         $this->studentEnrollments = StudentEnrollment::where('student_id', $this->selectedStudent)
+            ->where('payment_status', 'completed')
             ->with([
                 'instructorWorkshop.workshop',
                 'instructorWorkshop.instructor',

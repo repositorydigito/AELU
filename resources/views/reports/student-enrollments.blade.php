@@ -62,7 +62,7 @@
                 <th>Monto Total</th>
                 <th>Método de Pago</th>
                 <th>Modalidad</th>
-                <th>N° Documento</th>
+                <th>N° Ticket</th>
                 <th>Cajero</th>
             </tr>
         </thead>

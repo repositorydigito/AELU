@@ -8,9 +8,6 @@ use App\Models\Workshop;
 
 class WorkshopSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $workshops = [
@@ -24,7 +21,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Actividad Física',
@@ -36,7 +33,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Actividad Física',
@@ -48,7 +45,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Actividad Física',
@@ -60,7 +57,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Actividad Física',
@@ -72,7 +69,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Actividad Física',
@@ -84,7 +81,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Actividad Física',
@@ -96,7 +93,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Actividad Física',
@@ -108,7 +105,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Baile',
@@ -120,7 +117,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Baile',
@@ -132,7 +129,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Baile Ondo',
@@ -144,7 +141,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Gimnasia aeróbica',
@@ -156,7 +153,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Happy Taiso',
@@ -168,7 +165,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Karaoke - En español',
@@ -180,7 +177,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'NIHONGO - Básico',
@@ -192,7 +189,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Pulseras MACRAMÉ',
@@ -204,7 +201,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Tai Chi',
@@ -216,7 +213,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Tai Chi',
@@ -228,7 +225,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Tenis de mesa',
@@ -240,7 +237,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Terapia musical Yura',
@@ -252,7 +249,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Terapia musical Yura',
@@ -264,7 +261,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 20,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Baile Odori',
@@ -276,7 +273,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Baile Odori',
@@ -288,7 +285,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Cocina',
@@ -300,7 +297,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Computación - Básico',
@@ -312,7 +309,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Gateball',
@@ -324,7 +321,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Karaoke - Música variada',
@@ -336,7 +333,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Taiko',
@@ -348,7 +345,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Tejido a crochet',
@@ -360,7 +357,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Karaoke - En japonés',
@@ -372,7 +369,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 35,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Karaoke - En japonés',
@@ -384,7 +381,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 35,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Sanshin',
@@ -396,7 +393,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Sanshin',
@@ -408,7 +405,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Yoga en silla - Virtual',
@@ -420,7 +417,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Uso de laptop - Básico',
@@ -432,7 +429,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Uso de Smart - Inicial',
@@ -444,7 +441,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Uso de Smart - Inicial',
@@ -456,7 +453,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Diseño Gráfico',
@@ -468,7 +465,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 45,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Amigurumi',
@@ -480,7 +477,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Agilidad Mental',
@@ -492,7 +489,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Agilidad Mental',
@@ -504,7 +501,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Cardio Dance',
@@ -516,7 +513,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Cardio Dance',
@@ -528,7 +525,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Cardio Dance',
@@ -540,7 +537,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 25,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Dibujo y Pintura',
@@ -552,7 +549,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 50,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Ejercicios en el agua',
@@ -564,7 +561,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 50,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Ejercicios en el agua',
@@ -576,7 +573,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 50,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Ejercicios en el agua',
@@ -588,7 +585,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 50,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Danzas Peruanas',
@@ -600,7 +597,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 35,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Marinera Norteña',
@@ -612,7 +609,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 35,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Percusión',
@@ -624,7 +621,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 60,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Meditación Guiada',
@@ -636,7 +633,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 35,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Pilates',
@@ -648,7 +645,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Estimulación Cognitiva',
@@ -660,7 +657,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 50,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Memoria Activa',
@@ -672,7 +669,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 50,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Yoga en Silla',
@@ -684,7 +681,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 35,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Yoga en Mat',
@@ -696,7 +693,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 40,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Música y Canto',
@@ -708,7 +705,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 60,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Teclado',
@@ -720,7 +717,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 60,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Teclado',
@@ -732,7 +729,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 60,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Teclado',
@@ -744,7 +741,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 60,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
             [
                 'name' => 'Técnicas de Karaoke',
@@ -756,7 +753,7 @@ class WorkshopSeeder extends Seeder
                 'capacity' => 20,
                 'number_of_classes' => 4,
                 'standard_monthly_fee' => 60,
-                'monthly_period_id' => 8,
+                'monthly_period_id' => 9,
             ],
         ];
 
