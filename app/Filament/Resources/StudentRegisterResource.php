@@ -3,45 +3,46 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\StudentRegisterResource\Pages;
-use App\Filament\Resources\StudentRegisterResource\RelationManagers;
 use App\Models\Student;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
-//use Filament\Forms\Components\Actions\Action;
-use Filament\Tables\Actions\Action;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\Fieldset;
-use Filament\Forms\Components\Hidden;
+use Filament\Resources\Resource;
+use Filament\Tables;
+// use Filament\Forms\Components\Actions\Action;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class StudentRegisterResource extends Resource
 {
     protected static ?string $model = Student::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
     protected static ?string $navigationLabel = 'Alumnos';
+
     protected static ?string $pluralModelLabel = 'Alumnos';
+
     protected static ?string $modelLabel = 'Alumno';
+
     protected static ?string $navigationGroup = 'Gestión';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -88,7 +89,7 @@ class StudentRegisterResource extends Resource
                                                                 ->unique(ignoreRecord: true)
                                                                 ->validationMessages([
                                                                     'required' => 'Este campo es obligatorio',
-                                                                    'unique' => 'Ya existe un estudiante registrado con este número de documento.'
+                                                                    'unique' => 'Ya existe un estudiante registrado con este número de documento.',
                                                                 ])
                                                                 ->maxLength(15),
                                                         ]),
@@ -125,6 +126,7 @@ class StudentRegisterResource extends Resource
                                                     if ($birthDate) {
                                                         return \Carbon\Carbon::parse($birthDate)->age;
                                                     }
+
                                                     return null;
                                                 }),
                                             TextInput::make('nationality')
@@ -140,7 +142,7 @@ class StudentRegisterResource extends Resource
                                                 ->unique(ignoreRecord: true)
                                                 ->validationMessages([
                                                     'required' => 'Este campo es obligatorio',
-                                                    'unique' => 'Ya existe un estudiante con este código de asociado.'
+                                                    'unique' => 'Ya existe un estudiante con este código de asociado.',
                                                 ])
                                                 ->maxLength(255),
                                             Select::make('category_partner')
@@ -163,7 +165,7 @@ class StudentRegisterResource extends Resource
                                                     $exemptCategories = [
                                                         'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
-                                                        'Vitalicios'
+                                                        'Vitalicios',
                                                     ];
 
                                                     // Si es una categoría exenta, limpiar el período de mantenimiento
@@ -192,7 +194,7 @@ class StudentRegisterResource extends Resource
                                                     $exemptCategories = [
                                                         'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
-                                                        'Vitalicios'
+                                                        'Vitalicios',
                                                     ];
 
                                                     if (in_array($category, $exemptCategories)) {
@@ -206,7 +208,7 @@ class StudentRegisterResource extends Resource
                                                     $exemptCategories = [
                                                         'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
-                                                        'Vitalicios'
+                                                        'Vitalicios',
                                                     ];
 
                                                     return in_array($category, $exemptCategories);
@@ -215,10 +217,10 @@ class StudentRegisterResource extends Resource
                                                     // Mostrar desde 6 meses atrás hasta 12 meses adelante
                                                     $periods = \App\Models\MaintenancePeriod::query()
                                                         ->whereRaw('(year * 12 + month) >= ?', [
-                                                            (now()->year * 12 + now()->month) - 6
+                                                            (now()->year * 12 + now()->month) - 6,
                                                         ])
                                                         ->whereRaw('(year * 12 + month) <= ?', [
-                                                            (now()->year * 12 + now()->month) + 12
+                                                            (now()->year * 12 + now()->month) + 12,
                                                         ])
                                                         ->orderBy('year')
                                                         ->orderBy('month')
@@ -233,7 +235,7 @@ class StudentRegisterResource extends Resource
                                                     $exemptCategories = [
                                                         'Transitorio Mayor de 75',
                                                         'Hijo de Fundador',
-                                                        'Vitalicios'
+                                                        'Vitalicios',
                                                     ];
 
                                                     // Si es categoría exenta, limpiar el período
@@ -373,6 +375,7 @@ class StudentRegisterResource extends Resource
                                                     ->columns(1)
                                                     ->disableOptionWhen(function (string $value, callable $get) {
                                                         $selected = $get('medical_conditions') ?? [];
+
                                                         return in_array('Ninguna', $selected) && $value !== 'Ninguna';
                                                     })
                                                     ->reactive(),
@@ -385,16 +388,16 @@ class StudentRegisterResource extends Resource
                                                         'Otros' => 'Otros',
                                                     ])
                                                     ->columns(3)
-                                                    ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []))
+                                                    ->hidden(fn (callable $get) => ! in_array('Alergias', $get('medical_conditions') ?? []))
                                                     ->reactive(),
 
                                                 Textarea::make('allergy_details')
                                                     ->label('Detalle el tipo de alergia')
-                                                    ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
+                                                    ->hidden(fn (callable $get) => ! in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
 
                                                 TextInput::make('medical_conditions_other')
                                                     ->label('Especifique otra condición médica')
-                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('medical_conditions') ?? []))
+                                                    ->hidden(fn (callable $get) => ! in_array('Otros', $get('medical_conditions') ?? []))
                                                     ->reactive(),
                                             ]),
 
@@ -416,12 +419,13 @@ class StudentRegisterResource extends Resource
                                                     ->reactive()
                                                     ->disableOptionWhen(function (string $value, callable $get) {
                                                         $selected = $get('surgical_operations') ?? [];
+
                                                         return in_array('Ninguna', $selected) && $value !== 'Ninguna';
                                                     }),
 
                                                 TextInput::make('surgical_operation_details')
                                                     ->label('Especificar')
-                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('surgical_operations') ?? [])),
+                                                    ->hidden(fn (callable $get) => ! in_array('Otros', $get('surgical_operations') ?? [])),
                                             ]),
                                         ]),
 
@@ -506,10 +510,10 @@ class StudentRegisterResource extends Resource
                                         ->schema([
                                             Placeholder::make('weight_summary')
                                                 ->label('Peso')
-                                                ->content(fn (callable $get) => $get('medicalRecord.weight') ? $get('medicalRecord.weight') . ' kg' : 'N/A'),
+                                                ->content(fn (callable $get) => $get('medicalRecord.weight') ? $get('medicalRecord.weight').' kg' : 'N/A'),
                                             Placeholder::make('height_summary')
                                                 ->label('Talla')
-                                                ->content(fn (callable $get) => $get('medicalRecord.height') ? $get('medicalRecord.height') . ' m' : 'N/A'),
+                                                ->content(fn (callable $get) => $get('medicalRecord.height') ? $get('medicalRecord.height').' m' : 'N/A'),
                                             Placeholder::make('gender_summary')
                                                 ->label('Género')
                                                 ->content(fn (callable $get) => $get('medicalRecord.gender') ?? 'N/A'),
@@ -538,7 +542,7 @@ class StudentRegisterResource extends Resource
                                             Placeholder::make('surgical_operation_details_summary')
                                                 ->label('Especificar Operación')
                                                 ->content(fn (callable $get) => in_array('Otros', $get('medicalRecord.surgical_operations') ?? []) ? ($get('medicalRecord.surgical_operation_details') ?? 'N/A') : 'No aplica')
-                                                ->hidden(fn (callable $get) => !in_array('Otros', $get('medicalRecord.surgical_operations') ?? [])),
+                                                ->hidden(fn (callable $get) => ! in_array('Otros', $get('medicalRecord.surgical_operations') ?? [])),
 
                                             Placeholder::make('medications_summary_text')
                                                 ->label('Medicamentos que toma')
@@ -550,15 +554,16 @@ class StudentRegisterResource extends Resource
 
                                                     $formattedMedications = collect($medications)->map(function ($med) {
                                                         $details = [];
-                                                        if (!empty($med['medicine'])) {
+                                                        if (! empty($med['medicine'])) {
                                                             $details[] = $med['medicine'];
                                                         }
-                                                        if (!empty($med['dose'])) {
-                                                            $details[] = '(' . $med['dose'] . ')';
+                                                        if (! empty($med['dose'])) {
+                                                            $details[] = '('.$med['dose'].')';
                                                         }
-                                                        if (!empty($med['schedule'])) {
-                                                            $details[] = ' - ' . $med['schedule'];
+                                                        if (! empty($med['schedule'])) {
+                                                            $details[] = ' - '.$med['schedule'];
                                                         }
+
                                                         return implode(' ', $details);
                                                     })->implode('<br>');
 
@@ -595,7 +600,7 @@ class StudentRegisterResource extends Resource
                                             ->label('Generar Declaración Jurada')
                                             ->color('success')
                                             ->icon('heroicon-o-document-arrow-down')
-                                            ->disabled(fn (callable $get, $livewire) => !$get('digital_signature_and_fingerprint_path') || !isset($livewire->record) || !$livewire->record?->id)
+                                            ->disabled(fn (callable $get, $livewire) => ! $get('digital_signature_and_fingerprint_path') || ! isset($livewire->record) || ! $livewire->record?->id)
                                             ->action(function ($livewire, Forms\Get $get) {
                                                 $student = $livewire->record;
 
@@ -608,15 +613,16 @@ class StudentRegisterResource extends Resource
                                                         ->body('Para generar la declaración jurada, el estudiante debe haber sido guardado previamente. Por favor, finalice el registro o acceda a la edición de un estudiante existente.')
                                                         ->send();
                                                 }
-                                            })
-                                        ])
+                                            }),
+                                    ]),
                                 ]),
                         ]),
                 ])
-                ->skippable()
-                ->columnSpanFull(),
+                    ->skippable()
+                    ->columnSpanFull(),
             ]);
     }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -704,36 +710,36 @@ class StudentRegisterResource extends Resource
                             ->placeholder('Todos los estados'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
-                        if (!isset($data['status'])) {
+                        if (! isset($data['status'])) {
                             return $query;
                         }
 
                         return match ($data['status']) {
                             'exempt' => $query->whereIn('category_partner', [
-                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75'
+                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75',
                             ]),
                             'current' => $query->whereHas('maintenancePeriod', function ($q) {
                                 $currentPeriod = \App\Models\MaintenancePeriod::getCurrentPeriod();
                                 if ($currentPeriod) {
                                     $q->whereRaw('(year * 12 + month) >= ?', [
-                                        $currentPeriod->year * 12 + $currentPeriod->month
+                                        $currentPeriod->year * 12 + $currentPeriod->month,
                                     ]);
                                 }
                             })->whereNotIn('category_partner', [
-                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75'
+                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75',
                             ]),
                             'not_current' => $query->where(function ($q) {
                                 $q->whereDoesntHave('maintenancePeriod')
-                                ->orWhereHas('maintenancePeriod', function ($subQ) {
-                                    $currentPeriod = \App\Models\MaintenancePeriod::getCurrentPeriod();
-                                    if ($currentPeriod) {
-                                        $subQ->whereRaw('(year * 12 + month) < ?', [
-                                            $currentPeriod->year * 12 + $currentPeriod->month
-                                        ]);
-                                    }
-                                });
+                                    ->orWhereHas('maintenancePeriod', function ($subQ) {
+                                        $currentPeriod = \App\Models\MaintenancePeriod::getCurrentPeriod();
+                                        if ($currentPeriod) {
+                                            $subQ->whereRaw('(year * 12 + month) < ?', [
+                                                $currentPeriod->year * 12 + $currentPeriod->month,
+                                            ]);
+                                        }
+                                    });
                             })->whereNotIn('category_partner', [
-                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75'
+                                'Vitalicios', 'Hijo de Fundador', 'Transitorio Mayor de 75',
                             ]),
                             default => $query,
                         };
@@ -744,7 +750,7 @@ class StudentRegisterResource extends Resource
                     ->label('Importar Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn () => static::getUrl('import'))
-                    ->color('primary')
+                    ->color('primary'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

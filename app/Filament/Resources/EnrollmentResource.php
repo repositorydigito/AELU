@@ -3,24 +3,25 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\EnrollmentResource\Pages;
-use App\Filament\Resources\EnrollmentResource\RelationManagers;
 use App\Models\StudentEnrollment;
-use App\Models\Student;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Validation\ValidationException;
 
 class EnrollmentResource extends Resource
 {
     protected static ?string $model = StudentEnrollment::class;
+
     protected static ?string $navigationLabel = 'Inscripciones';
+
     protected static ?string $pluralModelLabel = 'Inscripciones';
+
     protected static ?string $modelLabel = 'Inscripción';
+
     protected static bool $shouldRegisterNavigation = false; // Ocultar de la navegación
 
     public static function form(Form $form): Form
@@ -71,7 +72,9 @@ class EnrollmentResource extends Resource
 
                                     // Buscar talleres previos si ya hay estudiante seleccionado
                                     $studentId = $get('student_id');
-                                    if (!$studentId || !$state) return;
+                                    if (! $studentId || ! $state) {
+                                        return;
+                                    }
 
                                     $previousWorkshops = static::findPreviousWorkshops($studentId, $state);
                                     $set('previous_workshops', json_encode($previousWorkshops));
@@ -94,12 +97,12 @@ class EnrollmentResource extends Resource
                                 ->placeholder('Buscar estudiante...')
                                 ->helperText(function (Forms\Get $get) {
                                     $studentId = $get('student_id');
-                                    if (!$studentId) {
+                                    if (! $studentId) {
                                         return 'Selecciona el estudiante que se inscribirá';
                                     }
 
                                     $student = \App\Models\Student::find($studentId);
-                                    if (!$student) {
+                                    if (! $student) {
                                         return 'Estudiante no encontrado';
                                     }
 
@@ -111,18 +114,20 @@ class EnrollmentResource extends Resource
                                 })
                                 ->live()
                                 ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                    if (!$state) {
+                                    if (! $state) {
                                         $set('selected_workshops', '[]');
                                         $set('previous_workshops', '[]');
                                         $set('workshop_details', []);
+
                                         return;
                                     }
 
                                     $student = \App\Models\Student::find($state);
-                                    if (!$student) {
+                                    if (! $student) {
                                         $set('selected_workshops', '[]');
                                         $set('previous_workshops', '[]');
                                         $set('workshop_details', []);
+
                                         return;
                                     }
 
@@ -138,6 +143,7 @@ class EnrollmentResource extends Resource
                                         $set('selected_workshops', '[]');
                                         $set('previous_workshops', '[]');
                                         $set('workshop_details', []);
+
                                         return;
                                     }
 
@@ -170,7 +176,9 @@ class EnrollmentResource extends Resource
                                         ->live()
                                         ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                             $selectedWorkshops = json_decode($state ?? '[]', true);
-                                            if (!is_array($selectedWorkshops)) $selectedWorkshops = [];
+                                            if (! is_array($selectedWorkshops)) {
+                                                $selectedWorkshops = [];
+                                            }
 
                                             $workshopDetails = [];
 
@@ -209,7 +217,7 @@ class EnrollmentResource extends Resource
                                             $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
                                             $previousWorkshopIds = json_decode($get('previous_workshops') ?? '[]', true);
 
-                                            if (!$selectedMonthlyPeriodId) {
+                                            if (! $selectedMonthlyPeriodId) {
                                                 return [
                                                     'workshops' => collect(),
                                                     'student_id' => $studentId,
@@ -222,7 +230,7 @@ class EnrollmentResource extends Resource
                                             $mapWorkshopData = function ($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds) {
                                                 try {
                                                     // Verificar que todas las relaciones están cargadas
-                                                    if (!$instructorWorkshop || !$instructorWorkshop->workshop || !$instructorWorkshop->instructor) {
+                                                    if (! $instructorWorkshop || ! $instructorWorkshop->workshop || ! $instructorWorkshop->instructor) {
                                                         return null;
                                                     }
 
@@ -247,12 +255,12 @@ class EnrollmentResource extends Resource
                                                         4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
                                                         7 => 'Domingo', 0 => 'Domingo',
                                                     ];
-                                                    $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día ' . $instructorWorkshop->day_of_week;
+                                                    $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día '.$instructorWorkshop->day_of_week;
 
                                                     return [
                                                         'id' => $instructorWorkshop->id,
                                                         'name' => $instructorWorkshop->workshop->name,
-                                                        'instructor' => $instructorWorkshop->instructor->first_names . ' ' . $instructorWorkshop->instructor->last_names,
+                                                        'instructor' => $instructorWorkshop->instructor->first_names.' '.$instructorWorkshop->instructor->last_names,
                                                         'day' => $dayInSpanish,
                                                         'start_time' => \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i'),
                                                         'end_time' => $instructorWorkshop->workshop->end_time
@@ -268,7 +276,8 @@ class EnrollmentResource extends Resource
                                                         'is_previous' => in_array($instructorWorkshop->id, $previousWorkshopIds),
                                                     ];
                                                 } catch (\Exception $e) {
-                                                    \Log::error("Error mapping workshop data: " . $e->getMessage());
+                                                    \Log::error('Error mapping workshop data: '.$e->getMessage());
+
                                                     return null;
                                                 }
                                             };
@@ -278,7 +287,7 @@ class EnrollmentResource extends Resource
                                                 $currentWorkshops = collect();
                                                 if ($selectedMonthlyPeriodId) {
                                                     $instructorWorkshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
-                                                        ->whereHas('workshop', function($query) use ($selectedMonthlyPeriodId) {
+                                                        ->whereHas('workshop', function ($query) use ($selectedMonthlyPeriodId) {
                                                             $query->where('monthly_period_id', $selectedMonthlyPeriodId);
                                                         })
                                                         ->where('is_active', true)
@@ -294,7 +303,7 @@ class EnrollmentResource extends Resource
 
                                                 // Obtener talleres previos
                                                 $previousWorkshopsData = collect();
-                                                if (!empty($previousWorkshopIds)) {
+                                                if (! empty($previousWorkshopIds)) {
                                                     $previousInstructorWorkshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                         ->whereIn('id', $previousWorkshopIds)
                                                         ->get();
@@ -317,7 +326,8 @@ class EnrollmentResource extends Resource
                                                     'selected_monthly_period_id' => $selectedMonthlyPeriodId,
                                                 ];
                                             } catch (\Exception $e) {
-                                                \Log::error("Error in viewData: " . $e->getMessage());
+                                                \Log::error('Error in viewData: '.$e->getMessage());
+
                                                 return [
                                                     'workshops' => collect(),
                                                     'student_id' => $studentId,
@@ -328,7 +338,7 @@ class EnrollmentResource extends Resource
                                         })
                                         ->live()
                                         ->key(function (Forms\Get $get) {
-                                            return 'workshops_' . md5($get('previous_workshops') . $get('student_id') . $get('selected_monthly_period_id'));
+                                            return 'workshops_'.md5($get('previous_workshops').$get('student_id').$get('selected_monthly_period_id'));
                                         })
                                         ->columnSpanFull(),
                                 ])
@@ -340,12 +350,12 @@ class EnrollmentResource extends Resource
                         ->icon('heroicon-o-cog-6-tooth')
                         ->beforeValidation(function (Forms\Get $get) {
                             $studentId = $get('student_id');
-                            if (!$studentId) {
+                            if (! $studentId) {
                                 throw ValidationException::withMessages(['student_id' => 'Debe seleccionar un estudiante']);
                             }
 
                             $student = \App\Models\Student::find($studentId);
-                            if (!$student || $student->is_maintenance_current === false) {
+                            if (! $student || $student->is_maintenance_current === false) {
                                 throw ValidationException::withMessages(['student_id' => 'El estudiante seleccionado no está al día con el mantenimiento mensual']);
                             }
 
@@ -355,7 +365,7 @@ class EnrollmentResource extends Resource
                             }
 
                             $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
-                            if (!$selectedMonthlyPeriodId) {
+                            if (! $selectedMonthlyPeriodId) {
                                 throw ValidationException::withMessages(['selected_monthly_period_id' => 'Debe seleccionar un período mensual']);
                             }
 
@@ -373,19 +383,19 @@ class EnrollmentResource extends Resource
                             $errors = [];
 
                             foreach ($workshopDetails as $index => $detail) {
-                                $numberOfClasses = (int)($detail['number_of_classes'] ?? 0);
+                                $numberOfClasses = (int) ($detail['number_of_classes'] ?? 0);
                                 $selectedClasses = $detail['selected_classes'] ?? [];
 
                                 if ($numberOfClasses > 0) {
                                     if (empty($selectedClasses)) {
                                         $errors["workshop_details.{$index}.selected_classes"] = 'Debes seleccionar las clases específicas para este taller.';
                                     } elseif (count($selectedClasses) !== $numberOfClasses) {
-                                        $errors["workshop_details.{$index}.selected_classes"] = "Debes seleccionar exactamente {$numberOfClasses} clase" . ($numberOfClasses > 1 ? 's' : '') . " para este taller.";
+                                        $errors["workshop_details.{$index}.selected_classes"] = "Debes seleccionar exactamente {$numberOfClasses} clase".($numberOfClasses > 1 ? 's' : '').' para este taller.';
                                     }
                                 }
                             }
 
-                            if (!empty($errors)) {
+                            if (! empty($errors)) {
                                 throw ValidationException::withMessages($errors);
                             }
                         })
@@ -399,12 +409,16 @@ class EnrollmentResource extends Resource
                                         ->label('')
                                         ->content(function (Forms\Get $get) {
                                             $workshopId = $get('instructor_workshop_id');
-                                            if (!$workshopId) return 'Taller no seleccionado';
+                                            if (! $workshopId) {
+                                                return 'Taller no seleccionado';
+                                            }
 
                                             $workshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                 ->find($workshopId);
 
-                                            if (!$workshop) return 'Taller no encontrado';
+                                            if (! $workshop) {
+                                                return 'Taller no encontrado';
+                                            }
 
                                             // Convertir día de la semana
                                             $dayNames = [
@@ -412,7 +426,7 @@ class EnrollmentResource extends Resource
                                                 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
                                                 7 => 'Domingo', 0 => 'Domingo',
                                             ];
-                                            $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día ' . $workshop->day_of_week;
+                                            $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día '.$workshop->day_of_week;
 
                                             return new \Illuminate\Support\HtmlString("
                                                 <div class='bg-gray-50 p-4 rounded-lg'>
@@ -420,7 +434,7 @@ class EnrollmentResource extends Resource
                                                     <div class='mt-2 space-y-1 text-sm text-gray-600'>
                                                         <p><strong>Profesor:</strong> {$workshop->instructor->first_names} {$workshop->instructor->last_names}</p>
                                                         <p><strong>Día:</strong> {$dayInSpanish}</p>
-                                                        <p><strong>Hora:</strong> " . \Carbon\Carbon::parse($workshop->start_time)->format('H:i') . " - " . \Carbon\Carbon::parse($workshop->end_time ?? $workshop->start_time)->format('H:i') . "</p>
+                                                        <p><strong>Hora:</strong> ".\Carbon\Carbon::parse($workshop->start_time)->format('H:i').' - '.\Carbon\Carbon::parse($workshop->end_time ?? $workshop->start_time)->format('H:i')."</p>
                                                         <p><strong>Precio:</strong> S/ {$workshop->workshop->standard_monthly_fee}</p>
                                                     </div>
                                                 </div>
@@ -433,10 +447,12 @@ class EnrollmentResource extends Resource
                                         ->label('')
                                         ->content(function (Forms\Get $get) {
                                             $workshopId = $get('instructor_workshop_id');
-                                            if (!$workshopId) return '';
+                                            if (! $workshopId) {
+                                                return '';
+                                            }
 
                                             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
-                                            if (!$instructorWorkshop || empty($instructorWorkshop->workshop->additional_comments)) {
+                                            if (! $instructorWorkshop || empty($instructorWorkshop->workshop->additional_comments)) {
                                                 return '';
                                             }
 
@@ -448,19 +464,22 @@ class EnrollmentResource extends Resource
                                                                 Comentarios adicionales del Taller
                                                             </h3>
                                                             <div style='margin-top: 8px; font-size: 14px; color: #166534;'>
-                                                                <p>" . nl2br(e($instructorWorkshop->workshop->additional_comments)) . "</p>
+                                                                <p>".nl2br(e($instructorWorkshop->workshop->additional_comments)).'</p>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ");
+                                            ');
                                         })
                                         ->visible(function (Forms\Get $get) {
                                             $workshopId = $get('instructor_workshop_id');
-                                            if (!$workshopId) return false;
+                                            if (! $workshopId) {
+                                                return false;
+                                            }
 
                                             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
-                                            return $instructorWorkshop && !empty($instructorWorkshop->workshop->additional_comments);
+
+                                            return $instructorWorkshop && ! empty($instructorWorkshop->workshop->additional_comments);
                                         })
                                         ->columnSpanFull(),
 
@@ -479,16 +498,20 @@ class EnrollmentResource extends Resource
                                                 ->label('Cantidad de Clases')
                                                 ->options(function (Forms\Get $get) {
                                                     $workshopId = $get('instructor_workshop_id');
-                                                    if (!$workshopId) return [];
+                                                    if (! $workshopId) {
+                                                        return [];
+                                                    }
 
                                                     $workshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
-                                                    if (!$workshop) return [];
+                                                    if (! $workshop) {
+                                                        return [];
+                                                    }
 
                                                     $maxClasses = $workshop->workshop->number_of_classes ?? 4;
                                                     $options = [];
 
                                                     for ($i = 1; $i <= $maxClasses; $i++) {
-                                                        $options[$i] = $i . ($i === 1 ? ' Clase' : ' Clases');
+                                                        $options[$i] = $i.($i === 1 ? ' Clase' : ' Clases');
                                                     }
 
                                                     return $options;
@@ -508,10 +531,14 @@ class EnrollmentResource extends Resource
                                             $workshopId = $get('instructor_workshop_id');
                                             $selectedMonthlyPeriodId = $get('../../selected_monthly_period_id');
 
-                                            if (!$workshopId || !$selectedMonthlyPeriodId) return [];
+                                            if (! $workshopId || ! $selectedMonthlyPeriodId) {
+                                                return [];
+                                            }
 
                                             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
-                                            if (!$instructorWorkshop) return [];
+                                            if (! $instructorWorkshop) {
+                                                return [];
+                                            }
 
                                             // Obtener las clases del taller para el período seleccionado
                                             $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $instructorWorkshop->workshop->id)
@@ -534,13 +561,14 @@ class EnrollmentResource extends Resource
                                         ->placeholder('Seleccionar clases específicas')
                                         ->helperText(function (Forms\Get $get) {
                                             $numberOfClasses = $get('number_of_classes');
-                                            if (!$numberOfClasses) {
+                                            if (! $numberOfClasses) {
                                                 return 'Primero selecciona la cantidad de clases';
                                             }
+
                                             return $numberOfClasses == 1 ? 'Selecciona 1 clase específica' : "Selecciona {$numberOfClasses} clases específicas";
                                         })
                                         ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                            $numberOfClasses = (int)$get('number_of_classes');
+                                            $numberOfClasses = (int) $get('number_of_classes');
                                             $selectedClasses = is_array($state) ? $state : [];
 
                                             if ($numberOfClasses && count($selectedClasses) > $numberOfClasses) {
@@ -549,7 +577,7 @@ class EnrollmentResource extends Resource
 
                                                 \Filament\Notifications\Notification::make()
                                                     ->title('Límite de clases')
-                                                    ->body("Solo puedes seleccionar {$numberOfClasses} clase" . ($numberOfClasses > 1 ? 's' : '') . ". Se han mantenido las primeras seleccionadas.")
+                                                    ->body("Solo puedes seleccionar {$numberOfClasses} clase".($numberOfClasses > 1 ? 's' : '').'. Se han mantenido las primeras seleccionadas.')
                                                     ->warning()
                                                     ->send();
                                             }
@@ -630,12 +658,16 @@ class EnrollmentResource extends Resource
                                                 $workshopId = $detail['instructor_workshop_id'] ?? null;
                                                 $numberOfClasses = $detail['number_of_classes'] ?? 1;
 
-                                                if (!$workshopId) continue;
+                                                if (! $workshopId) {
+                                                    continue;
+                                                }
 
                                                 $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                     ->find($workshopId);
 
-                                                if (!$instructorWorkshop) continue;
+                                                if (! $instructorWorkshop) {
+                                                    continue;
+                                                }
 
                                                 // Obtener el precio base
                                                 $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
@@ -656,15 +688,15 @@ class EnrollmentResource extends Resource
                                                 $dayNames = [
                                                     1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
                                                     4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                                    7 => 'Domingo', 0 => 'Domingo'
+                                                    7 => 'Domingo', 0 => 'Domingo',
                                                 ];
-                                                $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día ' . $instructorWorkshop->day_of_week;
-                                                $classesLabel = $numberOfClasses . ($numberOfClasses === 1 ? ' clase' : ' clases');
+                                                $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día '.$instructorWorkshop->day_of_week;
+                                                $classesLabel = $numberOfClasses.($numberOfClasses === 1 ? ' clase' : ' clases');
 
                                                 // Mostrar información del precio
-                                                $priceInfo = "S/ " . number_format($basePrice, 2);
+                                                $priceInfo = 'S/ '.number_format($basePrice, 2);
                                                 if ($isPrePama && $prepamaCharge > 0) {
-                                                    $priceInfo = "S/ " . number_format($basePrice, 2) . " + S/ " . number_format($prepamaCharge, 2) . " (PRE-PAMA) = S/ " . number_format($finalPrice, 2);
+                                                    $priceInfo = 'S/ '.number_format($basePrice, 2).' + S/ '.number_format($prepamaCharge, 2).' (PRE-PAMA) = S/ '.number_format($finalPrice, 2);
                                                 }
 
                                                 $html .= "
@@ -673,7 +705,7 @@ class EnrollmentResource extends Resource
                                                             <div>
                                                                 <h4 class='font-semibold text-green-800'>{$instructorWorkshop->workshop->name}</h4>
                                                                 <p class='text-sm text-green-600 mt-1'>
-                                                                    {$dayInSpanish} • " . \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i A') ." - " . \Carbon\Carbon::parse($instructorWorkshop->end_time ?? $instructorWorkshop->start_time)->format('H:i A') . " • {$classesLabel}
+                                                                    {$dayInSpanish} • ".\Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i A').' - '.\Carbon\Carbon::parse($instructorWorkshop->end_time ?? $instructorWorkshop->start_time)->format('H:i A')." • {$classesLabel}
                                                                 </p>
                                                             </div>
                                                             <div class='text-right'>
@@ -692,20 +724,20 @@ class EnrollmentResource extends Resource
                                                         <div class='space-y-2'>
                                                             <div class='flex justify-between'>
                                                                 <span>Sub Total Ventas</span>
-                                                                <span>S/ " . number_format($subtotal, 2) . "</span>
+                                                                <span>S/ ".number_format($subtotal, 2)."</span>
                                                             </div>
-                                                            <div class='flex justify-between text-sm " . ($prepamaTotal > 0 ? 'text-orange-600 font-medium' : 'text-gray-600') . "'>
+                                                            <div class='flex justify-between text-sm ".($prepamaTotal > 0 ? 'text-orange-600 font-medium' : 'text-gray-600')."'>
                                                                 <span>Recargo PRE-PAMA</span>
-                                                                <span>S/ " . number_format($prepamaTotal, 2) . "</span>
+                                                                <span>S/ ".number_format($prepamaTotal, 2)."</span>
                                                             </div>
                                                             <div class='flex justify-between font-semibold border-t pt-2'>
                                                                 <span>Valor Venta</span>
-                                                                <span>S/ " . number_format($totalFinal, 2) . "</span>
+                                                                <span>S/ ".number_format($totalFinal, 2).'</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ";
+                                            ';
 
                                             // Nota informativa si es PRE-PAMA
                                             if ($isPrePama && $prepamaTotal > 0) {
@@ -725,6 +757,7 @@ class EnrollmentResource extends Resource
                                             }
 
                                             $html .= '</div>';
+
                                             return new \Illuminate\Support\HtmlString($html);
                                         })
                                         ->columnSpanFull(),
@@ -757,10 +790,10 @@ class EnrollmentResource extends Resource
                                 ->columnSpanFull(),
                         ]),
                 ])
-                ->columnSpanFull()
-                ->skippable()
-                ->persistStepInQueryString()
-                ->submitAction(new \Illuminate\Support\HtmlString('
+                    ->columnSpanFull()
+                    ->skippable()
+                    ->persistStepInQueryString()
+                    ->submitAction(new \Illuminate\Support\HtmlString('
                     <x-filament::button
                         type="submit"
                         size="sm"
@@ -776,11 +809,15 @@ class EnrollmentResource extends Resource
     // Agregar también este método estático en la clase
     public static function findPreviousWorkshops($studentId, $selectedMonthlyPeriodId)
     {
-        if (!$selectedMonthlyPeriodId) return [];
+        if (! $selectedMonthlyPeriodId) {
+            return [];
+        }
 
         try {
             $currentPeriod = \App\Models\MonthlyPeriod::find($selectedMonthlyPeriodId);
-            if (!$currentPeriod) return [];
+            if (! $currentPeriod) {
+                return [];
+            }
 
             // Calcular período anterior
             $previousMonth = $currentPeriod->month - 1;
@@ -796,7 +833,9 @@ class EnrollmentResource extends Resource
                 ->where('month', $previousMonth)
                 ->first();
 
-            if (!$previousPeriod) return [];
+            if (! $previousPeriod) {
+                return [];
+            }
 
             // Buscar inscripciones previas pagadas
             $previousEnrollments = \App\Models\StudentEnrollment::where('student_id', $studentId)
@@ -817,7 +856,8 @@ class EnrollmentResource extends Resource
 
             return array_unique($previousWorkshopIds);
         } catch (\Exception $e) {
-            \Log::error("Error finding previous workshops: " . $e->getMessage());
+            \Log::error('Error finding previous workshops: '.$e->getMessage());
+
             return [];
         }
     }
@@ -830,8 +870,7 @@ class EnrollmentResource extends Resource
                     ->label('Estudiante')
                     ->searchable(['student.first_names', 'student.last_names'])
                     ->sortable()
-                    ->formatStateUsing(fn ($record) =>
-                        $record->student->first_names . ' ' . $record->student->last_names
+                    ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names
                     ),
 
                 Tables\Columns\TextColumn::make('instructorWorkshop.workshop.name')
@@ -856,7 +895,7 @@ class EnrollmentResource extends Resource
 
                 Tables\Columns\TextColumn::make('number_of_classes')
                     ->label('Cantidad de Clases')
-                    ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Clase' : ' Clases'))
+                    ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Clase' : ' Clases'))
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('enrollment_date')

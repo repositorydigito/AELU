@@ -2,17 +2,17 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use App\Models\Workshop;
-use App\Observers\WorkshopObserver;
-use App\Models\StudentEnrollment;
-use App\Observers\StudentEnrollmentObserver;
-use App\Models\Student;
-use App\Observers\StudentObserver;
 use App\Models\InstructorPayment;
-use App\Observers\InstructorPaymentObserver;
 use App\Models\InstructorWorkshop;
+use App\Models\Student;
+use App\Models\StudentEnrollment;
+use App\Models\Workshop;
+use App\Observers\InstructorPaymentObserver;
 use App\Observers\InstructorWorkshopObserver;
+use App\Observers\StudentEnrollmentObserver;
+use App\Observers\StudentObserver;
+use App\Observers\WorkshopObserver;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {

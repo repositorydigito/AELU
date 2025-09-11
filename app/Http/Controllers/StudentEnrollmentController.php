@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StudentEnrollment;
 use App\Helpers\NumberToWordsHelper;
-use Illuminate\Http\Request;
+use App\Models\StudentEnrollment;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\Facades\Auth;
 
 class StudentEnrollmentController extends Controller
 {
@@ -57,7 +55,7 @@ class StudentEnrollmentController extends Controller
                 }
 
                 $classDate = Carbon::parse($workshopClass->class_date);
-                $dayOfWeek = ucfirst($classDate->translatedFormat('l')); 
+                $dayOfWeek = ucfirst($classDate->translatedFormat('l'));
                 $startHour = Carbon::parse($workshopClass->start_time)->format('H'); // Obtiene la hora de inicio (ej. "08")
 
                 // Si el día y la hora están dentro de nuestro rango de calendario, añadimos la clase.
@@ -79,7 +77,7 @@ class StudentEnrollmentController extends Controller
         $totalInWords = NumberToWordsHelper::convert($enrollment->total_amount);
 
         // 8. Configurar Dompdf
-        $options = new Options();
+        $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
 
@@ -105,7 +103,7 @@ class StudentEnrollmentController extends Controller
         $dompdf->render();
 
         // 12. Devolver el PDF al navegador
-        return $dompdf->stream('ticket_inscripcion_' . ($student->student_code ?? 'N/A') . '.pdf', ["Attachment" => false]);
+        return $dompdf->stream('ticket_inscripcion_'.($student->student_code ?? 'N/A').'.pdf', ['Attachment' => false]);
     }
 
     public function generateBatchTicket($batchId)
@@ -153,7 +151,7 @@ class StudentEnrollmentController extends Controller
                     }
 
                     $classDate = \Carbon\Carbon::parse($workshopClass->class_date);
-                    $dayOfWeek = ucfirst($classDate->translatedFormat('l')); 
+                    $dayOfWeek = ucfirst($classDate->translatedFormat('l'));
                     $startHour = \Carbon\Carbon::parse($workshopClass->start_time)->format('H'); // Obtiene la hora de inicio (ej. "08")
 
                     // Si el día y la hora están dentro de nuestro rango de calendario, añadimos la clase.
@@ -176,7 +174,7 @@ class StudentEnrollmentController extends Controller
         $totalInWords = NumberToWordsHelper::convert($enrollmentBatch->total_amount);
 
         // 8. Configurar Dompdf
-        $options = new Options();
+        $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
 
@@ -202,6 +200,6 @@ class StudentEnrollmentController extends Controller
         $dompdf->render();
 
         // 12. Devolver el PDF al navegador
-        return $dompdf->stream('ticket_lote_' . $enrollmentBatch->batch_code . '.pdf', ["Attachment" => false]);
+        return $dompdf->stream('ticket_lote_'.$enrollmentBatch->batch_code.'.pdf', ['Attachment' => false]);
     }
 }

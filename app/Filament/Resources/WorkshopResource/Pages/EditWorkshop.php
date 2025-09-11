@@ -17,10 +17,12 @@ class EditWorkshop extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
     protected function getRedirectUrl(): string
     {
         return WorkshopResource::getUrl('index');
     }
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $workshop = $this->record;
@@ -50,13 +52,14 @@ class EditWorkshop extends EditRecord
 
         return $data;
     }
+
     protected function afterSave(): void
     {
         $workshop = $this->record;
         $scheduleData = $this->data['schedule_data'] ?? [];
 
         // Permitir actualización de fechas siempre
-        if (!empty($scheduleData) && is_array($scheduleData)) {
+        if (! empty($scheduleData) && is_array($scheduleData)) {
             // Obtener clases existentes para actualizar en lugar de eliminar
             $existingClasses = $workshop->workshopClasses()
                 ->orderBy('class_date')

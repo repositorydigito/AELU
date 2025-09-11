@@ -35,18 +35,22 @@ class InstructorWorkshop extends Model
     {
         return $this->belongsTo(Instructor::class);
     }
+
     public function workshop()
     {
         return $this->belongsTo(Workshop::class);
-    }    
+    }
+
     public function enrollments()
     {
         return $this->hasMany(StudentEnrollment::class);
     }
+
     public function initialMonthlyPeriod()
     {
         return $this->belongsTo(MonthlyPeriod::class, 'initial_monthly_period_id');
     }
+
     public function payments()
     {
         return $this->hasMany(InstructorPayment::class);
@@ -57,22 +61,27 @@ class InstructorWorkshop extends Model
     {
         return $this->payment_type === 'volunteer';
     }
+
     public function isHourly(): bool
     {
         return $this->payment_type === 'hourly';
     }
+
     public function getEstimatedPayPerClass(): ?float
     {
         if ($this->isHourly() && $this->hourly_rate && $this->duration_hours) {
             return $this->hourly_rate * $this->duration_hours;
         }
+
         return null;
     }
+
     public function getEffectiveVolunteerPercentage(?MonthlyInstructorRate $monthlyRate = null): ?float
     {
         if ($this->isVolunteer()) {
             return $this->custom_volunteer_percentage ?? $monthlyRate?->volunteer_percentage;
         }
+
         return null;
     }
 
@@ -91,14 +100,14 @@ class InstructorWorkshop extends Model
     public function getAvailableSpotsForPeriod($monthlyPeriodId): int
     {
         $totalCapacity = $this->getEffectiveCapacity();
-        
+
         // Contar inscripciones activas para este período
         $currentEnrollments = $this->enrollments()
             ->where('monthly_period_id', $monthlyPeriodId)
             ->whereIn('payment_status', ['completed', 'pending'])
             ->distinct('student_id')
             ->count();
-            
+
         return max(0, $totalCapacity - $currentEnrollments);
     }
 

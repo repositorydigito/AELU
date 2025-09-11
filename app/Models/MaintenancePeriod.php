@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 class MaintenancePeriod extends Model
 {
@@ -21,6 +21,7 @@ class MaintenancePeriod extends Model
     public static function getCurrentPeriod()
     {
         $now = Carbon::now();
+
         return self::where('year', $now->year)
             ->where('month', $now->month)
             ->first();
@@ -41,6 +42,6 @@ class MaintenancePeriod extends Model
 
     public function isBefore(MaintenancePeriod $otherPeriod): bool
     {
-        return !$this->isEqualOrAfter($otherPeriod);
+        return ! $this->isEqualOrAfter($otherPeriod);
     }
 }

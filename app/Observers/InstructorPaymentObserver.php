@@ -2,9 +2,9 @@
 
 namespace App\Observers;
 
-use App\Models\InstructorPayment;
 use App\Models\Expense;
 use App\Models\ExpenseDetail;
+use App\Models\InstructorPayment;
 
 class InstructorPaymentObserver
 {
@@ -60,7 +60,7 @@ class InstructorPaymentObserver
 
         $dayNames = [
             0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'
+            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
         ];
 
         $dayOfWeek = $dayNames[$workshop->day_of_week] ?? 'Desconocido';
@@ -71,7 +71,7 @@ class InstructorPaymentObserver
         $notes .= "Período: {$periodName}\n";
         $notes .= "Taller: {$workshop->workshop->name}\n";
         $notes .= "Horario: {$dayOfWeek} {$startTime}-{$endTime}\n";
-        $notes .= "Tipo de pago: " . ($instructorPayment->payment_type === 'volunteer' ? 'Voluntario (% de ingresos)' : 'Por horas (tarifa fija)');
+        $notes .= 'Tipo de pago: '.($instructorPayment->payment_type === 'volunteer' ? 'Voluntario (% de ingresos)' : 'Por horas (tarifa fija)');
 
         // Agregar detalles específicos según el tipo de pago
         if ($instructorPayment->payment_type === 'volunteer') {
@@ -79,12 +79,12 @@ class InstructorPaymentObserver
             $revenue = $instructorPayment->monthly_revenue ?? 0;
             $students = $instructorPayment->total_students ?? 0;
 
-            $notes .= "\nDetalles: {$students} estudiantes, S/ " . number_format($revenue, 2) . " recaudado × {$percentage}%";
+            $notes .= "\nDetalles: {$students} estudiantes, S/ ".number_format($revenue, 2)." recaudado × {$percentage}%";
         } else {
             $hours = $instructorPayment->total_hours ?? 0;
             $rate = $instructorPayment->applied_hourly_rate ?? 0;
 
-            $notes .= "\nDetalles: {$hours} horas × S/ " . number_format($rate, 2) . " por hora";
+            $notes .= "\nDetalles: {$hours} horas × S/ ".number_format($rate, 2).' por hora';
         }
 
         return $notes;

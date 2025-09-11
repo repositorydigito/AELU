@@ -11,15 +11,16 @@ class CreateWorkshop extends CreateRecord
     protected static string $resource = WorkshopResource::class;
 
     protected function getRedirectUrl(): string
-    {        
-        return WorkshopResource::getUrl('index');     
-    }        
+    {
+        return WorkshopResource::getUrl('index');
+    }
+
     protected function afterCreate(): void
     {
         $workshop = $this->record;
         $scheduleData = $this->data['schedule_data'] ?? [];
 
-        if (!empty($scheduleData) && is_array($scheduleData)) {
+        if (! empty($scheduleData) && is_array($scheduleData)) {
             foreach ($scheduleData as $classData) {
                 WorkshopClass::create([
                     'workshop_id' => $workshop->id,

@@ -3,26 +3,30 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\WorkshopResource\Pages;
-use App\Filament\Resources\WorkshopResource\RelationManagers;
 use App\Models\Workshop;
+use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
-use Filament\Tables\Table;
-use Filament\Forms;
 use Filament\Tables;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class WorkshopResource extends Resource
 {
     protected static ?string $model = Workshop::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-paint-brush';
+
     protected static ?string $navigationLabel = 'Talleres';
+
     protected static ?string $pluralModelLabel = 'Talleres';
+
     protected static ?string $modelLabel = 'Taller';
+
     protected static ?int $navigationSort = 3;
+
     protected static ?string $navigationGroup = 'Gestión';
 
     public static function form(Form $form): Form
@@ -49,7 +53,7 @@ class WorkshopResource extends Resource
                                                 ->where('year', '>=', $currentDate->year)
                                                 ->where('year', '<=', $currentDate->year + 2);
                                         })
-                                        ->orWhere('id', $currentWorkshopPeriodId);
+                                            ->orWhere('id', $currentWorkshopPeriodId);
                                     });
                                 } else {
                                     // Para crear nuevo taller, solo períodos futuros
@@ -63,6 +67,7 @@ class WorkshopResource extends Resource
                                     ->get()
                                     ->mapWithKeys(function ($period) {
                                         $date = \Carbon\Carbon::create($period->year, $period->month, 1);
+
                                         return [$period->id => $date->translatedFormat('F Y')];
                                     });
                             })
@@ -74,12 +79,10 @@ class WorkshopResource extends Resource
                                 $set('temp_start_date', null);
                                 $set('schedule_data', []);
                             })
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
+                            ->disabled(fn ($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             )
-                            ->helperText(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
+                            ->helperText(fn ($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                                     ? '⚠️ No se puede editar porque ya hay inscripciones'
                                     : 'Selecciona el mes del taller'
@@ -96,8 +99,7 @@ class WorkshopResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre del taller')
                             ->required()
-                            ->disabled(fn ($livewire) =>
-                                $livewire instanceof \Filament\Resources\Pages\EditRecord &&
+                            ->disabled(fn ($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                 $livewire->record->hasEnrollments()
                             ),
                         Forms\Components\Select::make('instructor_id')
@@ -168,12 +170,12 @@ class WorkshopResource extends Resource
                 Forms\Components\Section::make('Vista Previa de Tarifas')
                     ->schema([
                         Forms\Components\Placeholder::make('recargo_actual')
-                            ->content(fn(Get $get) => 'Valor actual del porcentaje de recargo: ' . ($get('pricing_surcharge_percentage') ?? '20') . '%')
+                            ->content(fn (Get $get) => 'Valor actual del porcentaje de recargo: '.($get('pricing_surcharge_percentage') ?? '20').'%')
                             ->extraAttributes(['style' => 'margin-bottom: 8px;'])
                             ->live(),
                         Forms\Components\Actions::make([
                             Forms\Components\Actions\Action::make('Ajustes')
-                                ->visible(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord)
+                                ->visible(fn ($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord)
                                 ->label('Ajustes')
                                 ->icon('heroicon-o-cog-6-tooth')
                                 ->modalHeading('Ajustes')
@@ -188,10 +190,10 @@ class WorkshopResource extends Resource
                                         ->minValue(0)
                                         ->maxValue(100)
                                         ->step(0.01)
-                                        ->default(fn(Get $get) => $get('pricing_surcharge_percentage') ?? 20)
+                                        ->default(fn (Get $get) => $get('pricing_surcharge_percentage') ?? 20)
                                         ->required(),
                                 ])
-                                ->fillForm(fn(Get $get): array => [
+                                ->fillForm(fn (Get $get): array => [
                                     'modal_pricing_surcharge_percentage' => $get('pricing_surcharge_percentage') ?? 20,
                                 ])
                                 ->action(function (array $data, Set $set) {
@@ -223,8 +225,10 @@ class WorkshopResource extends Resource
                                             $firstClass = $livewire->record->workshopClasses()
                                                 ->orderBy('class_date', 'asc')
                                                 ->first();
+
                                             return $firstClass ? $firstClass->class_date : null;
                                         }
+
                                         return null;
                                     })
                                     ->afterStateUpdated(function ($state, Set $set, Get $get) {
@@ -234,10 +238,14 @@ class WorkshopResource extends Resource
                                         function (Get $get) {
                                             return function (string $attribute, $value, \Closure $fail) use ($get) {
                                                 $monthlyPeriodId = $get('monthly_period_id');
-                                                if (!$monthlyPeriodId || !$value) return;
+                                                if (! $monthlyPeriodId || ! $value) {
+                                                    return;
+                                                }
 
                                                 $period = \App\Models\MonthlyPeriod::find($monthlyPeriodId);
-                                                if (!$period) return;
+                                                if (! $period) {
+                                                    return;
+                                                }
 
                                                 $selectedDate = \Carbon\Carbon::parse($value);
                                                 $startDate = \Carbon\Carbon::parse($period->start_date);
@@ -248,9 +256,9 @@ class WorkshopResource extends Resource
                                                     $fail("La fecha debe estar dentro del período seleccionado ({$monthName})");
                                                 }
                                             };
-                                        }
+                                        },
                                     ]),
-                                    /* ->disabled(fn ($livewire) =>
+                                /* ->disabled(fn ($livewire) =>
                                         $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                         $livewire->record->hasEnrollments()
                                     ), */
@@ -262,7 +270,7 @@ class WorkshopResource extends Resource
                                         ->action(function (Get $get, Set $set) {
                                             self::calculateScheduleDates($get, $set);
                                         }),
-                                        /* ->disabled(fn ($livewire) =>
+                                    /* ->disabled(fn ($livewire) =>
                                             $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                             $livewire->record->hasEnrollments()
                                         ), */
@@ -282,7 +290,7 @@ class WorkshopResource extends Resource
                                 ->label('Ajustes')
                                 ->icon('heroicon-o-cog-6-tooth')
                                 ->color('gray')
-                                ->visible(fn(Get $get, $livewire) => !empty($get('schedule_data')) && ($livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord))
+                                ->visible(fn (Get $get, $livewire) => ! empty($get('schedule_data')) && ($livewire instanceof \Filament\Resources\Pages\EditRecord || $livewire instanceof \Filament\Resources\Pages\CreateRecord))
                                 ->modalHeading('Ajustes')
                                 ->modalSubmitActionLabel('Aplicar')
                                 ->modalCancelActionLabel('Cancelar')
@@ -292,17 +300,21 @@ class WorkshopResource extends Resource
 
                                     foreach ($scheduleData as $index => $class) {
                                         $fields[] = Forms\Components\DatePicker::make("class_date_{$index}")
-                                            ->label('Clase ' . ($index + 1) . ' *')
+                                            ->label('Clase '.($index + 1).' *')
                                             ->default($class['raw_date'])
                                             ->required()
                                             ->rules([
                                                 function (Get $get) {
                                                     return function (string $attribute, $value, \Closure $fail) use ($get) {
                                                         $monthlyPeriodId = $get('monthly_period_id');
-                                                        if (!$monthlyPeriodId || !$value) return;
+                                                        if (! $monthlyPeriodId || ! $value) {
+                                                            return;
+                                                        }
 
                                                         $period = \App\Models\MonthlyPeriod::find($monthlyPeriodId);
-                                                        if (!$period) return;
+                                                        if (! $period) {
+                                                            return;
+                                                        }
 
                                                         $selectedDate = \Carbon\Carbon::parse($value);
                                                         $startDate = \Carbon\Carbon::parse($period->start_date);
@@ -313,7 +325,7 @@ class WorkshopResource extends Resource
                                                             $fail("La fecha debe estar dentro del período ({$monthName})");
                                                         }
                                                     };
-                                                }
+                                                },
                                             ]);
                                     }
 
@@ -353,12 +365,12 @@ class WorkshopResource extends Resource
                                         self::updateWorkshopClassesInDatabase($livewire->record, $updatedScheduleData);
                                     }
                                 }),
-                                /* ->disabled(fn ($livewire) =>
+                            /* ->disabled(fn ($livewire) =>
                                     $livewire instanceof \Filament\Resources\Pages\EditRecord &&
                                     $livewire->record->hasEnrollments()
                                 ), */
                         ])
-                        ->extraAttributes(['class' => 'flex justify-center mt-4']),
+                            ->extraAttributes(['class' => 'flex justify-center mt-4']),
 
                         Forms\Components\Hidden::make('schedule_data')
                             ->default(function ($livewire) {
@@ -378,6 +390,7 @@ class WorkshopResource extends Resource
                                         ];
                                     })->toArray();
                                 }
+
                                 return [];
                             })
                             ->dehydrated(true),
@@ -405,7 +418,7 @@ class WorkshopResource extends Resource
         $standardFee = $get('standard_monthly_fee');
         $surchargePercentage = $get('pricing_surcharge_percentage');
 
-        if (!$standardFee || !$surchargePercentage) {
+        if (! $standardFee || ! $surchargePercentage) {
             return '<p class="text-gray-500 italic">Ingresa la tarifa mensual y el porcentaje de recargo para ver la vista previa</p>';
         }
 
@@ -438,8 +451,8 @@ class WorkshopResource extends Resource
             $isDefault = $classes === 4;
             $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
-            $html .= "<span>{$classes} " . ($classes === 1 ? 'clase' : 'clases') . ':</span>';
-            $html .= "<span class='font-medium'>S/ " . number_format($price, 2) . " </span>";
+            $html .= "<span>{$classes} ".($classes === 1 ? 'clase' : 'clases').':</span>';
+            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).' </span>';
             $html .= '</div>';
         }
         $html .= '</div></div>';
@@ -452,8 +465,8 @@ class WorkshopResource extends Resource
             $isDefault = $classes === 4;
             $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
-            $html .= "<span>{$classes} " . ($classes === 1 ? 'clase' : 'clases') . ':</span>';
-            $html .= "<span class='font-medium'>S/ " . number_format($price, 2) . " </span>";
+            $html .= "<span>{$classes} ".($classes === 1 ? 'clase' : 'clases').':</span>';
+            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).' </span>';
             $html .= '</div>';
         }
         /* $html .= '</div></div>';
@@ -493,10 +506,11 @@ class WorkshopResource extends Resource
                 Tables\Columns\TextColumn::make('monthlyPeriod')
                     ->label('Mes')
                     ->getStateUsing(function (Workshop $record) {
-                        if (!$record->monthlyPeriod) {
+                        if (! $record->monthlyPeriod) {
                             return 'N/A';
                         }
                         $date = \Carbon\Carbon::create($record->monthlyPeriod->year, $record->monthlyPeriod->month, 1);
+
                         return $date->translatedFormat('F Y');
                     })
                     ->sortable(),
@@ -515,11 +529,12 @@ class WorkshopResource extends Resource
                             ->where('month', now()->month)
                             ->first();
 
-                        if (!$currentPeriod) {
+                        if (! $currentPeriod) {
                             return 'N/A';
                         }
 
                         $capacityInfo = $record->getCapacityInfoForPeriod($currentPeriod->id);
+
                         return "{$capacityInfo['available_spots']}/{$capacityInfo['total_capacity']}";
                     })
                     ->badge()
@@ -528,7 +543,7 @@ class WorkshopResource extends Resource
                             ->where('month', now()->month)
                             ->first();
 
-                        if (!$currentPeriod) {
+                        if (! $currentPeriod) {
                             return 'gray';
                         }
 
@@ -561,7 +576,7 @@ class WorkshopResource extends Resource
                     ->form([
                         Forms\Components\TextInput::make('instructor_name')
                             ->label('Buscar profesor')
-                            ->placeholder('Nombre del profesor...')
+                            ->placeholder('Nombre del profesor...'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
@@ -570,17 +585,18 @@ class WorkshopResource extends Resource
                                 'instructor',
                                 fn (Builder $query): Builder => $query->where(function ($q) use ($search) {
                                     $q->where('first_names', 'like', "%{$search}%")
-                                    ->orWhere('last_names', 'like', "%{$search}%")
-                                    ->orWhereRaw("CONCAT(first_names, ' ', last_names) LIKE ?", ["%{$search}%"]);
+                                        ->orWhere('last_names', 'like', "%{$search}%")
+                                        ->orWhereRaw("CONCAT(first_names, ' ', last_names) LIKE ?", ["%{$search}%"]);
                                 })
                             )
                         );
                     })
                     ->indicateUsing(function (array $data): ?string {
-                        if (!$data['instructor_name']) {
+                        if (! $data['instructor_name']) {
                             return null;
                         }
-                        return 'Profesor: ' . $data['instructor_name'];
+
+                        return 'Profesor: '.$data['instructor_name'];
                     }),
 
                 Tables\Filters\SelectFilter::make('monthly_period')
@@ -588,6 +604,7 @@ class WorkshopResource extends Resource
                     ->relationship('monthlyPeriod', 'id')
                     ->getOptionLabelFromRecordUsing(function ($record) {
                         $date = \Carbon\Carbon::create($record->year, $record->month, 1);
+
                         return $date->translatedFormat('F Y');
                     })
                     ->searchable()
@@ -600,8 +617,8 @@ class WorkshopResource extends Resource
                     ->label('Ver Tarifas')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->modalHeading(fn(Workshop $record) => "Tarifas de {$record->name}")
-                    ->modalContent(fn(Workshop $record) => view('filament.resources.workshop-resource.pricing-modal', compact('record')))
+                    ->modalHeading(fn (Workshop $record) => "Tarifas de {$record->name}")
+                    ->modalContent(fn (Workshop $record) => view('filament.resources.workshop-resource.pricing-modal', compact('record')))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar'),
             ])
@@ -645,7 +662,7 @@ class WorkshopResource extends Resource
         $dayOfWeek = $get('day_of_week');
         $numberOfClasses = (int) $get('number_of_classes'); // Convertir a entero
 
-        if (!$startDate || !$dayOfWeek || !$numberOfClasses) {
+        if (! $startDate || ! $dayOfWeek || ! $numberOfClasses) {
             return;
         }
 
@@ -702,13 +719,13 @@ class WorkshopResource extends Resource
 
         // Header de la tabla
         $html .= '<div class="bg-gray-50 border-b">';
-        $html .= '<div class="grid gap-px" style="grid-template-columns: repeat(' . $totalColumns . ', minmax(0, 1fr));">';
+        $html .= '<div class="grid gap-px" style="grid-template-columns: repeat('.$totalColumns.', minmax(0, 1fr));">';
         $html .= '<div class="p-3 font-semibold text-sm">Día</div>';
         $html .= '<div class="p-3 font-semibold text-sm">Nro. de Clases</div>';
 
         // Generar headers dinámicamente para todas las clases
         for ($i = 1; $i <= $totalClasses; $i++) {
-            $html .= '<div class="p-3 font-semibold text-sm">Clase ' . $i . '</div>';
+            $html .= '<div class="p-3 font-semibold text-sm">Clase '.$i.'</div>';
         }
 
         $html .= '</div>';
@@ -716,15 +733,15 @@ class WorkshopResource extends Resource
 
         // Fila de datos
         $html .= '<div class="bg-white">';
-        $html .= '<div class="grid gap-px border-b" style="grid-template-columns: repeat(' . $totalColumns . ', minmax(0, 1fr));">';
+        $html .= '<div class="grid gap-px border-b" style="grid-template-columns: repeat('.$totalColumns.', minmax(0, 1fr));">';
 
         // Día
-        $html .= '<div class="p-3 text-sm">' . $dayOfWeek . '</div>';
+        $html .= '<div class="p-3 text-sm">'.$dayOfWeek.'</div>';
 
         // Número de clases (con botón de ajustes)
         $html .= '<div class="p-3 text-sm">';
         $html .= '<div class="flex items-center gap-2">';
-        $html .= '<span class="text-blue-600 underline cursor-pointer">' . $totalClasses . ' clases</span>';
+        $html .= '<span class="text-blue-600 underline cursor-pointer">'.$totalClasses.' clases</span>';
         // $html .= '<button type="button" class="text-gray-400 hover:text-gray-600" onclick="openAdjustmentsModal()">';
         // $html .= '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">';
         $html .= '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>';
@@ -736,7 +753,7 @@ class WorkshopResource extends Resource
 
         // Fechas de todas las clases
         foreach ($scheduleData as $class) {
-            $html .= '<div class="p-3 text-sm">' . $class['date'] . '</div>';
+            $html .= '<div class="p-3 text-sm">'.$class['date'].'</div>';
         }
 
         $html .= '</div>';
@@ -782,8 +799,8 @@ class WorkshopResource extends Resource
 
         foreach ($scheduleData as $index => $class) {
             $html .= '<div>';
-            $html .= '<label class="block text-sm font-medium text-gray-700 mb-1">Clase ' . ($index + 1) . ' *</label>';
-            $html .= '<input type="date" value="' . $class['raw_date'] . '" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">';
+            $html .= '<label class="block text-sm font-medium text-gray-700 mb-1">Clase '.($index + 1).' *</label>';
+            $html .= '<input type="date" value="'.$class['raw_date'].'" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">';
             $html .= '</div>';
         }
 
@@ -800,6 +817,7 @@ class WorkshopResource extends Resource
 
         return $html;
     }
+
     private static function updateWorkshopClassesInDatabase(Workshop $workshop, array $scheduleData): void
     {
         // 1. Obtener las clases existentes del taller directamente

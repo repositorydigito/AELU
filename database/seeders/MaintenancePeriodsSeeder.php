@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\MaintenancePeriod;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
 class MaintenancePeriodsSeeder extends Seeder
@@ -37,6 +36,6 @@ class MaintenancePeriodsSeeder extends Seeder
             ['name', 'updated_at']
         );
 
-        $this->command->info('Maintenance periods generated successfully from ' . $startYear . ' to ' . $endYear . '!');
+        $this->command->info('Maintenance periods generated successfully from '.$startYear.' to '.$endYear.'!');
     }
 }

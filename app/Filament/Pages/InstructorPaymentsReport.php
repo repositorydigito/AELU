@@ -5,33 +5,40 @@ namespace App\Filament\Pages;
 use App\Models\Instructor;
 use App\Models\InstructorPayment;
 use App\Models\MonthlyPeriod;
-use Filament\Pages\Page;
-use Filament\Forms\Form;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Components\Select;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\View;
 
-class InstructorPaymentsReport extends Page implements HasForms, HasActions
+class InstructorPaymentsReport extends Page implements HasActions, HasForms
 {
-    use InteractsWithForms;
     use InteractsWithActions;
+    use InteractsWithForms;
 
     protected static string $view = 'filament.pages.instructor-payments-report';
+
     protected static ?string $title = 'Reporte de pagos por Profesor';
+
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
+
     public $selectedInstructor = null;
+
     public $selectedPeriod = null;
+
     public $instructorPayments = [];
+
     public $instructorData = null;
+
     public $periodData = null;
 
     public function mount(): void
@@ -51,7 +58,7 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
                             ->get()
                             ->mapWithKeys(function ($instructor) {
                                 return [
-                                    $instructor->id => $instructor->last_names . ' ' . $instructor->first_names
+                                    $instructor->id => $instructor->last_names.' '.$instructor->first_names,
                                 ];
                             })
                             ->toArray()
@@ -75,6 +82,7 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
                             ->get()
                             ->mapWithKeys(function ($period) {
                                 $periodName = $this->generatePeriodName($period->month, $period->year);
+
                                 return [$period->id => $periodName];
                             })
                             ->toArray()
@@ -118,7 +126,7 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
         }
 
         // Si no hay filtros, no cargar nada
-        if (!$this->selectedInstructor && !$this->selectedPeriod) {
+        if (! $this->selectedInstructor && ! $this->selectedPeriod) {
             return;
         }
 
@@ -133,7 +141,7 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
             // Convertir día de la semana
             $dayNames = [
                 0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'
+                4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
             ];
 
             $dayOfWeek = isset($payment->instructorWorkshop->day_of_week)
@@ -150,7 +158,7 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
 
             return [
                 'id' => $payment->id,
-                'instructor_name' => $instructor ? ($instructor->first_names . ' ' . $instructor->last_names) : 'N/A',
+                'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A',
                 'workshop_name' => $workshop->name ?? 'N/A',
                 'workshop_schedule' => "{$dayOfWeek} {$startTime}-{$endTime}",
                 'period_name' => $period ? $this->generatePeriodName($period->month, $period->year) : 'N/A',
@@ -170,11 +178,13 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
             $revenue = $payment->monthly_revenue ?? 0;
             $percentage = ($payment->applied_volunteer_percentage ?? 0) * 100;
             $students = $payment->total_students ?? 0;
-            return "{$students} estudiantes - S/ " . number_format($revenue, 2) . " × {$percentage}%";
+
+            return "{$students} estudiantes - S/ ".number_format($revenue, 2)." × {$percentage}%";
         } else {
             $hours = $payment->total_hours ?? 0;
             $rate = $payment->applied_hourly_rate ?? 0;
-            return "{$hours} horas × S/ " . number_format($rate, 2);
+
+            return "{$hours} horas × S/ ".number_format($rate, 2);
         }
     }
 
@@ -184,14 +194,14 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
             ->label('Generar PDF')
             ->color('primary')
             ->icon('heroicon-o-document-arrow-down')
-            ->visible(fn () => !empty($this->instructorPayments))
+            ->visible(fn () => ! empty($this->instructorPayments))
             ->action(function () {
                 try {
                     return $this->generatePDF();
                 } catch (\Exception $e) {
                     Notification::make()
                         ->title('Error en la acción')
-                        ->body('Error: ' . $e->getMessage())
+                        ->body('Error: '.$e->getMessage())
                         ->danger()
                         ->send();
                 }
@@ -206,6 +216,7 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
                 ->body('No hay pagos para generar el reporte')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -220,11 +231,11 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
 
             if ($this->selectedInstructor && $this->selectedPeriod) {
                 $reportTitle = 'Pagos por Profesor y Período';
-                $reportSubtitle = $this->instructorData->first_names . ' ' . $this->instructorData->last_names .
-                                ' - ' . $this->generatePeriodName($this->periodData->month, $this->periodData->year);
+                $reportSubtitle = $this->instructorData->first_names.' '.$this->instructorData->last_names.
+                                ' - '.$this->generatePeriodName($this->periodData->month, $this->periodData->year);
             } elseif ($this->selectedInstructor) {
                 $reportTitle = 'Pagos por Profesor';
-                $reportSubtitle = $this->instructorData->first_names . ' ' . $this->instructorData->last_names;
+                $reportSubtitle = $this->instructorData->first_names.' '.$this->instructorData->last_names;
             } elseif ($this->selectedPeriod) {
                 $reportTitle = 'Pagos por Período';
                 $reportSubtitle = $this->generatePeriodName($this->periodData->month, $this->periodData->year);
@@ -241,12 +252,12 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
                 ],
                 'report_title' => $reportTitle,
                 'report_subtitle' => $reportSubtitle,
-                'show_instructor_column' => !$this->selectedInstructor, // Mostrar columna instructor solo si no se filtró por uno específico
-                'generated_at' => now()->format('d/m/Y H:i')
+                'show_instructor_column' => ! $this->selectedInstructor, // Mostrar columna instructor solo si no se filtró por uno específico
+                'generated_at' => now()->format('d/m/Y H:i'),
             ])->render();
 
             // Configurar Dompdf
-            $options = new Options();
+            $options = new Options;
             $options->set('isHtml5ParserEnabled', true);
             $options->set('isRemoteEnabled', true);
             $dompdf = new Dompdf($options);
@@ -258,10 +269,10 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
             // Generar nombre de archivo
             $fileName = 'pagos-';
             if ($this->selectedInstructor) {
-                $fileName .= 'profesor-' . str($this->instructorData->first_names . '-' . $this->instructorData->last_names)->slug();
+                $fileName .= 'profesor-'.str($this->instructorData->first_names.'-'.$this->instructorData->last_names)->slug();
             }
             if ($this->selectedPeriod) {
-                $fileName .= ($this->selectedInstructor ? '-' : '') . 'periodo-' . $this->periodData->year . '-' . str_pad($this->periodData->month, 2, '0', STR_PAD_LEFT);
+                $fileName .= ($this->selectedInstructor ? '-' : '').'periodo-'.$this->periodData->year.'-'.str_pad($this->periodData->month, 2, '0', STR_PAD_LEFT);
             }
             $fileName .= '.pdf';
 
@@ -269,13 +280,13 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
                 echo $dompdf->output();
             }, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
             ]);
 
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error al generar PDF')
-                ->body('Ocurrió un error: ' . $e->getMessage())
+                ->body('Ocurrió un error: '.$e->getMessage())
                 ->danger()
                 ->send();
         }
@@ -293,10 +304,11 @@ class InstructorPaymentsReport extends Page implements HasForms, HasActions
         $monthNames = [
             1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
             5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
-            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
         ];
 
-        $monthName = $monthNames[$month] ?? 'Mes ' . $month;
-        return $monthName . ' ' . $year;
+        $monthName = $monthNames[$month] ?? 'Mes '.$month;
+
+        return $monthName.' '.$year;
     }
 }

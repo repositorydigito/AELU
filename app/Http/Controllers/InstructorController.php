@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Exports\InstructorsTemplateExport; 
-use Maatwebsite\Excel\Facades\Excel; 
+use App\Exports\InstructorsTemplateExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InstructorController extends Controller
 {

@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\InstructorResource\Pages;
 
 use App\Filament\Resources\InstructorResource;
-use App\Models\MedicalRecord;
 use App\Models\Affidavit;
+use App\Models\MedicalRecord;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 

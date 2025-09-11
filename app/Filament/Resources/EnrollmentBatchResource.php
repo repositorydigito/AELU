@@ -3,25 +3,29 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\EnrollmentBatchResource\Pages;
-use App\Filament\Resources\EnrollmentBatchResource\RelationManagers;
 use App\Models\EnrollmentBatch;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Notifications\Notification;
 
 class EnrollmentBatchResource extends Resource
 {
     protected static ?string $model = EnrollmentBatch::class;
+
     protected static ?string $navigationLabel = 'Inscripciones';
+
     protected static ?string $pluralModelLabel = 'Inscripciones';
+
     protected static ?string $modelLabel = 'Inscripción';
+
     protected static ?int $navigationSort = 4;
+
     protected static ?string $navigationGroup = 'Gestión';
+
     protected static ?string $navigationIcon = 'heroicon-o-pencil-square';
 
     public static function form(Form $form): Form
@@ -33,17 +37,16 @@ class EnrollmentBatchResource extends Resource
                         Forms\Components\Select::make('student_id')
                             ->label('Estudiante')
                             ->relationship('student', 'first_names')
-                            ->getOptionLabelFromRecordUsing(fn ($record) =>
-                                "{$record->first_names} {$record->last_names}"
+                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}"
                             )
                             ->searchable(['first_names', 'last_names'])
                             ->required()
                             ->disabled(),
 
-                            Forms\Components\DateTimePicker::make('created_at')
-                                ->label('Fecha y Hora de Inscripción')
-                                ->required()
-                                ->disabled(),
+                        Forms\Components\DateTimePicker::make('created_at')
+                            ->label('Fecha y Hora de Inscripción')
+                            ->required()
+                            ->disabled(),
 
                         Forms\Components\TextInput::make('total_amount')
                             ->label('Monto Total')
@@ -115,9 +118,9 @@ class EnrollmentBatchResource extends Resource
                                         $dayNames = [
                                             1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
                                             4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                            7 => 'Domingo', 0 => 'Domingo'
+                                            7 => 'Domingo', 0 => 'Domingo',
                                         ];
-                                        $dayInSpanish = $dayNames[$record->day_of_week] ?? 'Día ' . $record->day_of_week;
+                                        $dayInSpanish = $dayNames[$record->day_of_week] ?? 'Día '.$record->day_of_week;
                                         $startTime = \Carbon\Carbon::parse($record->start_time)->format('H:i');
 
                                         return "{$record->workshop->name} - {$dayInSpanish} {$startTime}";
@@ -163,8 +166,7 @@ class EnrollmentBatchResource extends Resource
                     ->label('Estudiante')
                     ->searchable(['student.first_names', 'student.last_names'])
                     ->sortable()
-                    ->formatStateUsing(fn ($record) =>
-                        $record->student->first_names . ' ' . $record->student->last_names
+                    ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names
                     ),
 
                 Tables\Columns\TextColumn::make('workshops_list')
@@ -176,12 +178,12 @@ class EnrollmentBatchResource extends Resource
 
                 Tables\Columns\TextColumn::make('workshops_count')
                     ->label('Cantidad')
-                    ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Taller' : ' Talleres'))
+                    ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Taller' : ' Talleres'))
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('total_classes')
                     ->label('Total Clases')
-                    ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Clase' : ' Clases'))
+                    ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Clase' : ' Clases'))
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -300,7 +302,7 @@ class EnrollmentBatchResource extends Resource
                                             <h3 class="font-semibold text-green-800 mb-2">Confirmar Pago en Efectivo</h3>
                                             <p class="text-sm text-green-700">
                                                 ¿Confirmas que has recibido el pago en efectivo por el monto total de
-                                                <strong>S/ ' . number_format($record->total_amount, 2) . '</strong>?
+                                                <strong>S/ '.number_format($record->total_amount, 2).'</strong>?
                                             </p>
                                         </div>
                                     ')),
@@ -326,9 +328,9 @@ class EnrollmentBatchResource extends Resource
                         }
 
                         // Agregar notas si se proporcionaron
-                        if (!empty($data['payment_notes'])) {
-                            $existingNotes = $record->notes ? $record->notes . "\n\n" : '';
-                            $updates['notes'] = $existingNotes . "Pago registrado por " . auth()->user()->name . " el " . now()->format('d/m/Y H:i') . ":\n" . $data['payment_notes'];
+                        if (! empty($data['payment_notes'])) {
+                            $existingNotes = $record->notes ? $record->notes."\n\n" : '';
+                            $updates['notes'] = $existingNotes.'Pago registrado por '.auth()->user()->name.' el '.now()->format('d/m/Y H:i').":\n".$data['payment_notes'];
                         }
 
                         $record->update($updates);
@@ -341,7 +343,7 @@ class EnrollmentBatchResource extends Resource
 
                         $message = $record->payment_method === 'link'
                             ? "Pago registrado exitosamente. Código: {$data['batch_code']}"
-                            : "Pago en efectivo confirmado exitosamente";
+                            : 'Pago en efectivo confirmado exitosamente';
 
                         Notification::make()
                             ->title('Pago Registrado')
@@ -361,8 +363,7 @@ class EnrollmentBatchResource extends Resource
                     })
                     ->modalSubmitActionLabel('Registrar Pago')
                     ->modalCancelActionLabel('Cancelar')
-                    ->visible(fn (EnrollmentBatch $record): bool =>
-                        $record->payment_status === 'pending'
+                    ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'pending'
                     )
                     ->color('success'),
                 Tables\Actions\Action::make('cancel_enrollment')
@@ -372,7 +373,7 @@ class EnrollmentBatchResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Anular Inscripción')
                     ->modalDescription(function (EnrollmentBatch $record) {
-                        $statusText = match($record->payment_status) {
+                        $statusText = match ($record->payment_status) {
                             'pending' => 'en proceso',
                             'completed' => 'inscrito',
                             default => $record->payment_status
@@ -412,9 +413,9 @@ class EnrollmentBatchResource extends Resource
                                     'cancelled_at' => now(),
                                     'cancelled_by_user_id' => auth()->id(),
                                     'cancellation_reason' => $data['cancellation_reason'],
-                                    'notes' => ($record->notes ? $record->notes . "\n\n" : '') .
-                                            "Anulación registrada por " . auth()->user()->name . " el " . now()->format('d/m/Y H:i') .
-                                            ":\nMotivo: " . $data['cancellation_reason']
+                                    'notes' => ($record->notes ? $record->notes."\n\n" : '').
+                                            'Anulación registrada por '.auth()->user()->name.' el '.now()->format('d/m/Y H:i').
+                                            ":\nMotivo: ".$data['cancellation_reason'],
                                 ]);
 
                                 // Actualizar todas las inscripciones individuales del lote
@@ -432,13 +433,12 @@ class EnrollmentBatchResource extends Resource
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->title('Error al anular inscripción')
-                                ->body('Hubo un problema al procesar la anulación: ' . $e->getMessage())
+                                ->body('Hubo un problema al procesar la anulación: '.$e->getMessage())
                                 ->danger()
                                 ->send();
                         }
                     })
-                    ->visible(fn (EnrollmentBatch $record): bool =>
-                        in_array($record->payment_status, ['pending', 'completed'])
+                    ->visible(fn (EnrollmentBatch $record): bool => in_array($record->payment_status, ['pending', 'completed'])
                     ),
             ])
             ->bulkActions([

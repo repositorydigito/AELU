@@ -2,12 +2,10 @@
 
 namespace App\Observers;
 
-use App\Models\StudentEnrollment;
 use App\Models\InstructorPayment;
 use App\Models\InstructorWorkshop;
-use App\Models\WorkshopClass;
 use App\Models\MonthlyInstructorRate;
-use Carbon\Carbon;
+use App\Models\StudentEnrollment;
 use Illuminate\Support\Facades\DB;
 
 class StudentEnrollmentObserver
@@ -34,19 +32,19 @@ class StudentEnrollmentObserver
         $instructorWorkshopId = $studentEnrollment->instructor_workshop_id;
         $monthlyPeriodId = $studentEnrollment->monthly_period_id;
 
-        if (!$instructorWorkshopId || !$monthlyPeriodId) {
+        if (! $instructorWorkshopId || ! $monthlyPeriodId) {
             return;
         }
 
         $instructorWorkshop = InstructorWorkshop::find($instructorWorkshopId);
-        if (!$instructorWorkshop) {
+        if (! $instructorWorkshop) {
             return;
         }
 
         // Obtener la tarifa mensual para voluntarios
         $monthlyRate = MonthlyInstructorRate::where('monthly_period_id', $monthlyPeriodId)
-                                           ->where('is_active', true)
-                                           ->first();
+            ->where('is_active', true)
+            ->first();
 
         $calculatedAmount = 0;
         $paymentType = $instructorWorkshop->payment_type;
@@ -96,7 +94,7 @@ class StudentEnrollmentObserver
             // Si no está definida, calcular desde el Workshop (convertir minutos a horas)
             $durationHours = $instructorWorkshop->duration_hours;
 
-            if (!$durationHours && $instructorWorkshop->workshop) {
+            if (! $durationHours && $instructorWorkshop->workshop) {
                 // Convertir minutos del workshop a horas
                 $durationMinutes = $instructorWorkshop->workshop->duration ?? 60;
                 $durationHours = $durationMinutes / 60;
@@ -123,9 +121,9 @@ class StudentEnrollmentObserver
         // Preparar notas informativas
         $notes = '';
         if ($instructorWorkshop->isVolunteer()) {
-            $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ " . number_format($monthlyRevenue, 2) . " × {$appliedVolunteerPercentage}% = S/ " . number_format($calculatedAmount, 2);
+            $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ ".number_format($monthlyRevenue, 2)." × {$appliedVolunteerPercentage}% = S/ ".number_format($calculatedAmount, 2);
         } elseif ($instructorWorkshop->isHourly()) {
-            $notes = "Pago por horas: {$totalHours} horas totales (4 clases × {$durationHours} hrs/clase) × S/ {$appliedHourlyRate}/hora = S/ " . number_format($calculatedAmount, 2);
+            $notes = "Pago por horas: {$totalHours} horas totales (4 clases × {$durationHours} hrs/clase) × S/ {$appliedHourlyRate}/hora = S/ ".number_format($calculatedAmount, 2);
         }
 
         // Crear o actualizar el registro de pago del instructor
@@ -160,11 +158,11 @@ class StudentEnrollmentObserver
 
                 // Preservar estado de pago existente
                 'payment_status' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
-                                                    ->where('monthly_period_id', $monthlyPeriodId)
-                                                    ->value('payment_status') ?? 'pending',
+                    ->where('monthly_period_id', $monthlyPeriodId)
+                    ->value('payment_status') ?? 'pending',
                 'payment_date' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
-                                                   ->where('monthly_period_id', $monthlyPeriodId)
-                                                   ->value('payment_date'),
+                    ->where('monthly_period_id', $monthlyPeriodId)
+                    ->value('payment_date'),
             ]
         );
     }

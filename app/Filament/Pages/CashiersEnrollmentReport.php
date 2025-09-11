@@ -1,38 +1,45 @@
 <?php
 
 // App/Filament/Pages/CashiersEnrollmentReport.php
+
 namespace App\Filament\Pages;
 
-use App\Models\EnrollmentBatch;
 use App\Models\User;
-use Filament\Pages\Page;
-use Filament\Forms\Form;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\View;
 
-class CashiersEnrollmentReport extends Page implements HasForms, HasActions
+class CashiersEnrollmentReport extends Page implements HasActions, HasForms
 {
-    use InteractsWithForms;
     use InteractsWithActions;
+    use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
     protected static string $view = 'filament.pages.cashiers-enrollment-report';
+
     protected static ?string $title = 'Inscripciones por Cajero';
+
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
+
     public $selectedCashier = null;
+
     public $selectedDateFrom = null;
+
     public $selectedDateTo = null;
+
     public $cashierEnrollments = [];
 
     public function mount(): void
@@ -83,8 +90,9 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
 
     public function loadCashierEnrollments(): void
     {
-        if (!$this->selectedCashier || !$this->selectedDateFrom || !$this->selectedDateTo) {
+        if (! $this->selectedCashier || ! $this->selectedDateFrom || ! $this->selectedDateTo) {
             $this->cashierEnrollments = [];
+
             return;
         }
 
@@ -93,22 +101,23 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
 
         // Obtener StudentEnrollments individuales en lugar de agrupar por lotes
         $enrollments = \App\Models\StudentEnrollment::with([
-                'student',
-                'instructorWorkshop.workshop',
-                'instructorWorkshop.instructor',
-                'enrollmentBatch.paymentRegisteredByUser',
-                'enrollmentBatch'
-            ])
+            'student',
+            'instructorWorkshop.workshop',
+            'instructorWorkshop.instructor',
+            'enrollmentBatch.paymentRegisteredByUser',
+            'enrollmentBatch',
+        ])
             ->whereHas('enrollmentBatch', function ($query) use ($dateFromForQuery, $dateToForQuery) {
                 $query->where('payment_registered_by_user_id', $this->selectedCashier)
-                      ->whereDate('payment_registered_at', '>=', $dateFromForQuery)
-                      ->whereDate('payment_registered_at', '<=', $dateToForQuery);
+                    ->whereDate('payment_registered_at', '>=', $dateFromForQuery)
+                    ->whereDate('payment_registered_at', '<=', $dateToForQuery);
             })
             ->orderBy('enrollment_date', 'desc')
             ->get();
 
         if ($enrollments->isEmpty()) {
             $this->cashierEnrollments = [];
+
             return;
         }
 
@@ -121,13 +130,13 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
 
             return [
                 'id' => $enrollment->id,
-                'student_name' => $student ? ($student->first_names . ' ' . $student->last_names) : 'N/A',
+                'student_name' => $student ? ($student->first_names.' '.$student->last_names) : 'N/A',
                 'student_code' => $student->student_code ?? 'N/A',
                 'cashier_name' => $cashier ? $cashier->name : 'N/A',
                 'payment_registered_time' => $batch && $batch->payment_registered_at ? $batch->payment_registered_at->format('d/m/Y H:i') : 'N/A',
                 'enrollment_date' => $enrollment->enrollment_date->format('d/m/Y'),
                 'workshop_name' => $workshop->name ?? 'N/A',
-                'instructor_name' => $instructor ? ($instructor->first_names . ' ' . $instructor->last_names) : 'N/A',
+                'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A',
                 'number_of_classes' => $enrollment->number_of_classes,
                 'total_amount' => $enrollment->total_amount,
                 'payment_method' => $batch && $batch->payment_method === 'cash' ? 'Efectivo' : 'Link',
@@ -155,14 +164,14 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
             ->label('Generar PDF')
             ->color('primary')
             ->icon('heroicon-o-document-arrow-down')
-            ->visible(fn () => !empty($this->cashierEnrollments))
+            ->visible(fn () => ! empty($this->cashierEnrollments))
             ->action(function () {
                 try {
                     return $this->generatePDF();
                 } catch (\Exception $e) {
                     Notification::make()
                         ->title('Error en la acción')
-                        ->body('Error: ' . $e->getMessage())
+                        ->body('Error: '.$e->getMessage())
                         ->danger()
                         ->send();
                 }
@@ -171,12 +180,13 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
 
     public function generatePDF()
     {
-        if (empty($this->cashierEnrollments) || !$this->selectedCashier) {
+        if (empty($this->cashierEnrollments) || ! $this->selectedCashier) {
             Notification::make()
                 ->title('Error')
                 ->body('Debe seleccionar un cajero y que tenga registros de pago')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -188,10 +198,10 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
                 'cashier_name' => $cashierName,
                 'date_from' => \Carbon\Carbon::parse($this->selectedDateFrom)->format('d/m/Y'),
                 'date_to' => \Carbon\Carbon::parse($this->selectedDateTo)->format('d/m/Y'),
-                'generated_at' => now()->format('d/m/Y H:i')
+                'generated_at' => now()->format('d/m/Y H:i'),
             ])->render();
 
-            $options = new Options();
+            $options = new Options;
             $options->set('isHtml5ParserEnabled', true);
             $options->set('isRemoteEnabled', true);
             $dompdf = new Dompdf($options);
@@ -201,21 +211,21 @@ class CashiersEnrollmentReport extends Page implements HasForms, HasActions
 
             $dompdf->render();
 
-            $fileName = 'inscripciones-cajero-' . str_replace(' ', '-', strtolower($cashierName)) . '-' .
-                       \Carbon\Carbon::parse($this->selectedDateFrom)->format('d-m-Y') . '-' .
-                       \Carbon\Carbon::parse($this->selectedDateTo)->format('d-m-Y') . '.pdf';
+            $fileName = 'inscripciones-cajero-'.str_replace(' ', '-', strtolower($cashierName)).'-'.
+                       \Carbon\Carbon::parse($this->selectedDateFrom)->format('d-m-Y').'-'.
+                       \Carbon\Carbon::parse($this->selectedDateTo)->format('d-m-Y').'.pdf';
 
             return response()->stream(function () use ($dompdf) {
                 echo $dompdf->output();
             }, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
             ]);
 
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error al generar PDF')
-                ->body('Ocurrió un error: ' . $e->getMessage())
+                ->body('Ocurrió un error: '.$e->getMessage())
                 ->danger()
                 ->send();
         }

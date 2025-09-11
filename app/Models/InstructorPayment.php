@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class InstructorPayment extends Model
 {
@@ -43,14 +42,17 @@ class InstructorPayment extends Model
     {
         return $this->belongsTo(Instructor::class);
     }
+
     public function instructorWorkshop()
     {
         return $this->belongsTo(InstructorWorkshop::class);
     }
+
     public function monthlyPeriod()
     {
         return $this->belongsTo(MonthlyPeriod::class);
     }
+
     public function monthlyInstructorRate(): BelongsTo
     {
         return $this->belongsTo(MonthlyInstructorRate::class);
@@ -68,5 +70,4 @@ class InstructorPayment extends Model
             'workshop_id'
         );
     }
-
 }

@@ -25,7 +25,7 @@ return new class extends Migration
             $table->decimal('custom_volunteer_percentage', 5, 2)->nullable();
             $table->timestamps();
 
-            $table->unique(['instructor_id', 'workshop_id', 'day_of_week', 'start_time','initial_monthly_period_id'], 'unique_schedule');
+            $table->unique(['instructor_id', 'workshop_id', 'day_of_week', 'start_time', 'initial_monthly_period_id'], 'unique_schedule');
         });
     }
 

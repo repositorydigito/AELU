@@ -22,9 +22,9 @@ class MonthlyInstructorRate extends Model
     {
         return $this->belongsTo(MonthlyPeriod::class);
     }
+
     public function instructorPayments()
     {
         return $this->hasMany(InstructorPayment::class);
     }
-    
 }

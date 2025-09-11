@@ -3,45 +3,45 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\InstructorResource\Pages;
-use App\Filament\Resources\InstructorResource\RelationManagers;
 use App\Models\Instructor;
 use App\Models\Workshop;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TimePicker;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
-use Filament\Support\RawJs;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class InstructorResource extends Resource
 {
     protected static ?string $model = Instructor::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
+
     protected static ?string $navigationLabel = 'Profesores';
+
     protected static ?string $pluralModelLabel = 'Profesores';
+
     protected static ?string $modelLabel = 'Profesor';
+
     protected static ?string $navigationGroup = 'Gestión';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
@@ -51,48 +51,48 @@ class InstructorResource extends Resource
                 Wizard::make([
                     Step::make('Datos Personales')
                         ->schema([
-                                Section::make('Datos Personales')
-                                    ->schema([
-                                        Grid::make(2)
-                                            ->schema([
+                            Section::make('Datos Personales')
+                                ->schema([
+                                    Grid::make(2)
+                                        ->schema([
                                             Grid::make(1)
                                                 ->columnSpan(1)
-                                            ->schema([
-                                                TextInput::make('last_names')
-                                                    ->label('Apellidos')
-                                                    ->required()
-                                                    ->maxLength(255)
-                                                    ->columnSpan(1),
-                                                TextInput::make('first_names')
-                                                    ->label('Nombres')
-                                                    ->required()
-                                                    ->maxLength(20),
-                                                    //->columnSpan(1),
-                                                Grid::make(2)
-                                                    ->schema([
-                                                        Select::make('document_type')
-                                                            ->label('Tipo de documento')
-                                                            ->options([
-                                                                'DNI' => 'DNI',
-                                                                'CE' => 'Carné de Extranjería',
-                                                                'Pasaporte' => 'Pasaporte',
-                                                            ])
-                                                            ->required()
-                                                            ->validationMessages(['required' => 'Este campo es obligatorio']),
-                                                        TextInput::make('document_number')
-                                                            ->label('Número de Documento')
-                                                            ->required()
-                                                            ->validationMessages(['required' => 'Este campo es obligatorio'])
-                                                            ->maxLength(15),
-                                                    ]),
-                                            ]),
+                                                ->schema([
+                                                    TextInput::make('last_names')
+                                                        ->label('Apellidos')
+                                                        ->required()
+                                                        ->maxLength(255)
+                                                        ->columnSpan(1),
+                                                    TextInput::make('first_names')
+                                                        ->label('Nombres')
+                                                        ->required()
+                                                        ->maxLength(20),
+                                                    // ->columnSpan(1),
+                                                    Grid::make(2)
+                                                        ->schema([
+                                                            Select::make('document_type')
+                                                                ->label('Tipo de documento')
+                                                                ->options([
+                                                                    'DNI' => 'DNI',
+                                                                    'CE' => 'Carné de Extranjería',
+                                                                    'Pasaporte' => 'Pasaporte',
+                                                                ])
+                                                                ->required()
+                                                                ->validationMessages(['required' => 'Este campo es obligatorio']),
+                                                            TextInput::make('document_number')
+                                                                ->label('Número de Documento')
+                                                                ->required()
+                                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
+                                                                ->maxLength(15),
+                                                        ]),
+                                                ]),
                                             FileUpload::make('photo')
                                                 ->label('Foto')
                                                 ->image()
                                                 ->directory('instructors-photos')
                                                 ->maxSize(10240)
                                                 ->columnSpan(1),
-                                    ]),
+                                        ]),
                                     Grid::make(2)
                                         ->schema([
                                             DatePicker::make('birth_date')
@@ -140,7 +140,7 @@ class InstructorResource extends Resource
                                                 ->maxLength(255)
                                                 ->nullable(),
                                         ]),
-                                    ]),
+                                ]),
                         ]),
                     Step::make('Ficha médica')
                         ->schema([
@@ -230,6 +230,7 @@ class InstructorResource extends Resource
                                                     ->columns(1)
                                                     ->disableOptionWhen(function (string $value, callable $get) {
                                                         $selected = $get('medical_conditions') ?? [];
+
                                                         return in_array('Ninguna', $selected) && $value !== 'Ninguna';
                                                     })
                                                     ->reactive(),
@@ -242,16 +243,16 @@ class InstructorResource extends Resource
                                                         'Otros' => 'Otros',
                                                     ])
                                                     ->columns(1)
-                                                    ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []))
+                                                    ->hidden(fn (callable $get) => ! in_array('Alergias', $get('medical_conditions') ?? []))
                                                     ->reactive(),
 
                                                 Textarea::make('allergy_details')
                                                     ->label('Detalle el tipo de alergia')
-                                                    ->hidden(fn (callable $get) => !in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
+                                                    ->hidden(fn (callable $get) => ! in_array('Alergias', $get('medical_conditions') ?? []) || empty($get('allergies'))),
 
                                                 TextInput::make('medical_conditions_other')
                                                     ->label('Especifique otra condición médica')
-                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('medical_conditions') ?? []))
+                                                    ->hidden(fn (callable $get) => ! in_array('Otros', $get('medical_conditions') ?? []))
                                                     ->reactive(),
                                             ]),
 
@@ -273,12 +274,13 @@ class InstructorResource extends Resource
                                                     ->reactive()
                                                     ->disableOptionWhen(function (string $value, callable $get) {
                                                         $selected = $get('surgical_operations') ?? [];
+
                                                         return in_array('Ninguna', $selected) && $value !== 'Ninguna';
                                                     }),
 
                                                 TextInput::make('surgical_operation_details')
                                                     ->label('Especificar')
-                                                    ->hidden(fn (callable $get) => !in_array('Otros', $get('surgical_operations') ?? [])),
+                                                    ->hidden(fn (callable $get) => ! in_array('Otros', $get('surgical_operations') ?? [])),
                                             ]),
                                         ]),
 
@@ -344,12 +346,12 @@ class InstructorResource extends Resource
                                                                 ->label('Horario')
                                                                 ->content(function (callable $get) {
                                                                     $workshopId = $get('workshop_id');
-                                                                    if (!$workshopId) {
+                                                                    if (! $workshopId) {
                                                                         return 'Selecciona un taller para ver el horario';
                                                                     }
 
                                                                     $workshop = Workshop::find($workshopId);
-                                                                    if (!$workshop) {
+                                                                    if (! $workshop) {
                                                                         return 'Horario no disponible';
                                                                     }
 
@@ -437,8 +439,7 @@ class InstructorResource extends Resource
                                         ])
                                         ->columns(2)
                                         ->addActionLabel('Agregar Taller')
-                                        ->itemLabel(fn (array $state): ?string =>
-                                            Workshop::find($state['workshop_id'])?->name ?? 'Taller'
+                                        ->itemLabel(fn (array $state): ?string => Workshop::find($state['workshop_id'])?->name ?? 'Taller'
                                         )
                                         ->defaultItems(0),
                                 ]),
@@ -488,10 +489,10 @@ class InstructorResource extends Resource
                                         ->schema([
                                             Placeholder::make('weight_summary')
                                                 ->label('Peso')
-                                                ->content(fn (callable $get) => $get('medicalRecord.weight') ? $get('medicalRecord.weight') . ' kg' : 'N/A'),
+                                                ->content(fn (callable $get) => $get('medicalRecord.weight') ? $get('medicalRecord.weight').' kg' : 'N/A'),
                                             Placeholder::make('height_summary')
                                                 ->label('Talla')
-                                                ->content(fn (callable $get) => $get('medicalRecord.height') ? $get('medicalRecord.height') . ' m' : 'N/A'),
+                                                ->content(fn (callable $get) => $get('medicalRecord.height') ? $get('medicalRecord.height').' m' : 'N/A'),
                                             Placeholder::make('gender_summary')
                                                 ->label('Género')
                                                 ->content(fn (callable $get) => $get('medicalRecord.gender') ?? 'N/A'),
@@ -520,7 +521,7 @@ class InstructorResource extends Resource
                                             Placeholder::make('surgical_operation_details_summary')
                                                 ->label('Especificar Operación')
                                                 ->content(fn (callable $get) => in_array('Otros', $get('medicalRecord.surgical_operations') ?? []) ? ($get('medicalRecord.surgical_operation_details') ?? 'N/A') : 'No aplica')
-                                                ->hidden(fn (callable $get) => !in_array('Otros', $get('medicalRecord.surgical_operations') ?? [])),
+                                                ->hidden(fn (callable $get) => ! in_array('Otros', $get('medicalRecord.surgical_operations') ?? [])),
 
                                             Placeholder::make('medications_summary_text')
                                                 ->label('Medicamentos que toma')
@@ -532,15 +533,16 @@ class InstructorResource extends Resource
 
                                                     $formattedMedications = collect($medications)->map(function ($med) {
                                                         $details = [];
-                                                        if (!empty($med['medicine'])) {
+                                                        if (! empty($med['medicine'])) {
                                                             $details[] = $med['medicine'];
                                                         }
-                                                        if (!empty($med['dose'])) {
-                                                            $details[] = '(' . $med['dose'] . ')';
+                                                        if (! empty($med['dose'])) {
+                                                            $details[] = '('.$med['dose'].')';
                                                         }
-                                                        if (!empty($med['schedule'])) {
-                                                            $details[] = ' - ' . $med['schedule'];
+                                                        if (! empty($med['schedule'])) {
+                                                            $details[] = ' - '.$med['schedule'];
                                                         }
+
                                                         return implode(' ', $details);
                                                     })->implode('<br>');
 
@@ -577,7 +579,7 @@ class InstructorResource extends Resource
                                             ->label('Generar Declaración Jurada')
                                             ->color('success')
                                             ->icon('heroicon-o-document-arrow-down')
-                                            ->disabled(fn (callable $get, $livewire) => !$get('digital_signature_and_fingerprint_path') || !isset($livewire->record) || !$livewire->record?->id)
+                                            ->disabled(fn (callable $get, $livewire) => ! $get('digital_signature_and_fingerprint_path') || ! isset($livewire->record) || ! $livewire->record?->id)
                                             ->action(function ($livewire, Forms\Get $get) {
                                                 $instructor = $livewire->record;
 
@@ -591,13 +593,13 @@ class InstructorResource extends Resource
                                                         ->body('Para generar la declaración jurada, el instructor debe haber sido guardado previamente. Por favor, finalice el registro o acceda a la edición de un instructor existente.')
                                                         ->send();
                                                 }
-                                            })
-                                        ])
+                                            }),
+                                    ]),
                                 ]),
                         ]),
                 ])
-                ->skippable()
-                ->columnSpanFull(),
+                    ->skippable()
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -629,7 +631,9 @@ class InstructorResource extends Resource
                             ->map(function ($workshops, $workshopName) {
                                 $schedules = $workshops->map(function ($iw) {
                                     $workshop = $iw->workshop;
-                                    if (!$workshop) return 'Horario no disponible';
+                                    if (! $workshop) {
+                                        return 'Horario no disponible';
+                                    }
 
                                     $startTime = $workshop->start_time ?
                                         \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
@@ -649,11 +653,13 @@ class InstructorResource extends Resource
                     ->label('Horarios')
                     ->getStateUsing(function (Instructor $record) {
                         $totalSchedules = $record->instructorWorkshops->count();
-                        return $totalSchedules . ($totalSchedules === 1 ? ' horario' : ' horarios');
+
+                        return $totalSchedules.($totalSchedules === 1 ? ' horario' : ' horarios');
                     })
                     ->badge()
                     ->color(function (Instructor $record) {
                         $count = $record->instructorWorkshops->count();
+
                         return match (true) {
                             $count === 0 => 'gray',
                             $count === 1 => 'success',
@@ -703,4 +709,3 @@ class InstructorResource extends Resource
         return self::getBadgeCount();
     }
 }
-

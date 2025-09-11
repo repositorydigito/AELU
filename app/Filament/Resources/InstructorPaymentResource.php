@@ -3,32 +3,28 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\InstructorPaymentResource\Pages;
-use App\Filament\Resources\InstructorPaymentResource\RelationManagers;
 use App\Models\InstructorPayment;
-use App\Models\WorkshopClass;
-use App\Models\StudentEnrollment;
-use App\Models\EnrollmentClass;
-use App\Models\InstructorWorkshop;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
-use Illuminate\Support\HtmlString;
-use Filament\Support\Enums\FontWeight;
 
 class InstructorPaymentResource extends Resource
 {
     protected static ?string $model = InstructorPayment::class;
+
     protected static ?string $navigationLabel = 'Pago de Profesores';
+
     protected static ?string $pluralModelLabel = 'Pagos';
+
     protected static ?string $modelLabel = 'Pago';
+
     protected static ?int $navigationSort = 3;
+
     protected static ?string $navigationGroup = 'Tesorería';
+
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
     public static function form(Form $form): Form
@@ -41,7 +37,7 @@ class InstructorPaymentResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('monthly_period_id')
                                     ->relationship('monthlyPeriod', 'year')
-                                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->year} - " . \Carbon\Carbon::create()->month($record->month)->monthName)
+                                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->year} - ".\Carbon\Carbon::create()->month($record->month)->monthName)
                                     ->label('Periodo Mensual')
                                     ->disabled()
                                     ->dehydrated(true),
@@ -57,12 +53,14 @@ class InstructorPaymentResource extends Resource
                                     ->label('Taller y Horario')
                                     ->disabled()
                                     ->formatStateUsing(function ($record) {
-                                        if (!$record || !$record->instructorWorkshop) return 'N/A';
+                                        if (! $record || ! $record->instructorWorkshop) {
+                                            return 'N/A';
+                                        }
 
                                         $workshop = $record->instructorWorkshop;
                                         $dayNames = [
                                             0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'
+                                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
                                         ];
 
                                         $dayOfWeek = $dayNames[$workshop->day_of_week] ?? 'Desconocido';
@@ -111,7 +109,7 @@ class InstructorPaymentResource extends Resource
                                 Forms\Components\TextInput::make('applied_volunteer_percentage')
                                     ->label('Porcentaje Aplicado')
                                     ->disabled()
-                                    ->formatStateUsing(fn ($state) => $state ? number_format($state * 100, 2) . '%' : 'N/A'),
+                                    ->formatStateUsing(fn ($state) => $state ? number_format($state * 100, 2).'%' : 'N/A'),
                             ]),
                     ])
                     ->visible(fn ($record) => $record?->payment_type === 'volunteer'),
@@ -136,10 +134,13 @@ class InstructorPaymentResource extends Resource
                                     ->label('Cálculo')
                                     ->disabled()
                                     ->formatStateUsing(function ($record) {
-                                        if (!$record || $record->payment_type !== 'hourly') return 'N/A';
+                                        if (! $record || $record->payment_type !== 'hourly') {
+                                            return 'N/A';
+                                        }
                                         $hours = $record->total_hours ?? 0;
                                         $rate = $record->applied_hourly_rate ?? 0;
-                                        return "{$hours} horas × S/ {$rate} = S/ " . number_format($hours * $rate, 2);
+
+                                        return "{$hours} horas × S/ {$rate} = S/ ".number_format($hours * $rate, 2);
                                     }),
                             ]),
                     ])
@@ -185,8 +186,7 @@ class InstructorPaymentResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('instructor_info')
                     ->label('Instructor')
-                    ->getStateUsing(fn (InstructorPayment $record) =>
-                        "{$record->instructor->first_names} {$record->instructor->last_names}"
+                    ->getStateUsing(fn (InstructorPayment $record) => "{$record->instructor->first_names} {$record->instructor->last_names}"
                     )
                     ->searchable(['instructor.first_names', 'instructor.last_names'])
                     ->sortable(['instructor.first_names', 'instructor.last_names']),
@@ -195,11 +195,13 @@ class InstructorPaymentResource extends Resource
                     ->label('Taller y Horario')
                     ->getStateUsing(function (InstructorPayment $record) {
                         $workshop = $record->instructorWorkshop;
-                        if (!$workshop) return 'N/A';
+                        if (! $workshop) {
+                            return 'N/A';
+                        }
 
                         $dayNames = [
                             0 => 'Dom', 1 => 'Lun', 2 => 'Mar', 3 => 'Mié',
-                            4 => 'Jue', 5 => 'Vie', 6 => 'Sáb'
+                            4 => 'Jue', 5 => 'Vie', 6 => 'Sáb',
                         ];
 
                         $dayOfWeek = $dayNames[$workshop->day_of_week] ?? '?';
@@ -210,11 +212,13 @@ class InstructorPaymentResource extends Resource
                     })
                     ->description(function (InstructorPayment $record) {
                         $workshop = $record->instructorWorkshop;
-                        if (!$workshop) return '';
+                        if (! $workshop) {
+                            return '';
+                        }
 
                         $dayNames = [
                             0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado'
+                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
                         ];
 
                         $dayOfWeek = $dayNames[$workshop->day_of_week] ?? 'Desconocido';
@@ -228,8 +232,7 @@ class InstructorPaymentResource extends Resource
 
                 Tables\Columns\TextColumn::make('period_info')
                     ->label('Período')
-                    ->getStateUsing(fn (InstructorPayment $record) =>
-                        \Carbon\Carbon::create()->month($record->monthlyPeriod->month)
+                    ->getStateUsing(fn (InstructorPayment $record) => \Carbon\Carbon::create()->month($record->monthlyPeriod->month)
                         ->year($record->monthlyPeriod->year)
                         ->format('m/Y') // Este es el formato que necesitas: MM/YYYY
                     )
@@ -281,16 +284,14 @@ class InstructorPaymentResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('monthly_period_id')
                     ->relationship('monthlyPeriod', 'year')
-                    ->getOptionLabelFromRecordUsing(fn ($record) =>
-                        $record->year . ' - ' . \Carbon\Carbon::create()->month($record->month)->translatedFormat('F')
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->year.' - '.\Carbon\Carbon::create()->month($record->month)->translatedFormat('F')
                     )
                     ->label('Período')
                     ->native(false),
 
                 Tables\Filters\SelectFilter::make('instructor_id')
                     ->relationship('instructor', 'first_names')
-                    ->getOptionLabelFromRecordUsing(fn ($record) =>
-                        "{$record->first_names} {$record->last_names}"
+                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}"
                     )
                     ->label('Instructor')
                     ->searchable()
@@ -334,8 +335,7 @@ class InstructorPaymentResource extends Resource
                     ->visible(fn (InstructorPayment $record) => $record->payment_status === 'pending')
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar Pago')
-                    ->modalDescription(fn (InstructorPayment $record) =>
-                        "Confirma el pago de S/ " . number_format($record->calculated_amount, 2) . " para {$record->instructor->first_names} {$record->instructor->last_names}"
+                    ->modalDescription(fn (InstructorPayment $record) => 'Confirma el pago de S/ '.number_format($record->calculated_amount, 2)." para {$record->instructor->first_names} {$record->instructor->last_names}"
                     )
                     ->modalSubmitActionLabel('Confirmar Pago')
                     ->modalCancelActionLabel('Cancelar'),

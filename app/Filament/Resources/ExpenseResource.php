@@ -3,36 +3,38 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ExpenseResource\Pages;
-use App\Filament\Resources\ExpenseResource\RelationManagers;
 use App\Models\Expense;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Section;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\FileUpload;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 
 class ExpenseResource extends Resource
 {
     protected static ?string $model = Expense::class;
+
     protected static ?string $navigationLabel = 'Gastos Extra';
+
     protected static ?string $pluralModelLabel = 'Gastos Extra';
+
     protected static ?string $modelLabel = 'Gasto';
+
     protected static ?int $navigationSort = 3;
+
     protected static ?string $navigationGroup = 'Tesorería';
+
     protected static ?string $navigationIcon = 'heroicon-o-wallet';
 
     public static function form(Form $form): Form
@@ -124,9 +126,8 @@ class ExpenseResource extends Resource
                                             ->columnSpanFull(),
                                     ]),
                             ])
-                            ->itemLabel(fn (array $state): ?string =>
-                                !empty($state['razon_social']) && !empty($state['amount'])
-                                    ? $state['razon_social'] . ' - S/ ' . number_format(floatval($state['amount'] ?? 0), 2)
+                            ->itemLabel(fn (array $state): ?string => ! empty($state['razon_social']) && ! empty($state['amount'])
+                                    ? $state['razon_social'].' - S/ '.number_format(floatval($state['amount'] ?? 0), 2)
                                     : 'Nuevo Gasto'
                             )
                             ->defaultItems(1)
@@ -144,7 +145,8 @@ class ExpenseResource extends Resource
                                 $total = collect($details)->sum(function ($item) {
                                     return floatval($item['amount'] ?? 0);
                                 });
-                                return 'S/ ' . number_format($total, 2);
+
+                                return 'S/ '.number_format($total, 2);
                             })
                             ->live()
                             ->extraAttributes(['class' => 'text-lg font-bold text-primary-600']),
@@ -207,9 +209,9 @@ class ExpenseResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('created_at')
-                ->label('Fecha')
-                ->date('d/m/Y')
-                ->sortable(),
+                    ->label('Fecha')
+                    ->date('d/m/Y')
+                    ->sortable(),
 
                 // Columna para el Código de Vale
                 TextColumn::make('vale_code')

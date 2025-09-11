@@ -2,9 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Workshop;
 use App\Models\InstructorWorkshop;
-use App\Models\MonthlyPeriod;
+use App\Models\Workshop;
 
 class WorkshopAutoCreationService
 {
@@ -15,7 +14,7 @@ class WorkshopAutoCreationService
     {
         $previousInstructorWorkshop = InstructorWorkshop::with('workshop')->find($previousWorkshopId);
 
-        if (!$previousInstructorWorkshop || !$previousInstructorWorkshop->workshop) {
+        if (! $previousInstructorWorkshop || ! $previousInstructorWorkshop->workshop) {
             return null;
         }
 
@@ -93,14 +92,14 @@ class WorkshopAutoCreationService
     {
         $previousInstructorWorkshop = InstructorWorkshop::find($previousInstructorWorkshopId);
 
-        if (!$previousInstructorWorkshop) {
+        if (! $previousInstructorWorkshop) {
             return null;
         }
 
         // Primero intentar buscar uno existente
-        $existing = InstructorWorkshop::whereHas('workshop', function($query) use ($targetMonthlyPeriodId) {
-                $query->where('monthly_period_id', $targetMonthlyPeriodId);
-            })
+        $existing = InstructorWorkshop::whereHas('workshop', function ($query) use ($targetMonthlyPeriodId) {
+            $query->where('monthly_period_id', $targetMonthlyPeriodId);
+        })
             ->where('instructor_id', $previousInstructorWorkshop->instructor_id)
             ->where('day_of_week', $previousInstructorWorkshop->day_of_week)
             ->where('start_time', $previousInstructorWorkshop->start_time)

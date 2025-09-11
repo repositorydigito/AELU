@@ -19,7 +19,7 @@ class WorkshopObserver
         // Regenerar tarifas si cambia la tarifa mensual o el porcentaje de recargo
         if ($workshop->isDirty(['standard_monthly_fee', 'pricing_surcharge_percentage'])) {
             $this->syncPricing($workshop);
-        }       
+        }
     }
 
     protected function syncPricing(Workshop $workshop): void
@@ -76,12 +76,13 @@ class WorkshopObserver
                 ]);
             }
         });
-    }   
+    }
+
     protected function createInstructorWorkshop(Workshop $workshop): void
     {
         // Solo crear si no existe ya
         if ($workshop->instructorWorkshops()->count() === 0 && $workshop->instructor_id) {
-            
+
             // Mapear día de la semana a número
             $dayMapping = [
                 'Lunes' => 1,
@@ -101,7 +102,7 @@ class WorkshopObserver
                     $startTime = \Carbon\Carbon::parse($workshop->start_time);
                     $endTime = $startTime->addMinutes($workshop->duration)->format('H:i:s');
                 } catch (\Exception $e) {
-                    info("Error calculating end_time for workshop {$workshop->id}: " . $e->getMessage());
+                    info("Error calculating end_time for workshop {$workshop->id}: ".$e->getMessage());
                     $endTime = $workshop->start_time; // Fallback
                 }
             }

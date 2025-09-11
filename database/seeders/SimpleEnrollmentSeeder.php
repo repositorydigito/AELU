@@ -2,13 +2,12 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-use App\Models\Student;
-use App\Models\MonthlyPeriod;
-use App\Models\InstructorWorkshop;
-use App\Models\StudentEnrollment;
 use App\Models\EnrollmentBatch;
+use App\Models\InstructorWorkshop;
+use App\Models\MonthlyPeriod;
+use App\Models\Student;
+use App\Models\StudentEnrollment;
+use Illuminate\Database\Seeder;
 
 class SimpleEnrollmentSeeder extends Seeder
 {
@@ -27,17 +26,19 @@ class SimpleEnrollmentSeeder extends Seeder
 
         // 2. Obtener algunos estudiantes existentes
         $students = Student::take(3)->get();
-        
+
         if ($students->count() < 1) {
             $this->command->error('❌ No hay estudiantes en la base de datos. Necesitas crear al menos uno primero.');
+
             return;
         }
 
         // 3. Obtener algunos instructor_workshops existentes
         $instructorWorkshops = InstructorWorkshop::take(4)->get();
-        
+
         if ($instructorWorkshops->count() < 1) {
             $this->command->error('❌ No hay instructor_workshops en la base de datos. Necesitas crear al menos uno primero.');
+
             return;
         }
 
@@ -46,7 +47,7 @@ class SimpleEnrollmentSeeder extends Seeder
             // Crear batch para el estudiante
             $batch = EnrollmentBatch::create([
                 'student_id' => $student->id,
-                'batch_code' => 'TEST-BATCH-' . $student->id . '-' . $previousMonth->format('Y-m'),
+                'batch_code' => 'TEST-BATCH-'.$student->id.'-'.$previousMonth->format('Y-m'),
                 'total_amount' => 0, // Lo actualizaremos después
                 'payment_status' => 'completed',
                 'payment_method' => 'cash',
@@ -58,7 +59,7 @@ class SimpleEnrollmentSeeder extends Seeder
 
             // Crear inscripciones aleatorias
             $selectedWorkshops = $instructorWorkshops->random($enrollmentCount);
-            
+
             foreach ($selectedWorkshops as $instructorWorkshop) {
                 $workshop = $instructorWorkshop->workshop;
                 $baseAmount = $workshop->standard_monthly_fee;
@@ -88,7 +89,7 @@ class SimpleEnrollmentSeeder extends Seeder
         }
 
         $totalEnrollments = StudentEnrollment::where('monthly_period_id', $previousPeriod->id)->count();
-        
+
         $this->command->info('🎉 Inscripciones de prueba creadas exitosamente!');
         $this->command->info("📅 Período: {$previousPeriod->year}-{$previousPeriod->month}");
         $this->command->info("📊 Total de inscripciones creadas: {$totalEnrollments}");

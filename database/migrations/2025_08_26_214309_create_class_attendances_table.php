@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('comments')->nullable();
             $table->foreignId('recorded_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
-            
+
             // Evitar duplicados para la misma clase y estudiante
             $table->unique(['workshop_class_id', 'student_enrollment_id'], 'unique_attendance');
         });

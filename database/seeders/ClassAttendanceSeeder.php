@@ -2,12 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\ClassAttendance;
-use App\Models\WorkshopClass;
 use App\Models\StudentEnrollment;
 use App\Models\User;
+use App\Models\WorkshopClass;
+use Illuminate\Database\Seeder;
 
 class ClassAttendanceSeeder extends Seeder
 {
@@ -18,25 +17,28 @@ class ClassAttendanceSeeder extends Seeder
     {
         // Obtener un usuario admin para registrar las asistencias
         $adminUser = User::first();
-        
-        if (!$adminUser) {
+
+        if (! $adminUser) {
             $this->command->warn('No hay usuarios en la base de datos. No se pueden crear asistencias.');
+
             return;
         }
 
         // Obtener todas las clases de talleres
         $workshopClasses = WorkshopClass::all();
-        
+
         if ($workshopClasses->isEmpty()) {
             $this->command->warn('No hay clases de talleres en la base de datos.');
+
             return;
         }
 
         // Obtener todas las matrículas de estudiantes
         $studentEnrollments = StudentEnrollment::with('instructorWorkshop.workshop')->get();
-        
+
         if ($studentEnrollments->isEmpty()) {
             $this->command->warn('No hay matrículas de estudiantes en la base de datos.');
+
             return;
         }
 
@@ -56,15 +58,15 @@ class ClassAttendanceSeeder extends Seeder
         foreach ($workshopClasses as $workshopClass) {
             // Encontrar las matrículas que pertenecen a este taller
             $relevantEnrollments = $studentEnrollments->filter(function ($enrollment) use ($workshopClass) {
-                return $enrollment->instructorWorkshop && 
-                       $enrollment->instructorWorkshop->workshop && 
+                return $enrollment->instructorWorkshop &&
+                       $enrollment->instructorWorkshop->workshop &&
                        $enrollment->instructorWorkshop->workshop->id === $workshopClass->workshop_id;
             });
 
             foreach ($relevantEnrollments as $enrollment) {
                 // Generar asistencia aleatoria (80% de probabilidad de asistir)
                 $isPresent = rand(1, 100) <= 80;
-                
+
                 // Solo agregar comentarios a veces
                 $comment = $isPresent && rand(1, 100) <= 30 ? $comments[array_rand($comments)] : null;
 

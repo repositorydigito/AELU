@@ -21,5 +21,4 @@ class Expense extends Model
     {
         return $this->hasMany(ExpenseDetail::class);
     }
-
 }

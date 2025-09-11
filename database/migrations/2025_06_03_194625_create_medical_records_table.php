@@ -15,17 +15,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('student_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('instructor_id')->nullable()->constrained()->onDelete('cascade');
-            $table->decimal('weight', 5, 2)->nullable(); 
-            $table->decimal('height', 5, 2)->nullable(); 
-            $table->string('gender')->nullable(); 
-            $table->string('smokes')->nullable(); 
-            $table->integer('cigarettes_per_day')->nullable(); 
-            $table->string('health_insurance')->nullable(); 
-            $table->json('medical_conditions')->nullable(); 
-            $table->json('allergies')->nullable(); 
-            $table->text('allergy_details')->nullable(); 
-            $table->json('surgical_operations')->nullable(); 
-            $table->string('surgical_operation_details')->nullable(); 
+            $table->decimal('weight', 5, 2)->nullable();
+            $table->decimal('height', 5, 2)->nullable();
+            $table->string('gender')->nullable();
+            $table->string('smokes')->nullable();
+            $table->integer('cigarettes_per_day')->nullable();
+            $table->string('health_insurance')->nullable();
+            $table->json('medical_conditions')->nullable();
+            $table->json('allergies')->nullable();
+            $table->text('allergy_details')->nullable();
+            $table->json('surgical_operations')->nullable();
+            $table->string('surgical_operation_details')->nullable();
 
             $table->timestamps();
         });

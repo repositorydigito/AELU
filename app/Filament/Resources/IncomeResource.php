@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\IncomeResource\Pages;
-use App\Filament\Resources\IncomeResource\RelationManagers;
 use App\Models\StudentEnrollment;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,16 +10,21 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class IncomeResource extends Resource
 {
     protected static ?string $model = StudentEnrollment::class;
+
     protected static ?string $navigationLabel = 'Ingresos';
+
     protected static ?string $pluralModelLabel = 'Ingresos';
+
     protected static ?string $modelLabel = 'Ingreso';
+
     protected static ?int $navigationSort = 1;
+
     protected static ?string $navigationGroup = 'Tesorería';
+
     protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-up';
 
     public static function form(Form $form): Form
@@ -50,8 +54,7 @@ class IncomeResource extends Resource
                     ->label('Estudiante')
                     ->searchable(['students.first_names', 'students.last_names'])
                     ->sortable()
-                    ->formatStateUsing(fn ($record) =>
-                        $record->student->first_names . ' ' . $record->student->last_names
+                    ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names
                     ),
 
                 Tables\Columns\TextColumn::make('instructorWorkshop.workshop.name')
@@ -100,7 +103,7 @@ class IncomeResource extends Resource
 
                 Tables\Columns\TextColumn::make('number_of_classes')
                     ->label('Clases')
-                    ->formatStateUsing(fn (int $state): string => $state . ($state === 1 ? ' Clase' : ' Clases'))
+                    ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Clase' : ' Clases'))
                     ->sortable(),
             ])
             ->filters([
@@ -131,7 +134,7 @@ class IncomeResource extends Resource
                                             ->label('Hasta'),
                                     ]),
                             ])
-                            ->heading('Fecha de Inscripción')
+                            ->heading('Fecha de Inscripción'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query

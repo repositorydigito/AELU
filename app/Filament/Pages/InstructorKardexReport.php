@@ -1,38 +1,46 @@
 <?php
 
 // App/Filament/Pages/InstructorKardexReport.php
+
 namespace App\Filament\Pages;
 
 use App\Models\Instructor;
 use App\Models\InstructorWorkshop;
 use App\Models\StudentEnrollment;
-use Filament\Pages\Page;
-use Filament\Forms\Form;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Components\Select;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\View;
 
-class InstructorKardexReport extends Page implements HasForms, HasActions
+class InstructorKardexReport extends Page implements HasActions, HasForms
 {
-    use InteractsWithForms;
     use InteractsWithActions;
+    use InteractsWithForms;
 
     protected static string $view = 'filament.pages.instructor-kardex-report';
+
     protected static ?string $title = 'Kardex por Profesor';
+
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
+
     public $selectedInstructor = null;
+
     public $selectedWorkshop = null;
+
     public $kardexEnrollments = [];
+
     public $instructorData = null;
+
     public $workshopData = null;
 
     public function mount(): void
@@ -52,7 +60,7 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
                             ->get()
                             ->mapWithKeys(function ($instructor) {
                                 return [
-                                    $instructor->id => $instructor->first_names . ' ' . $instructor->last_names
+                                    $instructor->id => $instructor->first_names.' '.$instructor->last_names,
                                 ];
                             });
                     })
@@ -71,7 +79,7 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
                     ->label('Taller/Horario')
                     ->placeholder('Selecciona un taller...')
                     ->options(function () {
-                        if (!$this->selectedInstructor) {
+                        if (! $this->selectedInstructor) {
                             return [];
                         }
 
@@ -85,18 +93,18 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
                                 $dayNames = [
                                     1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
                                     4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                    7 => 'Domingo', 0 => 'Domingo'
+                                    7 => 'Domingo', 0 => 'Domingo',
                                 ];
 
-                                $dayName = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día ' . $instructorWorkshop->day_of_week;
+                                $dayName = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día '.$instructorWorkshop->day_of_week;
                                 $startTime = \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i');
                                 $endTime = \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i');
                                 $modality = $instructorWorkshop->workshop->modality ?? '';
 
-                                $label = $instructorWorkshop->workshop->name . ' - ' . $dayName . ' ' . $startTime . ' - ' . $endTime;
+                                $label = $instructorWorkshop->workshop->name.' - '.$dayName.' '.$startTime.' - '.$endTime;
 
                                 return [
-                                    $instructorWorkshop->id => $label
+                                    $instructorWorkshop->id => $label,
                                 ];
                             });
                     })
@@ -106,7 +114,7 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
                         $this->selectedWorkshop = $state;
                         $this->loadKardexEnrollments();
                     })
-                    ->disabled(fn () => !$this->selectedInstructor)
+                    ->disabled(fn () => ! $this->selectedInstructor)
                     ->required(),
             ])
             ->statePath('data')
@@ -115,10 +123,11 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
 
     public function loadKardexEnrollments(): void
     {
-        if (!$this->selectedInstructor || !$this->selectedWorkshop) {
+        if (! $this->selectedInstructor || ! $this->selectedWorkshop) {
             $this->kardexEnrollments = [];
             $this->instructorData = null;
             $this->workshopData = null;
+
             return;
         }
 
@@ -128,8 +137,9 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
             $this->workshopData = InstructorWorkshop::with('workshop')->find($this->selectedWorkshop);
 
             // Verificar que se encontraron los datos
-            if (!$this->instructorData || !$this->workshopData || !$this->workshopData->workshop) {
+            if (! $this->instructorData || ! $this->workshopData || ! $this->workshopData->workshop) {
                 $this->kardexEnrollments = [];
+
                 return;
             }
 
@@ -139,7 +149,7 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
                 ->with([
                     'student',
                     'enrollmentBatch.paymentRegisteredByUser',
-                    'enrollmentBatch'
+                    'enrollmentBatch',
                 ])
                 ->orderBy('created_at', 'desc') // Ordenar por fecha de creación
                 ->get();
@@ -166,7 +176,7 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
                     'tipo_documento' => 'Recibo', // Como en la imagen
                     'numero_documento' => $batch ? ($batch->batch_code ?? 'Sin código') : 'Sin lote',
                     'codigo_socio' => $student ? $student->student_code : 'N/A',
-                    'apellidos_nombres' => $student ? ($student->last_names . ', ' . $student->first_names) : 'N/A',
+                    'apellidos_nombres' => $student ? ($student->last_names.', '.$student->first_names) : 'N/A',
                     'condicion' => $condition,
                     'moneda' => 'S/',
                     'importe' => $enrollment->total_amount,
@@ -179,7 +189,7 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
             $this->kardexEnrollments = [];
             Notification::make()
                 ->title('Error al cargar datos')
-                ->body('Error: ' . $e->getMessage())
+                ->body('Error: '.$e->getMessage())
                 ->danger()
                 ->send();
         }
@@ -191,14 +201,14 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
             ->label('Generar PDF')
             ->color('primary')
             ->icon('heroicon-o-document-arrow-down')
-            ->visible(fn () => !empty($this->kardexEnrollments))
+            ->visible(fn () => ! empty($this->kardexEnrollments))
             ->action(function () {
                 try {
                     return $this->generatePDF();
                 } catch (\Exception $e) {
                     Notification::make()
                         ->title('Error en la acción')
-                        ->body('Error: ' . $e->getMessage())
+                        ->body('Error: '.$e->getMessage())
                         ->danger()
                         ->send();
                 }
@@ -207,45 +217,46 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
 
     public function generatePDF()
     {
-        if (empty($this->kardexEnrollments) || !$this->selectedInstructor || !$this->selectedWorkshop) {
+        if (empty($this->kardexEnrollments) || ! $this->selectedInstructor || ! $this->selectedWorkshop) {
             Notification::make()
                 ->title('Error')
                 ->body('Debe seleccionar un profesor y taller con inscripciones')
                 ->danger()
                 ->send();
+
             return;
         }
 
         try {
             // Validar que tenemos los datos necesarios
-            if (!$this->instructorData || !$this->workshopData || !$this->workshopData->workshop) {
+            if (! $this->instructorData || ! $this->workshopData || ! $this->workshopData->workshop) {
                 throw new \Exception('Datos del instructor o taller no disponibles');
             }
 
-            $instructorName = $this->instructorData->first_names . ' ' . $this->instructorData->last_names;
+            $instructorName = $this->instructorData->first_names.' '.$this->instructorData->last_names;
 
             $dayNames = [
                 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
                 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                7 => 'Domingo', 0 => 'Domingo'
+                7 => 'Domingo', 0 => 'Domingo',
             ];
 
-            $dayName = $dayNames[$this->workshopData->day_of_week] ?? 'Día ' . $this->workshopData->day_of_week;
+            $dayName = $dayNames[$this->workshopData->day_of_week] ?? 'Día '.$this->workshopData->day_of_week;
             $startTime = \Carbon\Carbon::parse($this->workshopData->start_time)->format('H:i');
             $endTime = \Carbon\Carbon::parse($this->workshopData->end_time)->format('H:i');
 
-            $workshopInfo = $this->workshopData->workshop->name . ' - ' . $dayName . ' ' . $startTime . '-' . $endTime;
+            $workshopInfo = $this->workshopData->workshop->name.' - '.$dayName.' '.$startTime.'-'.$endTime;
 
             $html = View::make('reports.instructor-kardex', [
                 'enrollments' => $this->kardexEnrollments,
                 'instructor_name' => $instructorName,
                 'workshop_info' => $workshopInfo,
                 'workshop_name' => $this->workshopData->workshop->name,
-                'workshop_schedule' => $dayName . ' ' . $startTime . '-' . $endTime,
-                'generated_at' => now()->format('d/m/Y H:i')
+                'workshop_schedule' => $dayName.' '.$startTime.'-'.$endTime,
+                'generated_at' => now()->format('d/m/Y H:i'),
             ])->render();
 
-            $options = new Options();
+            $options = new Options;
             $options->set('isHtml5ParserEnabled', true);
             $options->set('isRemoteEnabled', true);
             $dompdf = new Dompdf($options);
@@ -254,20 +265,20 @@ class InstructorKardexReport extends Page implements HasForms, HasActions
             $dompdf->setPaper('A4', 'landscape');
             $dompdf->render();
 
-            $fileName = 'kardex-' . str_replace(' ', '-', strtolower($instructorName)) . '-' .
-                       str_replace(' ', '-', strtolower($this->workshopData->workshop->name)) . '.pdf';
+            $fileName = 'kardex-'.str_replace(' ', '-', strtolower($instructorName)).'-'.
+                       str_replace(' ', '-', strtolower($this->workshopData->workshop->name)).'.pdf';
 
             return response()->stream(function () use ($dompdf) {
                 echo $dompdf->output();
             }, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
             ]);
 
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error al generar PDF')
-                ->body('Ocurrió un error: ' . $e->getMessage())
+                ->body('Ocurrió un error: '.$e->getMessage())
                 ->danger()
                 ->send();
         }

@@ -14,11 +14,17 @@ use Illuminate\Database\Eloquent\Builder;
 class EgresoResource extends Resource
 {
     protected static ?string $model = ExpenseDetail::class;
+
     protected static ?string $navigationLabel = 'Egresos';
+
     protected static ?string $pluralModelLabel = 'Egresos';
+
     protected static ?string $modelLabel = 'Egreso';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationGroup = 'Tesorería';
+
     protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-down';
 
     public static function form(Form $form): Form
@@ -37,7 +43,7 @@ class EgresoResource extends Resource
                     ->label('Fecha del Gasto')
                     ->date('d/m/Y')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('expense.concept')
                     ->label('Concepto')
                     ->searchable()
@@ -49,23 +55,23 @@ class EgresoResource extends Resource
                         'Otros' => '📋 Otros',
                         default => $state,
                     }),
-                
+
                 Tables\Columns\TextColumn::make('razon_social')
                     ->label('Proveedor / Razón Social')
                     ->searchable()
                     ->sortable()
                     ->wrap(),
-                
+
                 Tables\Columns\TextColumn::make('document_number')
                     ->label('N° Documento')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Monto')
                     ->money('PEN')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('notes')
                     ->label('Observaciones')
                     ->limit(50)
@@ -74,26 +80,27 @@ class EgresoResource extends Resource
                         if (strlen($state) <= 50) {
                             return null;
                         }
+
                         return $state;
                     })
                     ->placeholder('Sin observaciones')
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 Tables\Columns\TextColumn::make('expense.vale_code')
                     ->label('Código de Vale')
                     ->searchable()
                     ->placeholder('Sin código')
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Fecha de Registro')
                     ->date('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 Tables\Columns\IconColumn::make('expense.has_voucher')
                     ->label('Voucher')
-                    ->getStateUsing(fn ($record) => !empty($record->expense->voucher_path))
+                    ->getStateUsing(fn ($record) => ! empty($record->expense->voucher_path))
                     ->boolean()
                     ->trueIcon('heroicon-o-document-check')
                     ->falseIcon('heroicon-o-document-minus')
@@ -111,7 +118,7 @@ class EgresoResource extends Resource
                         'Pago a Profesores' => '👩‍🏫 Pago a profesores',
                         'Otros' => '📋 Otros',
                     ]),
-                
+
                 Tables\Filters\Filter::make('date')
                     ->label('Fecha de Gasto')
                     ->form([
@@ -125,7 +132,7 @@ class EgresoResource extends Resource
                                             ->label('Hasta'),
                                     ]),
                             ])
-                            ->heading('Fecha de Gasto')
+                            ->heading('Fecha de Gasto'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -138,7 +145,7 @@ class EgresoResource extends Resource
                                 fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
                             );
                     }),
-                
+
                 Tables\Filters\Filter::make('created_date')
                     ->label('Fecha de Registro')
                     ->form([
@@ -152,7 +159,7 @@ class EgresoResource extends Resource
                                             ->label('Hasta'),
                                     ]),
                             ])
-                            ->heading('Fecha de Registro')
+                            ->heading('Fecha de Registro'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -165,7 +172,7 @@ class EgresoResource extends Resource
                                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     }),
-                
+
                 Tables\Filters\Filter::make('amount_range')
                     ->label('Rango de Monto')
                     ->form([
@@ -183,7 +190,7 @@ class EgresoResource extends Resource
                                             ->prefix('S/.'),
                                     ]),
                             ])
-                            ->heading('Rango de Monto')
+                            ->heading('Rango de Monto'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -196,7 +203,7 @@ class EgresoResource extends Resource
                                 fn (Builder $query, $amount): Builder => $query->where('amount', '<=', $amount),
                             );
                     }),
-                
+
                 Tables\Filters\TernaryFilter::make('has_voucher')
                     ->label('Con Voucher')
                     ->placeholder('Todos')
@@ -210,7 +217,7 @@ class EgresoResource extends Resource
                             $q->whereNull('voucher_path');
                         }),
                     ),
-                
+
                 Tables\Filters\Filter::make('razon_social')
                     ->label('Proveedor')
                     ->form([
@@ -251,17 +258,17 @@ class EgresoResource extends Resource
             'index' => Pages\ListEgresos::route('/'),
         ];
     }
-    
+
     public static function canCreate(): bool
     {
         return false;
     }
-    
+
     public static function canEdit($record): bool
     {
         return false;
     }
-    
+
     public static function canDelete($record): bool
     {
         return false;

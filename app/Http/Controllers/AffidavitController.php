@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Student;
 use App\Models\Instructor;
+use App\Models\Student;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
 
 class AffidavitController extends Controller
@@ -14,7 +13,7 @@ class AffidavitController extends Controller
     public function generatePdf(Student $student)
     {
         // Asegúrate de que el estudiante tenga una declaración jurada
-        if (!$student->affidavit) {
+        if (! $student->affidavit) {
             abort(404, 'Declaración jurada no encontrada para este estudiante.');
         }
 
@@ -31,7 +30,7 @@ class AffidavitController extends Controller
         $html = View::make('pdfs.affidavit', $data)->render();
 
         // 2. Configura Dompdf
-        $options = new Options();
+        $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true); // Habilitar si usas imágenes externas o fuentes de Google Fonts
         $dompdf = new Dompdf($options);
@@ -45,19 +44,20 @@ class AffidavitController extends Controller
         $dompdf->render();
 
         // 4. Sirve el PDF para descarga
-        $filename = 'declaracion_jurada_' . $student->document_number . '.pdf';
+        $filename = 'declaracion_jurada_'.$student->document_number.'.pdf';
+
         return response()->stream(function () use ($dompdf) {
             echo $dompdf->output();
         }, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
     public function generateInstructorPdf(Instructor $instructor)
     {
         // Asegúrate de que el instructor tenga una declaración jurada
-        if (!$instructor->affidavit) {
+        if (! $instructor->affidavit) {
             abort(404, 'Declaración jurada no encontrada para este instructor.');
         }
 
@@ -74,7 +74,7 @@ class AffidavitController extends Controller
         $html = View::make('pdfs.affidavit-instructor', $data)->render();
 
         // 2. Configura Dompdf
-        $options = new Options();
+        $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true); // Habilitar si usas imágenes externas o fuentes de Google Fonts
         $dompdf = new Dompdf($options);
@@ -88,12 +88,13 @@ class AffidavitController extends Controller
         $dompdf->render();
 
         // 4. Sirve el PDF para descarga
-        $filename = 'declaracion_jurada_instructor_' . $instructor->document_number . '.pdf';
+        $filename = 'declaracion_jurada_instructor_'.$instructor->document_number.'.pdf';
+
         return response()->stream(function () use ($dompdf) {
             echo $dompdf->output();
         }, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 }

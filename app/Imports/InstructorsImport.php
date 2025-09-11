@@ -5,10 +5,9 @@ namespace App\Imports;
 use App\Models\Instructor;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithValidation; 
 
 class InstructorsImport implements ToModel, WithHeadingRow
-{    
+{
     public function model(array $row)
     {
         return new Instructor([
@@ -22,15 +21,15 @@ class InstructorsImport implements ToModel, WithHeadingRow
             'cell_phone' => $row['celular'] ?? null,
             'home_phone' => $row['telefono'] ?? null,
             'district' => $row['distrito'] ?? null,
-            'address' => $row['direccion'] ?? null, 
+            'address' => $row['direccion'] ?? null,
         ]);
     }
-    
+
     /* public function rules(): array
     {
         return [
             'nombres' => ['required', 'string', 'max:255'],
-            'apellidos' => ['required', 'string', 'max:255'],            
+            'apellidos' => ['required', 'string', 'max:255'],
             'tipo_documento' => ['required', 'in:DNI,PASAPORTE,Carné de Extranjería'],
             'nro_documento' => ['required', 'string', 'max:20', 'unique:instructors,document_number'],
             'fecha_nacimiento' => ['required', 'date'],
@@ -39,7 +38,7 @@ class InstructorsImport implements ToModel, WithHeadingRow
             'celular' => ['nullable', 'string', 'max:15'],
             'telefono' => ['nullable', 'string', 'max:15'],
             'distrito' => ['nullable', 'string', 'max:255'],
-            'direccion' => ['nullable', 'string', 'max:255'], 
+            'direccion' => ['nullable', 'string', 'max:255'],
         ];
     } */
 }

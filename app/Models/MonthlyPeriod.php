@@ -32,19 +32,22 @@ class MonthlyPeriod extends Model
     {
         return $this->hasMany(WorkshopClass::class);
     }
-    
+
     public function workshops()
     {
         return $this->hasMany(Workshop::class, 'monthly_period_id');
     }
+
     public function enrollments()
     {
         return $this->hasMany(StudentEnrollment::class);
     }
+
     public function instructorPayments()
     {
         return $this->hasMany(InstructorPayment::class);
     }
+
     public function initialInstructorWorkshops()
     {
         return $this->hasMany(InstructorWorkshop::class, 'initial_monthly_period_id');

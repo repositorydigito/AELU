@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{    
+{
     public function up(): void
     {
         Schema::create('monthly_periods', function (Blueprint $table) {
@@ -19,11 +19,11 @@ return new class extends Migration
             $table->date('renewal_end_date')->nullable();
             $table->boolean('auto_generate_classes')->default(true);
             $table->timestamps();
-            
+
             $table->unique(['year', 'month'], 'unique_period');
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('monthly_periods');

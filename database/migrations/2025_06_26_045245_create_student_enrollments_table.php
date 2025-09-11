@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('price_per_quantity', 8, 2);
             $table->decimal('total_amount', 8, 2);
             $table->text('pricing_notes')->nullable();
-            $table->enum('payment_status', ['pending', 'to_pay', 'completed','credit_favor', 'refunded'])->default('pending');
+            $table->enum('payment_status', ['pending', 'to_pay', 'completed', 'credit_favor', 'refunded'])->default('pending');
             $table->string('payment_method');
             $table->date('payment_due_date')->nullable();
             $table->date('payment_date')->nullable();

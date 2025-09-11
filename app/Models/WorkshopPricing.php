@@ -11,7 +11,7 @@ class WorkshopPricing extends Model
         'number_of_classes',
         'price',
         'is_default',
-        'for_volunteer_workshop'
+        'for_volunteer_workshop',
     ];
 
     protected $casts = [

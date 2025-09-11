@@ -2,33 +2,32 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Login;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\MaxWidth;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
-use TomatoPHP\FilamentUsers\FilamentUsersPlugin;
-use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
-use Filament\Support\Enums\MaxWidth;
-use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
-use Filament\Navigation\MenuItem;
 use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage;
-use Filament\View\PanelsRenderHook;
-use App\Filament\Pages\Auth\Login;
-use Filament\Support\Facades\FilamentView;
-use Illuminate\Support\Facades\Blade;
-use Filament\Navigation\NavigationGroup;
+use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
+use TomatoPHP\FilamentUsers\FilamentUsersPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -67,13 +66,13 @@ class AdminPanelProvider extends PanelProvider
                 FilamentShieldPlugin::make(),
                 FilamentApexChartsPlugin::make(),
                 FilamentEditProfilePlugin::make()
-                    ->shouldRegisterNavigation(false)
+                    ->shouldRegisterNavigation(false),
             ])
             ->userMenuItems([
                 MenuItem::make()
                     ->label('Perfil')
                     ->url(fn (): string => EditProfilePage::getUrl())
-                    ->icon('heroicon-o-user')
+                    ->icon('heroicon-o-user'),
             ])
             ->sidebarWidth('18rem')
             ->sidebarCollapsibleOnDesktop()
@@ -108,7 +107,7 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::BODY_START,
                 fn (): string => Blade::render('<div id="corporate-theme-enhancer"></div>'),
             )
-            ->renderHook('panels::body.start', fn()=>'
+            ->renderHook('panels::body.start', fn () => '
                 <style>
                     .fi-section-content-ctn{
                         background-color:rgb(255, 255, 253) !important;

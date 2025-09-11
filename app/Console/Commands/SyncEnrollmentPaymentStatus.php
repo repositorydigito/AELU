@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\EnrollmentBatch;
 use App\Models\StudentEnrollment;
+use Illuminate\Console\Command;
 
 class SyncEnrollmentPaymentStatus extends Command
 {
@@ -28,11 +28,11 @@ class SyncEnrollmentPaymentStatus extends Command
     public function handle()
     {
         $this->info('Iniciando sincronización de estados de pago...');
-        
+
         // Obtener todos los lotes de inscripciones
         $batches = EnrollmentBatch::all();
         $totalUpdated = 0;
-        
+
         foreach ($batches as $batch) {
             // Actualizar todas las inscripciones individuales del lote
             $updated = StudentEnrollment::where('enrollment_batch_id', $batch->id)
@@ -43,25 +43,25 @@ class SyncEnrollmentPaymentStatus extends Command
                     'payment_date' => $batch->payment_date,
                     'payment_document' => $batch->payment_document,
                 ]);
-            
+
             if ($updated > 0) {
                 $this->line("Lote {$batch->id}: {$updated} inscripciones actualizadas");
                 $totalUpdated += $updated;
             }
         }
-        
+
         $this->info("Sincronización completada. Total de inscripciones actualizadas: {$totalUpdated}");
-        
+
         // Mostrar resumen de estados
         $this->info("\nResumen de estados después de la sincronización:");
         $statuses = StudentEnrollment::selectRaw('payment_status, count(*) as count')
             ->groupBy('payment_status')
             ->get();
-            
+
         foreach ($statuses as $status) {
             $this->line("- {$status->payment_status}: {$status->count}");
         }
-        
+
         return 0;
     }
 }

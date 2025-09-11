@@ -4,9 +4,9 @@ namespace App\Filament\Resources\EnrollmentResource\Pages;
 
 use App\Filament\Resources\EnrollmentResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Resources\Pages\EditRecord;
 
 class EditEnrollment extends EditRecord
 {
@@ -32,31 +32,32 @@ class EditEnrollment extends EditRecord
                                 Forms\Components\Placeholder::make('student_info')
                                     ->label('Estudiante')
                                     ->content(function ($record) {
-                                        if (!$record || !$record->student) {
+                                        if (! $record || ! $record->student) {
                                             return 'No disponible';
                                         }
-                                        return $record->student->first_names . ' ' . $record->student->last_names;
+
+                                        return $record->student->first_names.' '.$record->student->last_names;
                                     }),
 
                                 // Información del taller (solo lectura)
                                 Forms\Components\Placeholder::make('workshop_info')
                                     ->label('Taller')
                                     ->content(function ($record) {
-                                        if (!$record || !$record->instructorWorkshop) {
+                                        if (! $record || ! $record->instructorWorkshop) {
                                             return 'No disponible';
                                         }
-                                        
+
                                         $workshop = $record->instructorWorkshop;
                                         $dayNames = [
                                             1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
                                             4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                            7 => 'Domingo', 0 => 'Domingo'
+                                            7 => 'Domingo', 0 => 'Domingo',
                                         ];
-                                        
-                                        $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día ' . $workshop->day_of_week;
+
+                                        $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día '.$workshop->day_of_week;
                                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
                                         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
-                                        
+
                                         return new \Illuminate\Support\HtmlString("
                                             <div class='space-y-1'>
                                                 <div class='font-semibold'>{$workshop->workshop->name}</div>
@@ -83,17 +84,17 @@ class EditEnrollment extends EditRecord
                                 Forms\Components\Select::make('number_of_classes')
                                     ->label('Cantidad de Clases')
                                     ->options(function (Forms\Get $get, $record) {
-                                        if (!$record || !$record->instructorWorkshop) {
+                                        if (! $record || ! $record->instructorWorkshop) {
                                             return [];
                                         }
-                                        
+
                                         $maxClasses = $record->instructorWorkshop->workshop->number_of_classes;
                                         $options = [];
-                                        
+
                                         for ($i = 1; $i <= $maxClasses; $i++) {
-                                            $options[$i] = $i . ($i === 1 ? ' Clase' : ' Clases');
+                                            $options[$i] = $i.($i === 1 ? ' Clase' : ' Clases');
                                         }
-                                        
+
                                         return $options;
                                     })
                                     ->required()
@@ -106,8 +107,6 @@ class EditEnrollment extends EditRecord
                                     ->helperText('Fecha de la primera clase'),
                             ]),
 
-
-
                         // Notas adicionales (editable)
                         Forms\Components\Textarea::make('pricing_notes')
                             ->label('Comentarios')
@@ -116,7 +115,7 @@ class EditEnrollment extends EditRecord
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
-                
+
                 Forms\Components\Section::make('Información de Pago')
                     ->description('Gestiona la información de pago de esta inscripción')
                     ->schema([
@@ -133,7 +132,7 @@ class EditEnrollment extends EditRecord
                                         'refunded' => 'Devuelto',
                                     ])
                                     ->required(),
-                                
+
                                 // Método de pago
                                 Forms\Components\Select::make('payment_method')
                                     ->label('Método de Pago')
@@ -143,20 +142,20 @@ class EditEnrollment extends EditRecord
                                     ])
                                     ->required(),
                             ]),
-                        
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 // Fecha límite de pago
                                 Forms\Components\DatePicker::make('payment_due_date')
                                     ->label('Fecha Límite de Pago')
                                     ->helperText('Fecha límite para realizar el pago'),
-                                
+
                                 // Fecha de pago
                                 Forms\Components\DatePicker::make('payment_date')
                                     ->label('Fecha de Pago')
                                     ->helperText('Fecha en que se realizó el pago'),
                             ]),
-                        
+
                         // Documento de pago
                         Forms\Components\FileUpload::make('payment_document')
                             ->label('Documento de Pago')

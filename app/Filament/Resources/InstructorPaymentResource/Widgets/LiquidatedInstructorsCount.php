@@ -2,13 +2,14 @@
 
 namespace App\Filament\Resources\InstructorPaymentResource\Widgets;
 
+use App\Models\InstructorPayment;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\InstructorPayment;
 
 class LiquidatedInstructorsCount extends BaseWidget
 {
     protected static ?int $sort = 1;
+
     protected int|string|array $columnSpan = 3;
 
     protected function getStats(): array

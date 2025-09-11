@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Filament\Resources\InstructorPaymentResource\Pages;
 
 use App\Filament\Resources\InstructorPaymentResource;

@@ -3,15 +3,15 @@
 namespace App\Filament\Resources\InstructorResource\Pages;
 
 use App\Filament\Resources\InstructorResource;
-use Filament\Resources\Pages\Page;
+use App\Imports\InstructorsImport;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Form;
-use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\Page;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\InstructorsImport;
 
 class ImportInstructors extends Page implements HasForms
 {
@@ -38,7 +38,7 @@ class ImportInstructors extends Page implements HasForms
                     ->maxSize(5120)
                     ->required()
                     ->disk('public')
-                    ->directory('temp')
+                    ->directory('temp'),
             ])
             ->statePath('data');
     }
@@ -48,13 +48,13 @@ class ImportInstructors extends Page implements HasForms
         $this->validate();
 
         try {
-            if (!isset($this->data['excel_file'])) {
+            if (! isset($this->data['excel_file'])) {
                 throw new \Exception('No se ha seleccionado ningún archivo');
             }
 
             $filePath = $this->data['excel_file'];
-            
-            if (!$filePath) {
+
+            if (! $filePath) {
                 throw new \Exception('No se pudo obtener la ruta del archivo');
             }
 
@@ -65,11 +65,11 @@ class ImportInstructors extends Page implements HasForms
 
             // Importamos el archivo Excel usando el Storage facade
             Excel::import(
-                new InstructorsImport, 
+                new InstructorsImport,
                 $filePath,
                 'public'
             );
-            
+
             Notification::make()
                 ->title('Archivo procesado correctamente')
                 ->success()
@@ -80,7 +80,7 @@ class ImportInstructors extends Page implements HasForms
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             $failures = $e->failures();
             $errorMessages = [];
-            
+
             foreach ($failures as $failure) {
                 $row = $failure->row();
                 $attribute = $failure->attribute();

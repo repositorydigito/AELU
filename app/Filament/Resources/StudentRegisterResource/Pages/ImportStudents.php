@@ -3,21 +3,21 @@
 namespace App\Filament\Resources\StudentRegisterResource\Pages;
 
 use App\Filament\Resources\StudentRegisterResource;
-use Filament\Resources\Pages\Page;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Form;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Storage;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\StudentsImport;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\Page;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ImportStudents extends Page implements HasForms
 {
     use InteractsWithForms;
 
     protected static string $resource = StudentRegisterResource::class;
+
     protected static string $view = 'filament.resources.student-register-resource.pages.import-students';
 
     public ?array $data = [];
@@ -37,7 +37,7 @@ class ImportStudents extends Page implements HasForms
                     ->maxSize(5120)
                     ->required()
                     ->disk('public')
-                    ->directory('temp')
+                    ->directory('temp'),
             ])
             ->statePath('data');
     }
@@ -47,7 +47,7 @@ class ImportStudents extends Page implements HasForms
         $this->validate();
 
         try {
-            if (!isset($this->data['excel_file'])) {
+            if (! isset($this->data['excel_file'])) {
                 throw new \Exception('No se ha seleccionado ningún archivo');
             }
 

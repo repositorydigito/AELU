@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
 
 class Workshop extends Model
 {
@@ -38,26 +37,32 @@ class Workshop extends Model
     {
         return $this->hasMany(InstructorWorkshop::class);
     }
+
     public function instructor()
     {
         return $this->belongsTo(Instructor::class);
     }
+
     public function delegate()
     {
         return $this->belongsTo(User::class, 'delegate_user_id');
     }
+
     public function workshopPricings()
     {
         return $this->hasMany(WorkshopPricing::class);
     }
+
     public function enrollments()
     {
         return $this->hasManyThrough(StudentEnrollment::class, InstructorWorkshop::class);
     }
+
     public function workshopClasses()
     {
         return $this->hasMany(WorkshopClass::class);
     }
+
     public function monthlyPeriod()
     {
         return $this->belongsTo(MonthlyPeriod::class);
@@ -70,6 +75,7 @@ class Workshop extends Model
     {
         return 1 + ($this->pricing_surcharge_percentage / 100);
     }
+
     /**
      * Obtiene el precio base por clase (sin recargo)
      */
@@ -77,6 +83,7 @@ class Workshop extends Model
     {
         return $this->standard_monthly_fee / 4;
     }
+
     /**
      * Obtiene el precio por clase con recargo aplicado
      */
@@ -84,6 +91,7 @@ class Workshop extends Model
     {
         return $this->base_per_class * $this->surcharge_multiplier;
     }
+
     /**
      * Verifica si el taller tiene tarifas generadas
      */
@@ -91,6 +99,7 @@ class Workshop extends Model
     {
         return $this->workshopPricings()->count() > 0;
     }
+
     /**
      * Obtiene las tarifas para instructores voluntarios
      */
@@ -98,6 +107,7 @@ class Workshop extends Model
     {
         return $this->workshopPricings()->where('for_volunteer_workshop', true)->orderBy('number_of_classes')->get();
     }
+
     /**
      * Obtiene las tarifas para instructores no voluntarios
      */
@@ -105,6 +115,7 @@ class Workshop extends Model
     {
         return $this->workshopPricings()->where('for_volunteer_workshop', false)->orderBy('number_of_classes')->get();
     }
+
     /**
      * Obtiene la tarifa por cantidad de clases y tipo de instructor
      */
@@ -115,19 +126,22 @@ class Workshop extends Model
             ->where('for_volunteer_workshop', $isVolunteerWorkshop)
             ->first();
     }
+
     protected function endTime(): Attribute
     {
         return Attribute::make(
             get: function () {
-                if (!$this->start_time || !$this->duration) {
+                if (! $this->start_time || ! $this->duration) {
                     return null;
                 }
 
                 $startTime = Carbon::parse($this->start_time);
+
                 return $startTime->addMinutes($this->duration)->format('H:i:s');
             }
         );
     }
+
     public function hasEnrollments(): bool
     {
         return $this->instructorWorkshops()
@@ -141,14 +155,14 @@ class Workshop extends Model
     public function getAvailableSpotsForPeriod($monthlyPeriodId): int
     {
         $totalCapacity = $this->capacity;
-        
+
         // Contar inscripciones activas para este período
         $currentEnrollments = $this->enrollments()
             ->where('monthly_period_id', $monthlyPeriodId)
             ->whereIn('payment_status', ['completed', 'pending'])
             ->distinct('student_id')
             ->count();
-            
+
         return max(0, $totalCapacity - $currentEnrollments);
     }
 
@@ -171,9 +185,9 @@ class Workshop extends Model
             ->whereIn('payment_status', ['completed', 'pending'])
             ->distinct('student_id')
             ->count();
-        
+
         $availableSpots = max(0, $totalCapacity - $currentEnrollments);
-        
+
         return [
             'total_capacity' => $totalCapacity,
             'current_enrollments' => $currentEnrollments,

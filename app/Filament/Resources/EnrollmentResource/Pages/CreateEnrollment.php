@@ -4,8 +4,8 @@ namespace App\Filament\Resources\EnrollmentResource\Pages;
 
 use App\Filament\Resources\EnrollmentResource;
 use App\Models\StudentEnrollment;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
 
 class CreateEnrollment extends CreateRecord
 {
@@ -56,7 +56,7 @@ class CreateEnrollment extends CreateRecord
         $selectedMonthlyPeriodId = $data['selected_monthly_period_id'];
         $monthlyPeriod = \App\Models\MonthlyPeriod::find($selectedMonthlyPeriodId);
 
-        if (!$monthlyPeriod) {
+        if (! $monthlyPeriod) {
             Notification::make()
                 ->title('Error')
                 ->body('El período mensual seleccionado no es válido.')
@@ -79,7 +79,7 @@ class CreateEnrollment extends CreateRecord
             }
         }
 
-        if (!empty($capacityErrors)) {
+        if (! empty($capacityErrors)) {
             $workshopNames = implode(', ', $capacityErrors);
             Notification::make()
                 ->title('Cupos agotados')
@@ -118,13 +118,14 @@ class CreateEnrollment extends CreateRecord
         $selectedWorkshops = array_values($workshopIdMapping);
 
         foreach ($workshopDetails as $detail) {
-            if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
-                $skippedWorkshops[] = "Taller no válido o no seleccionado";
+            if (! isset($detail['instructor_workshop_id']) || ! in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
+                $skippedWorkshops[] = 'Taller no válido o no seleccionado';
+
                 continue;
             }
 
             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($detail['instructor_workshop_id']);
-            if (!$instructorWorkshop) {
+            if (! $instructorWorkshop) {
                 continue;
             }
 
@@ -149,6 +150,7 @@ class CreateEnrollment extends CreateRecord
                     ->send();
 
                 $skippedWorkshops[] = "Sin cupos: {$instructorWorkshop->workshop->name} - {$monthName}";
+
                 continue; // Saltar este taller
             }
 
@@ -167,7 +169,7 @@ class CreateEnrollment extends CreateRecord
 
                 if ($instructorWorkshop) {
                     $workshopName = $instructorWorkshop->workshop->name;
-                    $instructorName = $instructorWorkshop->instructor->first_names . ' ' . $instructorWorkshop->instructor->last_names;
+                    $instructorName = $instructorWorkshop->instructor->first_names.' '.$instructorWorkshop->instructor->last_names;
 
                     Notification::make()
                         ->title('Taller ya inscrito')
@@ -176,6 +178,7 @@ class CreateEnrollment extends CreateRecord
                         ->send();
 
                     $skippedWorkshops[] = "Duplicado: {$workshopName} - {$monthName}";
+
                     continue; // Saltar este taller pero continuar con los demás
                 }
             }
@@ -285,7 +288,7 @@ class CreateEnrollment extends CreateRecord
             // Pago en efectivo - Estado: Inscrito - Generar PDF
             Notification::make()
                 ->title('¡Inscripciones en proceso!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: En Proceso.")
+                ->body("Se creó un lote con {$count} inscripción".($count > 1 ? 'es' : '').' correctamente. Estado: En Proceso.')
                 ->success()
                 /* ->actions([
                     \Filament\Notifications\Actions\Action::make('download_ticket')
@@ -300,7 +303,7 @@ class CreateEnrollment extends CreateRecord
             // Pago con link - Estado: En Proceso
             Notification::make()
                 ->title('¡Inscripciones en proceso!')
-                ->body("Se creó un lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . " correctamente. Estado: En Proceso.")
+                ->body("Se creó un lote con {$count} inscripción".($count > 1 ? 'es' : '').' correctamente. Estado: En Proceso.')
                 ->warning()
                 ->send();
         }
@@ -317,6 +320,7 @@ class CreateEnrollment extends CreateRecord
         if (empty($selectedClassIds)) {
             // Si no hay clases específicas seleccionadas, usar el comportamiento anterior
             $this->createEnrollmentClassesLegacy($enrollment);
+
             return;
         }
 
@@ -343,7 +347,7 @@ class CreateEnrollment extends CreateRecord
         // Método anterior para compatibilidad hacia atrás
         $numberOfClasses = $enrollment->number_of_classes;
 
-        if (!$numberOfClasses) {
+        if (! $numberOfClasses) {
             return;
         }
 
@@ -389,10 +393,10 @@ class CreateEnrollment extends CreateRecord
 
     private function ensureWorkshopExistsForPeriod($originalWorkshopId, $monthlyPeriodId)
     {
-        $workshopService = new \App\Services\WorkshopAutoCreationService();
+        $workshopService = new \App\Services\WorkshopAutoCreationService;
         $instructorWorkshop = $workshopService->findOrCreateInstructorWorkshopForPeriod($originalWorkshopId, $monthlyPeriodId);
 
-        if (!$instructorWorkshop) {
+        if (! $instructorWorkshop) {
             throw new \Exception("No se pudo crear el taller para el período: {$monthlyPeriodId}");
         }
 

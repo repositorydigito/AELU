@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class EnrollmentBatch extends Model
 {
@@ -46,7 +46,7 @@ class EnrollmentBatch extends Model
                 if ($batch->payment_method === 'link') {
                     $batch->batch_code = 'Sin código';
                 } else {
-                    $batch->batch_code = 'INS-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+                    $batch->batch_code = 'INS-'.now()->format('Ymd').'-'.strtoupper(Str::random(6));
                 }
             }
 
@@ -62,18 +62,22 @@ class EnrollmentBatch extends Model
     {
         return $this->belongsTo(Student::class);
     }
+
     public function enrollments()
     {
         return $this->hasMany(StudentEnrollment::class, 'enrollment_batch_id');
     }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
     public function paymentRegisteredByUser()
     {
         return $this->belongsTo(User::class, 'payment_registered_by_user_id');
     }
+
     public function cancelledBy()
     {
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
@@ -84,6 +88,7 @@ class EnrollmentBatch extends Model
     {
         return $this->enrollments()->count();
     }
+
     public function getWorkshopsListAttribute()
     {
         return $this->enrollments()
@@ -92,10 +97,12 @@ class EnrollmentBatch extends Model
             ->pluck('instructorWorkshop.workshop.name')
             ->join(', ');
     }
+
     public function getTotalClassesAttribute()
     {
         return $this->enrollments()->sum('number_of_classes');
     }
+
     public function getFormattedPaymentStatusAttribute()
     {
         return match ($this->payment_status) {
@@ -107,6 +114,7 @@ class EnrollmentBatch extends Model
             default => $this->payment_status,
         };
     }
+
     public function getFormattedPaymentMethodAttribute()
     {
         return match ($this->payment_method) {
@@ -115,6 +123,7 @@ class EnrollmentBatch extends Model
             default => $this->payment_method,
         };
     }
+
     public function getCreatedByNameAttribute()
     {
         if ($this->creator) {
@@ -123,15 +132,18 @@ class EnrollmentBatch extends Model
 
         return 'Sistema';
     }
+
     public function getPaymentRegisteredByDisplayAttribute(): ?string
     {
-        if (!$this->payment_registered_by_user_id || !$this->payment_registered_at) {
+        if (! $this->payment_registered_by_user_id || ! $this->payment_registered_at) {
             return null;
         }
 
         $userName = $this->paymentRegisteredByUser ? $this->paymentRegisteredByUser->name : 'Usuario eliminado';
-        return $userName . ' - ' . $this->payment_registered_at->format('d/m/Y H:i');
+
+        return $userName.' - '.$this->payment_registered_at->format('d/m/Y H:i');
     }
+
     public function getPaymentRegisteredByNameAttribute(): ?string
     {
         return $this->paymentRegisteredByUser ? $this->paymentRegisteredByUser->name : null;

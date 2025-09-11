@@ -2,13 +2,12 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\MonthlyPeriod;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
 class MonthlyPeriodsSeeder extends Seeder
-{    
+{
     public function run(): void
     {
         // Define el año de inicio (puedes ajustar si quieres empezar antes)
@@ -56,14 +55,14 @@ class MonthlyPeriodsSeeder extends Seeder
         // y ya existen periodos únicos (year, month)
         MonthlyPeriod::upsert(
             $periodsToInsert,
-            ['year', 'month'], 
-            [ 
+            ['year', 'month'],
+            [
                 'start_date', 'end_date', 'is_active',
                 'renewal_start_date', 'renewal_end_date', 'auto_generate_classes',
-                'updated_at'
+                'updated_at',
             ]
         );
 
-        $this->command->info('Monthly periods generated successfully from ' . $startYear . ' to ' . $endYear . '!');
+        $this->command->info('Monthly periods generated successfully from '.$startYear.' to '.$endYear.'!');
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Filament\Resources\InstructorPaymentResource\Widgets;
 
 use App\Models\InstructorPayment;
@@ -8,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class PaymentStatusChart extends ChartWidget
 {
     protected static ?string $heading = 'Liquidación';
+
     protected static ?int $sort = 2;
 
     // Propiedad para controlar el tamaño del widget
@@ -22,9 +24,9 @@ class PaymentStatusChart extends ChartWidget
     {
         // Contar la cantidad de pagos por cada estado
         $statusCounts = InstructorPayment::select('payment_status', DB::raw('count(*) as count'))
-                                        ->groupBy('payment_status')
-                                        ->pluck('count', 'payment_status')
-                                        ->toArray();
+            ->groupBy('payment_status')
+            ->pluck('count', 'payment_status')
+            ->toArray();
 
         $paidCount = $statusCounts['paid'] ?? 0;
         $pendingCount = $statusCounts['pending'] ?? 0;

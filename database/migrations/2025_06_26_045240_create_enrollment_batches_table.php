@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->string('batch_code');
             $table->decimal('total_amount', 10, 2); // Monto total de todas las inscripciones
-            $table->enum('payment_status', ['pending', 'to_pay', 'completed','credit_favor', 'refunded'])->default('pending');
+            $table->enum('payment_status', ['pending', 'to_pay', 'completed', 'credit_favor', 'refunded'])->default('pending');
             $table->string('payment_method'); // cash, link
             $table->date('payment_due_date')->nullable();
             $table->date('payment_date')->nullable();

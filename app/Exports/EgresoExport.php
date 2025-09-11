@@ -3,16 +3,15 @@
 namespace App\Exports;
 
 use App\Models\ExpenseDetail;
-use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\Exportable;
+use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Illuminate\Database\Eloquent\Builder;
 
-class EgresoExport implements FromQuery, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class EgresoExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     use Exportable;
 
@@ -29,41 +28,41 @@ class EgresoExport implements FromQuery, WithHeadings, WithMapping, WithStyles, 
             ->with(['expense']);
 
         // Aplicar filtros de fecha de gasto si existen
-        if (!empty($this->filters['date_from'])) {
+        if (! empty($this->filters['date_from'])) {
             $query->whereDate('date', '>=', $this->filters['date_from']);
         }
 
-        if (!empty($this->filters['date_until'])) {
+        if (! empty($this->filters['date_until'])) {
             $query->whereDate('date', '<=', $this->filters['date_until']);
         }
 
         // Aplicar filtros de fecha de registro si existen
-        if (!empty($this->filters['created_from'])) {
+        if (! empty($this->filters['created_from'])) {
             $query->whereDate('created_at', '>=', $this->filters['created_from']);
         }
 
-        if (!empty($this->filters['created_until'])) {
+        if (! empty($this->filters['created_until'])) {
             $query->whereDate('created_at', '<=', $this->filters['created_until']);
         }
 
         // Aplicar filtro de concepto si existe
-        if (!empty($this->filters['concept'])) {
+        if (! empty($this->filters['concept'])) {
             $query->whereHas('expense', function ($q) {
                 $q->where('concept', $this->filters['concept']);
             });
         }
 
         // Aplicar filtros de rango de monto si existen
-        if (!empty($this->filters['amount_from'])) {
+        if (! empty($this->filters['amount_from'])) {
             $query->where('amount', '>=', $this->filters['amount_from']);
         }
 
-        if (!empty($this->filters['amount_until'])) {
+        if (! empty($this->filters['amount_until'])) {
             $query->where('amount', '<=', $this->filters['amount_until']);
         }
 
         // Aplicar filtro de proveedor si existe
-        if (!empty($this->filters['proveedor'])) {
+        if (! empty($this->filters['proveedor'])) {
             $query->where('razon_social', 'like', "%{$this->filters['proveedor']}%");
         }
 
@@ -94,7 +93,7 @@ class EgresoExport implements FromQuery, WithHeadings, WithMapping, WithStyles, 
             'Observaciones',
             'Código de Vale',
             'Fecha de Registro',
-            'Tiene Voucher'
+            'Tiene Voucher',
         ];
     }
 
@@ -109,7 +108,7 @@ class EgresoExport implements FromQuery, WithHeadings, WithMapping, WithStyles, 
             $expenseDetail->notes ?? 'Sin observaciones',
             $expenseDetail->expense->vale_code ?? 'Sin código',
             $expenseDetail->created_at->format('d/m/Y H:i'),
-            !empty($expenseDetail->expense->voucher_path) ? 'Sí' : 'No'
+            ! empty($expenseDetail->expense->voucher_path) ? 'Sí' : 'No',
         ];
     }
 
@@ -131,22 +130,22 @@ class EgresoExport implements FromQuery, WithHeadings, WithMapping, WithStyles, 
             1 => [
                 'font' => [
                     'bold' => true,
-                    'color' => ['rgb' => 'FFFFFF']
+                    'color' => ['rgb' => 'FFFFFF'],
                 ],
                 'fill' => [
                     'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => 'DC2626'] // Color rojo para egresos
-                ]
+                    'startColor' => ['rgb' => 'DC2626'], // Color rojo para egresos
+                ],
             ],
             // Bordes para toda la tabla
             'A1:I1000' => [
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                        'color' => ['rgb' => 'CCCCCC']
-                    ]
-                ]
-            ]
+                        'color' => ['rgb' => 'CCCCCC'],
+                    ],
+                ],
+            ],
         ];
     }
 }

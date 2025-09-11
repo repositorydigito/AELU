@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Student;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
 
 /* ->options([
     'Individual PRE-PAMA' => 'Individual PRE-PAMA (< 60 años)',

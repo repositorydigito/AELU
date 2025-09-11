@@ -2,49 +2,62 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Workshop;
-use App\Models\WorkshopClass;
-use App\Models\StudentEnrollment;
 use App\Models\ClassAttendance;
 use App\Models\MonthlyPeriod;
-use Filament\Pages\Page;
-use Filament\Forms\Form;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
+use App\Models\StudentEnrollment;
+use App\Models\Workshop;
+use App\Models\WorkshopClass;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Illuminate\Contracts\View\View;
+use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
-use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 
-class AttendanceManagement extends Page implements HasForms, HasActions
+class AttendanceManagement extends Page implements HasActions, HasForms
 {
-    use InteractsWithForms;
-    use InteractsWithActions;
     use HasPageShield;
+    use InteractsWithActions;
+    use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
+
     protected static string $view = 'filament.pages.attendance-management';
+
     protected static ?string $navigationLabel = 'Asistencia por Clase';
+
     protected static ?string $title = 'Asistencia por Clase';
+
     protected static ?string $navigationGroup = 'Gestión';
+
     protected static ?int $navigationSort = 4;
 
     public ?array $data = [];
+
     public $selectedWorkshop = null;
+
     public $workshops = [];
+
     public $filteredWorkshops = [];
+
     public $workshopClasses = [];
+
     public $studentEnrollments = [];
+
     public $attendanceData = [];
+
     public $selectedWorkshopData = null;
 
     // Filtros
     public $searchName = '';
+
     public $selectedPeriod = null;
+
     public $monthlyPeriods = [];
 
     public function mount(): void
@@ -69,6 +82,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
             ->get()
             ->mapWithKeys(function ($period) {
                 $periodName = $this->generatePeriodName($period->month, $period->year);
+
                 return [$period->id => $periodName];
             })
             ->toArray();
@@ -79,16 +93,16 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         $this->filteredWorkshops = collect($this->workshops)
             ->filter(function ($workshop) {
                 // Filtro por nombre
-                if (!empty($this->searchName)) {
+                if (! empty($this->searchName)) {
                     $searchTerm = strtolower($this->searchName);
                     $workshopName = strtolower($workshop['name']);
-                    if (!str_contains($workshopName, $searchTerm)) {
+                    if (! str_contains($workshopName, $searchTerm)) {
                         return false;
                     }
                 }
 
                 // Filtro por período mensual
-                if (!empty($this->selectedPeriod)) {
+                if (! empty($this->selectedPeriod)) {
                     if ($workshop['period_id'] != $this->selectedPeriod) {
                         return false;
                     }
@@ -127,7 +141,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         $workshopQuery = Workshop::query()->with(['monthlyPeriod', 'instructor', 'workshopClasses']);
 
         // Si no es admin, filtrar solo los talleres donde el usuario es delegado
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $workshopQuery->where('delegate_user_id', Auth::id());
         }
 
@@ -183,10 +197,11 @@ class AttendanceManagement extends Page implements HasForms, HasActions
 
     public function loadWorkshopData(): void
     {
-        if (!$this->selectedWorkshop) {
+        if (! $this->selectedWorkshop) {
             $this->workshopClasses = [];
             $this->studentEnrollments = [];
             $this->attendanceData = [];
+
             return;
         }
 
@@ -198,8 +213,8 @@ class AttendanceManagement extends Page implements HasForms, HasActions
 
         // Cargar las matrículas de estudiantes para este taller CON sus clases específicas
         $enrollments = StudentEnrollment::whereHas('instructorWorkshop', function ($query) {
-                $query->where('workshop_id', $this->selectedWorkshop);
-            })
+            $query->where('workshop_id', $this->selectedWorkshop);
+        })
             ->with(['student', 'enrollmentClasses.workshopClass'])
             ->get();
 
@@ -222,6 +237,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
     {
         if (empty($this->workshopClasses) || empty($this->studentEnrollments)) {
             $this->attendanceData = [];
+
             return;
         }
 
@@ -232,14 +248,14 @@ class AttendanceManagement extends Page implements HasForms, HasActions
             ->whereIn('student_enrollment_id', $enrollmentIds)
             ->get()
             ->groupBy(function ($attendance) {
-                return $attendance->student_enrollment_id . '_' . $attendance->workshop_class_id;
+                return $attendance->student_enrollment_id.'_'.$attendance->workshop_class_id;
             });
 
         $this->attendanceData = [];
 
         foreach ($this->studentEnrollments as $enrollment) {
             foreach ($this->workshopClasses as $class) {
-                $key = $enrollment['id'] . '_' . $class['id'];
+                $key = $enrollment['id'].'_'.$class['id'];
                 $attendance = $existingAttendances->get($key)?->first();
 
                 $this->attendanceData[$key] = [
@@ -272,12 +288,13 @@ class AttendanceManagement extends Page implements HasForms, HasActions
 
     public function saveAttendance(): void
     {
-        if (!$this->selectedWorkshop) {
+        if (! $this->selectedWorkshop) {
             Notification::make()
                 ->title('Error')
                 ->body('Debe seleccionar un taller')
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -286,16 +303,16 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         foreach ($this->studentEnrollments as $enrollment) {
             foreach ($this->workshopClasses as $class) {
                 // Solo procesar si el estudiante está inscrito en esta clase específica
-                if (!$this->isStudentEnrolledInClass($enrollment, $class['id'])) {
+                if (! $this->isStudentEnrolledInClass($enrollment, $class['id'])) {
                     continue;
                 }
 
                 // Verificar si se puede editar la asistencia para esta fecha
-                if (!$this->canEditAttendanceForDate($class['class_date'])) {
+                if (! $this->canEditAttendanceForDate($class['class_date'])) {
                     continue;
                 }
 
-                $key = $enrollment['id'] . '_' . $class['id'];
+                $key = $enrollment['id'].'_'.$class['id'];
                 $attendanceInfo = $this->attendanceData[$key] ?? [];
 
                 ClassAttendance::updateOrCreate(
@@ -326,33 +343,35 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         // Buscar el enrollment para verificar si está inscrito en esta clase
         $enrollment = collect($this->studentEnrollments)->firstWhere('id', $enrollmentId);
 
-        if (!$enrollment || !$this->isStudentEnrolledInClass($enrollment, $classId)) {
+        if (! $enrollment || ! $this->isStudentEnrolledInClass($enrollment, $classId)) {
             Notification::make()
                 ->title('Error')
                 ->body('El estudiante no está inscrito en esta clase específica.')
                 ->warning()
                 ->send();
+
             return;
         }
 
         // Verificar si se puede editar la asistencia para esta fecha
         $class = collect($this->workshopClasses)->firstWhere('id', $classId);
-        if ($class && !$this->canEditAttendanceForDate($class['class_date'])) {
+        if ($class && ! $this->canEditAttendanceForDate($class['class_date'])) {
             Notification::make()
                 ->title('Restricción de fecha')
                 ->body($this->getRestrictionMessageForDate($class['class_date']))
                 ->warning()
                 ->send();
+
             return;
         }
 
-        $key = $enrollmentId . '_' . $classId;
-        $this->attendanceData[$key]['is_present'] = !($this->attendanceData[$key]['is_present'] ?? false);
+        $key = $enrollmentId.'_'.$classId;
+        $this->attendanceData[$key]['is_present'] = ! ($this->attendanceData[$key]['is_present'] ?? false);
     }
 
     public function updateComments($enrollmentId, $classId, $comments): void
     {
-        $key = $enrollmentId . '_' . $classId;
+        $key = $enrollmentId.'_'.$classId;
         $this->attendanceData[$key]['comments'] = $comments;
     }
 
@@ -379,9 +398,11 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         $classDate = \Carbon\Carbon::parse($classDate);
         $today = \Carbon\Carbon::today();
         $oneDayAfterClass = $classDate->copy()->addDay();
+
         // Permitir editar hasta 1 día después de la fecha de clase
         return $today->gte($classDate) && $today->lte($oneDayAfterClass);
     }
+
     /**
      * Obtener el mensaje de restricción para una fecha específica
      */
@@ -390,9 +411,10 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         $classDate = \Carbon\Carbon::parse($classDate);
         $oneDayAfterClass = $classDate->copy()->addDay();
         if (\Carbon\Carbon::today()->gt($oneDayAfterClass)) {
-            return "La asistencia para esta clase expiró el " . $oneDayAfterClass->format('d/m/Y');
+            return 'La asistencia para esta clase expiró el '.$oneDayAfterClass->format('d/m/Y');
         }
-        return "";
+
+        return '';
     }
 
     /**
@@ -400,7 +422,7 @@ class AttendanceManagement extends Page implements HasForms, HasActions
      */
     private function formatTime($time): string
     {
-        if (!$time) {
+        if (! $time) {
             return '';
         }
 
@@ -426,10 +448,11 @@ class AttendanceManagement extends Page implements HasForms, HasActions
         $monthNames = [
             1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
             5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
-            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
         ];
 
-        $monthName = $monthNames[$month] ?? 'Mes ' . $month;
-        return $monthName . ' ' . $year;
+        $monthName = $monthNames[$month] ?? 'Mes '.$month;
+
+        return $monthName.' '.$year;
     }
 }
