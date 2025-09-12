@@ -276,8 +276,6 @@ class EnrollmentResource extends Resource
                                                         'is_previous' => in_array($instructorWorkshop->id, $previousWorkshopIds),
                                                     ];
                                                 } catch (\Exception $e) {
-                                                    \Log::error('Error mapping workshop data: '.$e->getMessage());
-
                                                     return null;
                                                 }
                                             };
@@ -326,8 +324,6 @@ class EnrollmentResource extends Resource
                                                     'selected_monthly_period_id' => $selectedMonthlyPeriodId,
                                                 ];
                                             } catch (\Exception $e) {
-                                                \Log::error('Error in viewData: '.$e->getMessage());
-
                                                 return [
                                                     'workshops' => collect(),
                                                     'student_id' => $studentId,
@@ -856,8 +852,6 @@ class EnrollmentResource extends Resource
 
             return array_unique($previousWorkshopIds);
         } catch (\Exception $e) {
-            \Log::error('Error finding previous workshops: '.$e->getMessage());
-
             return [];
         }
     }

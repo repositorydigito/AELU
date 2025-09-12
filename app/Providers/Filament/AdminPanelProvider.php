@@ -28,6 +28,7 @@ use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
 use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use TomatoPHP\FilamentUsers\FilamentUsersPlugin;
+use AchyutN\FilamentLogViewer\FilamentLogViewer;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -65,6 +66,7 @@ class AdminPanelProvider extends PanelProvider
                 FilamentUsersPlugin::make(),
                 FilamentShieldPlugin::make(),
                 FilamentApexChartsPlugin::make(),
+                FilamentLogViewer::make(),
                 FilamentEditProfilePlugin::make()
                     ->shouldRegisterNavigation(false),
             ])
