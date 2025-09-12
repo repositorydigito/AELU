@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\Expense;
 use App\Models\User;
+use App\Models\Expense;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ExpensePolicy
