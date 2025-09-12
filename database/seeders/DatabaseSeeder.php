@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             MonthlyPeriodsSeeder::class,
             MaintenancePeriodsSeeder::class,
-            StudentSeeder::class,
+            // StudentSeeder::class,
             InstructorSeeder::class,
             WorkshopSeeder::class,
             // InstructorWorkshopSeeder::class,

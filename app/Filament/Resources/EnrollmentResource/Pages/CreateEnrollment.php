@@ -117,10 +117,58 @@ class CreateEnrollment extends CreateRecord
         // Actualizar selectedWorkshops con los nuevos IDs
         $selectedWorkshops = array_values($workshopIdMapping);
 
+        // 🔥 VALIDACIÓN TEMPRANA DE DUPLICADOS - DETENER TODO SI HAY PROBLEMAS
+        $duplicateErrors = [];
+        foreach ($workshopDetails as $detail) {
+            if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
+                continue;
+            }
+
+            // Verificar duplicados activos
+            $existingActiveEnrollment = \App\Models\StudentEnrollment::where('student_id', $data['student_id'])
+                ->where('instructor_workshop_id', $detail['instructor_workshop_id'])
+                ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                ->whereNotIn('payment_status', ['refunded'])
+                ->first();
+
+            if ($existingActiveEnrollment) {
+                $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                    ->find($detail['instructor_workshop_id']);
+
+                if ($instructorWorkshop) {
+                    $workshopName = $instructorWorkshop->workshop->name;
+                    $statusText = match($existingActiveEnrollment->payment_status) {
+                        'pending' => 'en proceso',
+                        'completed' => 'inscrito',
+                        'to_pay' => 'por pagar',
+                        'credit_favor' => 'con crédito a favor',
+                        default => $existingActiveEnrollment->payment_status
+                    };
+
+                    $duplicateErrors[] = "'{$workshopName}' (ya {$statusText})";
+                }
+            }
+        }
+
+        // Si hay duplicados, detener completamente el proceso
+        if (!empty($duplicateErrors)) {
+            $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
+            $duplicateList = implode(', ', $duplicateErrors);
+            
+            Notification::make()
+                ->title('Inscripciones duplicadas detectadas')
+                ->body("El estudiante ya tiene inscripciones activas para {$monthName} en: {$duplicateList}. No se puede proceder hasta resolver estos duplicados.")
+                ->danger()
+                ->persistent()
+                ->send();
+
+            $this->halt();
+        }
+
+        // CONTINUAR con el foreach original (pero SIN la validación de duplicados)
         foreach ($workshopDetails as $detail) {
             if (! isset($detail['instructor_workshop_id']) || ! in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
                 $skippedWorkshops[] = 'Taller no válido o no seleccionado';
-
                 continue;
             }
 
@@ -150,37 +198,7 @@ class CreateEnrollment extends CreateRecord
                     ->send();
 
                 $skippedWorkshops[] = "Sin cupos: {$instructorWorkshop->workshop->name} - {$monthName}";
-
                 continue; // Saltar este taller
-            }
-
-            // 🔥 VALIDACIÓN DE DUPLICADOS USANDO EL PERÍODO SELECCIONADO
-            $existingEnrollment = \App\Models\StudentEnrollment::where('student_id', $data['student_id'])
-                ->where('instructor_workshop_id', $detail['instructor_workshop_id'])
-                ->where('monthly_period_id', $selectedMonthlyPeriodId) // Usar el período seleccionado
-                ->where('payment_status', 'completed')
-                ->first();
-
-            if ($existingEnrollment) {
-                $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
-                    ->find($detail['instructor_workshop_id']);
-
-                $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
-
-                if ($instructorWorkshop) {
-                    $workshopName = $instructorWorkshop->workshop->name;
-                    $instructorName = $instructorWorkshop->instructor->first_names.' '.$instructorWorkshop->instructor->last_names;
-
-                    Notification::make()
-                        ->title('Taller ya inscrito')
-                        ->body("El estudiante ya está inscrito en '{$workshopName}' con {$instructorName} para {$monthName}. Este taller se omitirá de la inscripción.")
-                        ->warning()
-                        ->send();
-
-                    $skippedWorkshops[] = "Duplicado: {$workshopName} - {$monthName}";
-
-                    continue; // Saltar este taller pero continuar con los demás
-                }
             }
 
             // 🔥 CÁLCULO DE PRECIO CON LÓGICA PRE-PAMA
@@ -207,15 +225,6 @@ class CreateEnrollment extends CreateRecord
             $validWorkshopDetails[] = $detail;
         }
 
-        /* if (empty($validWorkshopDetails)) {
-            Notification::make()
-                ->title('Error')
-                ->body('No se pudo crear ninguna inscripción.')
-                ->danger()
-                ->send();
-
-            throw new \Exception('No se crearon inscripciones válidas');
-        } */
         if (empty($validWorkshopDetails)) {
             $skippedCount = count($skippedWorkshops);
 
@@ -290,13 +299,6 @@ class CreateEnrollment extends CreateRecord
                 ->title('¡Inscripciones en proceso!')
                 ->body("Se creó un lote con {$count} inscripción".($count > 1 ? 'es' : '').' correctamente. Estado: En Proceso.')
                 ->success()
-                /* ->actions([
-                    \Filament\Notifications\Actions\Action::make('download_ticket')
-                        ->label('Descargar Ticket')
-                        ->url(route('enrollment.batch.ticket', ['batchId' => $enrollmentBatch->id]))
-                        ->openUrlInNewTab()
-                        ->button(),
-                ]) */
                 ->persistent()
                 ->send();
         } else {

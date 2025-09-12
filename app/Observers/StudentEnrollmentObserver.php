@@ -12,19 +12,86 @@ class StudentEnrollmentObserver
 {
     public function created(StudentEnrollment $studentEnrollment): void
     {
-        $this->calculateAndSaveInstructorPayment($studentEnrollment);
+        // Solo calcular cuando el estado sea 'completed'
+        if ($studentEnrollment->payment_status === 'completed') {
+            $this->calculateAndSaveInstructorPayment($studentEnrollment);
+        }
     }
 
     public function updated(StudentEnrollment $studentEnrollment): void
-    {
-        if ($studentEnrollment->isDirty(['total_amount', 'instructor_workshop_id', 'monthly_period_id'])) {
+    {        
+        // Verificar si cambió el estado de pago
+        if ($studentEnrollment->isDirty('payment_status')) {
+            $this->handlePaymentStatusChange($studentEnrollment);
+        }
+
+        // Si cambió otros campos relevantes Y el estado es 'completed', recalcular
+        if ($studentEnrollment->payment_status === 'completed' && 
+            $studentEnrollment->isDirty(['total_amount', 'instructor_workshop_id', 'monthly_period_id'])) {
             $this->calculateAndSaveInstructorPayment($studentEnrollment);
         }
     }
 
     public function deleted(StudentEnrollment $studentEnrollment): void
     {
-        $this->calculateAndSaveInstructorPayment($studentEnrollment);
+        // Solo recalcular si la inscripción eliminada estaba en estado 'completed'
+        if ($studentEnrollment->payment_status === 'completed') {
+            $this->calculateAndSaveInstructorPayment($studentEnrollment);
+        }
+    }
+
+    /**
+     * Manejar cambios en el estado de pago
+     */
+    protected function handlePaymentStatusChange(StudentEnrollment $studentEnrollment): void
+    {
+        $oldStatus = $studentEnrollment->getOriginal('payment_status');
+        $newStatus = $studentEnrollment->payment_status;
+
+        // Caso 1: De cualquier estado a 'completed' - CREAR/ACTUALIZAR pago
+        if ($newStatus === 'completed') {
+            $this->calculateAndSaveInstructorPayment($studentEnrollment);
+        }
+
+        // Caso 2: De 'completed' a cualquier otro estado - RECALCULAR sin esta inscripción
+        if ($oldStatus === 'completed' && $newStatus !== 'completed') {
+            $this->calculateAndSaveInstructorPayment($studentEnrollment);
+        }
+
+        // Caso 3: Anulación específica - ELIMINAR completamente si no hay más inscripciones válidas
+        if ($newStatus === 'refunded') {
+            $this->handleCancellationOrRefund($studentEnrollment);
+        }
+    }
+
+    /**
+     * Manejar anulaciones y devoluciones
+     */
+    protected function handleCancellationOrRefund(StudentEnrollment $studentEnrollment): void
+    {
+        $instructorWorkshopId = $studentEnrollment->instructor_workshop_id;
+        $monthlyPeriodId = $studentEnrollment->monthly_period_id;
+
+        if (!$instructorWorkshopId || !$monthlyPeriodId) {
+            return;
+        }
+
+        // Verificar si quedan inscripciones completadas para este instructor/período
+        $remainingCompletedEnrollments = StudentEnrollment::where('instructor_workshop_id', $instructorWorkshopId)
+            ->where('monthly_period_id', $monthlyPeriodId)
+            ->where('payment_status', 'completed')
+            ->where('id', '!=', $studentEnrollment->id) // Excluir la actual
+            ->count();
+
+        if ($remainingCompletedEnrollments === 0) {
+            // No quedan inscripciones válidas, eliminar el pago del instructor
+            InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
+                ->where('monthly_period_id', $monthlyPeriodId)
+                ->delete();
+        } else {
+            // Quedan inscripciones válidas, recalcular el pago
+            $this->calculateAndSaveInstructorPayment($studentEnrollment);
+        }
     }
 
     protected function calculateAndSaveInstructorPayment(StudentEnrollment $studentEnrollment): void
@@ -38,6 +105,20 @@ class StudentEnrollmentObserver
 
         $instructorWorkshop = InstructorWorkshop::find($instructorWorkshopId);
         if (! $instructorWorkshop) {
+            return;
+        }
+
+        // ✅ VERIFICAR SI HAY INSCRIPCIONES COMPLETADAS ANTES DE CALCULAR
+        $completedEnrollments = StudentEnrollment::where('instructor_workshop_id', $instructorWorkshopId)
+            ->where('monthly_period_id', $monthlyPeriodId)
+            ->where('payment_status', 'completed')
+            ->count();
+
+        // Si no hay inscripciones completadas, eliminar el pago del instructor y salir
+        if ($completedEnrollments === 0) {
+            InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
+                ->where('monthly_period_id', $monthlyPeriodId)
+                ->delete();
             return;
         }
 
@@ -58,62 +139,45 @@ class StudentEnrollmentObserver
 
         if ($instructorWorkshop->payment_type == 'volunteer') {
             // 🎯 LÓGICA PARA INSTRUCTORES VOLUNTARIOS
-
-            // Determinar el porcentaje a aplicar
             $appliedVolunteerPercentage = $instructorWorkshop->custom_volunteer_percentage ?? 0.5000;
 
-            // 🔥 LÓGICA SIMPLIFICADA: Sumar todos los ingresos sin descuentos
-            // Los estudiantes PRE-PAMA ya pagaron el 50% adicional en la inscripción
             $monthlyRevenue = DB::table('student_enrollments')
                 ->where('instructor_workshop_id', $instructorWorkshopId)
                 ->where('monthly_period_id', $monthlyPeriodId)
+                ->where('payment_status', 'completed')
                 ->sum('total_amount');
 
             $totalStudents = DB::table('student_enrollments')
                 ->where('instructor_workshop_id', $instructorWorkshopId)
                 ->where('monthly_period_id', $monthlyPeriodId)
+                ->where('payment_status', 'completed')
                 ->distinct('student_id')
                 ->count('student_id');
 
             $calculatedAmount = $monthlyRevenue * $appliedVolunteerPercentage;
-
-            // Campo original para auditoría
             $volunteerPercentage = $monthlyRate?->volunteer_percentage;
         }
 
         if ($instructorWorkshop->payment_type == 'hourly') {
             // 🎯 LÓGICA PARA INSTRUCTORES NO VOLUNTARIOS (POR HORAS)
-            // Siempre son 4 clases por mes según especificación del usuario
-
             $appliedHourlyRate = $instructorWorkshop->hourly_rate ?? 0;
-
-            // CAMBIO: Siempre usar 4 clases por mes (no las clases programadas)
             $classesPerMonth = 4;
 
-            // Obtener la duración en horas desde InstructorWorkshop
-            // Si no está definida, calcular desde el Workshop (convertir minutos a horas)
             $durationHours = $instructorWorkshop->duration_hours;
-
             if (! $durationHours && $instructorWorkshop->workshop) {
-                // Convertir minutos del workshop a horas
                 $durationMinutes = $instructorWorkshop->workshop->duration ?? 60;
                 $durationHours = $durationMinutes / 60;
             }
+            $durationHours = $durationHours ?? 1;
 
-            $durationHours = $durationHours ?? 1; // Default 1 hora si no se puede determinar
-
-            // Calcular total de horas: 4 clases * duration_hours
             $totalHours = $classesPerMonth * $durationHours;
-
             $calculatedAmount = $totalHours * $appliedHourlyRate;
-
-            // Campos originales para auditoría
             $hourlyRate = $instructorWorkshop->hourly_rate;
 
-            // Contar todos los estudiantes para estadísticas
             $totalStudents = DB::table('student_enrollments')
                 ->where('instructor_workshop_id', $instructorWorkshopId)
                 ->where('monthly_period_id', $monthlyPeriodId)
+                ->where('payment_status', 'completed')
                 ->distinct('student_id')
                 ->count('student_id');
         }
@@ -136,27 +200,15 @@ class StudentEnrollmentObserver
                 'instructor_id' => $instructorWorkshop->instructor_id,
                 'monthly_instructor_rate_id' => $monthlyRate?->id,
                 'payment_type' => $paymentType,
-
-                // Para voluntarios
                 'total_students' => $totalStudents,
                 'monthly_revenue' => $monthlyRevenue,
                 'volunteer_percentage' => $volunteerPercentage,
-
-                // Para por horas
                 'total_hours' => $totalHours,
                 'hourly_rate' => $hourlyRate,
-
-                // Campos aplicados (los que se usaron realmente)
                 'applied_hourly_rate' => $appliedHourlyRate,
                 'applied_volunteer_percentage' => $appliedVolunteerPercentage,
-
-                // Resultado final
                 'calculated_amount' => round($calculatedAmount, 2),
-
-                // Notas informativas
                 'notes' => $notes,
-
-                // Preservar estado de pago existente
                 'payment_status' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
                     ->where('monthly_period_id', $monthlyPeriodId)
                     ->value('payment_status') ?? 'pending',
@@ -164,6 +216,6 @@ class StudentEnrollmentObserver
                     ->where('monthly_period_id', $monthlyPeriodId)
                     ->value('payment_date'),
             ]
-        );
+        );        
     }
 }

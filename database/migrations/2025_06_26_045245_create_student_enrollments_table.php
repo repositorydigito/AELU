@@ -33,8 +33,6 @@ return new class extends Migration
             $table->index('enrollment_batch_id');
 
             $table->timestamps();
-
-            $table->unique(['student_id', 'instructor_workshop_id', 'monthly_period_id'], 'unique_enrollment');
         });
     }
 

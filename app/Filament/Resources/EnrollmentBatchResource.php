@@ -336,10 +336,18 @@ class EnrollmentBatchResource extends Resource
                         $record->update($updates);
 
                         // También actualizar todas las inscripciones individuales del lote
-                        $record->enrollments()->update([
+                        /* $record->enrollments()->update([
                             'payment_status' => 'completed',
                             'payment_date' => now(),
-                        ]);
+                        ]); */
+
+                        // Usa esto para disparar observers:
+                        foreach ($record->enrollments as $enrollment) {
+                            $enrollment->update([
+                                'payment_status' => 'completed',
+                                'payment_date' => now(),
+                            ]);
+                        }
 
                         $message = $record->payment_method === 'link'
                             ? "Pago registrado exitosamente. Código: {$data['batch_code']}"
@@ -418,10 +426,12 @@ class EnrollmentBatchResource extends Resource
                                             ":\nMotivo: ".$data['cancellation_reason'],
                                 ]);
 
-                                // Actualizar todas las inscripciones individuales del lote
-                                $record->enrollments()->update([
-                                    'payment_status' => 'refunded',
-                                ]);
+                                // Actualizar cada enrollment individualmente para disparar observers de pago de profesores
+                                foreach ($record->enrollments as $enrollment) {
+                                    $enrollment->update([
+                                        'payment_status' => 'refunded',
+                                    ]);
+                                }
                             });
 
                             Notification::make()
