@@ -9,6 +9,6 @@ use Illuminate\Support\Facades\Schedule;
 })->purpose('Display an inspiring quote'); */
 
 Schedule::command('enrollments:auto-cancel')
-    ->dailyAt('23:59')
+    ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();
