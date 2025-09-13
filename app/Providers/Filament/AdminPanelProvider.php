@@ -66,7 +66,7 @@ class AdminPanelProvider extends PanelProvider
                 FilamentUsersPlugin::make(),
                 FilamentShieldPlugin::make(),
                 FilamentApexChartsPlugin::make(),
-                FilamentLogViewer::make(),
+                FilamentLogViewer::make()->authorize(fn () => auth()->user()?->can('page_LogTable')),
                 FilamentEditProfilePlugin::make()
                     ->shouldRegisterNavigation(false),
             ])
