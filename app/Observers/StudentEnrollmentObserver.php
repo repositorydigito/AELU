@@ -19,14 +19,14 @@ class StudentEnrollmentObserver
     }
 
     public function updated(StudentEnrollment $studentEnrollment): void
-    {        
+    {
         // Verificar si cambió el estado de pago
         if ($studentEnrollment->isDirty('payment_status')) {
             $this->handlePaymentStatusChange($studentEnrollment);
         }
 
         // Si cambió otros campos relevantes Y el estado es 'completed', recalcular
-        if ($studentEnrollment->payment_status === 'completed' && 
+        if ($studentEnrollment->payment_status === 'completed' &&
             $studentEnrollment->isDirty(['total_amount', 'instructor_workshop_id', 'monthly_period_id'])) {
             $this->calculateAndSaveInstructorPayment($studentEnrollment);
         }
@@ -139,7 +139,7 @@ class StudentEnrollmentObserver
 
         if ($instructorWorkshop->payment_type == 'volunteer') {
             // 🎯 LÓGICA PARA INSTRUCTORES VOLUNTARIOS
-            $appliedVolunteerPercentage = $instructorWorkshop->custom_volunteer_percentage ?? 0.5000;
+            $appliedVolunteerPercentage = $instructorWorkshop->custom_volunteer_percentage ?? 50.0000;
 
             $monthlyRevenue = DB::table('student_enrollments')
                 ->where('instructor_workshop_id', $instructorWorkshopId)
@@ -154,7 +154,7 @@ class StudentEnrollmentObserver
                 ->distinct('student_id')
                 ->count('student_id');
 
-            $calculatedAmount = $monthlyRevenue * $appliedVolunteerPercentage;
+            $calculatedAmount = $monthlyRevenue * ($appliedVolunteerPercentage / 100);
             $volunteerPercentage = $monthlyRate?->volunteer_percentage;
         }
 
@@ -185,7 +185,7 @@ class StudentEnrollmentObserver
         // Preparar notas informativas
         $notes = '';
         if ($instructorWorkshop->isVolunteer()) {
-            $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ ".number_format($monthlyRevenue, 2)." × {$appliedVolunteerPercentage}% = S/ ".number_format($calculatedAmount, 2);
+            $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ ".number_format($monthlyRevenue, 2)." × ".number_format($appliedVolunteerPercentage, 2)."% = S/ ".number_format($calculatedAmount, 2);
         } elseif ($instructorWorkshop->isHourly()) {
             $notes = "Pago por horas: {$totalHours} horas totales (4 clases × {$durationHours} hrs/clase) × S/ {$appliedHourlyRate}/hora = S/ ".number_format($calculatedAmount, 2);
         }
@@ -206,7 +206,7 @@ class StudentEnrollmentObserver
                 'total_hours' => $totalHours,
                 'hourly_rate' => $hourlyRate,
                 'applied_hourly_rate' => $appliedHourlyRate,
-                'applied_volunteer_percentage' => $appliedVolunteerPercentage,
+                'applied_volunteer_percentage' => $appliedVolunteerPercentage/100,
                 'calculated_amount' => round($calculatedAmount, 2),
                 'notes' => $notes,
                 'payment_status' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
@@ -216,6 +216,6 @@ class StudentEnrollmentObserver
                     ->where('monthly_period_id', $monthlyPeriodId)
                     ->value('payment_date'),
             ]
-        );        
+        );
     }
 }

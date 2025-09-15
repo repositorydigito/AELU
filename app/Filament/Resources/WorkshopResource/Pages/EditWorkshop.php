@@ -58,33 +58,21 @@ class EditWorkshop extends EditRecord
         $workshop = $this->record;
         $scheduleData = $this->data['schedule_data'] ?? [];
 
-        // Permitir actualización de fechas siempre
-        if (! empty($scheduleData) && is_array($scheduleData)) {
-            // Obtener clases existentes para actualizar en lugar de eliminar
-            $existingClasses = $workshop->workshopClasses()
-                ->orderBy('class_date')
-                ->get();
+        if (!empty($scheduleData) && is_array($scheduleData)) {
+            // ELIMINAR todas las clases existentes primero
+            $workshop->workshopClasses()->delete();
 
+            // CREAR las clases nuevamente con los datos actualizados
             foreach ($scheduleData as $index => $classData) {
-                if (isset($existingClasses[$index])) {
-                    // Actualizar clase existente
-                    $existingClasses[$index]->update([
-                        'class_date' => $classData['raw_date'],
-                        'start_time' => $workshop->start_time,
-                        'end_time' => $workshop->end_time,
-                    ]);
-                } else {
-                    // Crear nueva clase si no existe
-                    WorkshopClass::create([
-                        'workshop_id' => $workshop->id,
-                        'monthly_period_id' => $workshop->monthly_period_id,
-                        'class_date' => $classData['raw_date'],
-                        'start_time' => $workshop->start_time,
-                        'end_time' => $workshop->end_time,
-                        'status' => 'scheduled',
-                        'max_capacity' => $workshop->capacity,
-                    ]);
-                }
+                WorkshopClass::create([
+                    'workshop_id' => $workshop->id,
+                    'monthly_period_id' => $workshop->monthly_period_id,
+                    'class_date' => $classData['raw_date'],
+                    'start_time' => $workshop->start_time,
+                    'end_time' => $workshop->end_time, // Asegúrate de que end_time esté calculado
+                    'status' => 'scheduled',
+                    'max_capacity' => $workshop->capacity,
+                ]);
             }
         }
     }

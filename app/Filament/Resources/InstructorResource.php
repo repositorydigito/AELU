@@ -336,7 +336,29 @@ class InstructorResource extends Resource
                                                         ->schema([
                                                             Select::make('workshop_id')
                                                                 ->label('Taller')
-                                                                ->options(Workshop::all()->pluck('name', 'id'))
+                                                                ->options(function () {
+                                                                    return Workshop::all()->mapWithKeys(function ($workshop) {
+                                                                        $start = $workshop->start_time ? \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
+                                                                        $end = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
+                                                                        $day = $workshop->day_of_week ?? 'N/A';
+                                                                        $period = 'Sin periodo';
+                                                                        if ($workshop->monthly_period_id) {
+                                                                            $mp = \App\Models\MonthlyPeriod::find($workshop->monthly_period_id);
+                                                                            if ($mp) {
+                                                                                $months = [
+                                                                                    1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+                                                                                    5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+                                                                                    9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+                                                                                ];
+                                                                                $period = ($months[$mp->month] ?? $mp->month) . ' ' . $mp->year;
+                                                                            } else {
+                                                                                $period = 'Periodo no disponible';
+                                                                            }
+                                                                        }
+                                                                        $label = "{$workshop->name} - {$day} {$start}-{$end} - {$period}";
+                                                                        return [$workshop->id => $label];
+                                                                    });
+                                                                })
                                                                 ->required()
                                                                 ->searchable()
                                                                 ->reactive(),
@@ -349,39 +371,28 @@ class InstructorResource extends Resource
                                                                     if (! $workshopId) {
                                                                         return 'Selecciona un taller para ver el horario';
                                                                     }
-
                                                                     $workshop = Workshop::find($workshopId);
                                                                     if (! $workshop) {
                                                                         return 'Horario no disponible';
                                                                     }
-
-                                                                    // Aquí debes ajustar según la estructura de tu modelo Workshop
-                                                                    // Ejemplo asumiendo que tienes campos day_of_week y start_time
-                                                                    /* $dayNames = [
-                                                                        'monday' => 'Lunes',
-                                                                        'tuesday' => 'Martes',
-                                                                        'wednesday' => 'Miércoles',
-                                                                        'thursday' => 'Jueves',
-                                                                        'friday' => 'Viernes',
-                                                                        'saturday' => 'Sábado',
-                                                                        'sunday' => 'Domingo'
-                                                                    ];
-
-                                                                    // Opción 1: Si tienes campos day_of_week y start_time
-                                                                    if ($workshop->day_of_week && $workshop->start_time) {
-                                                                        $dayName = $dayNames[$workshop->day_of_week] ?? $workshop->day_of_week;
-                                                                        $time = \Carbon\Carbon::parse($workshop->start_time)->format('h:i A');
-                                                                        return "{$dayName} {$time}";
-                                                                    } */
-
-                                                                    if ($workshop->day_of_week && $workshop->start_time) {
-                                                                        $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i A');
-                                                                        $endTime = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i A') : 'N/A';
-
-                                                                        return "{$workshop->day_of_week}: {$startTime} - {$endTime}";
+                                                                    $startTime = $workshop->start_time ? \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
+                                                                    $endTime = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
+                                                                    $day = $workshop->day_of_week ?? 'N/A';
+                                                                    $period = 'Sin periodo';
+                                                                    if ($workshop->monthly_period_id) {
+                                                                        $mp = \App\Models\MonthlyPeriod::find($workshop->monthly_period_id);
+                                                                        if ($mp) {
+                                                                            $months = [
+                                                                                1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+                                                                                5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+                                                                                9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+                                                                            ];
+                                                                            $period = ($months[$mp->month] ?? $mp->month) . ' ' . $mp->year;
+                                                                        } else {
+                                                                            $period = 'Periodo no disponible';
+                                                                        }
                                                                     }
-
-                                                                    return 'Horario no configurado';
+                                                                    return "{$day} {$startTime}-{$endTime} - {$period}";
                                                                 })
                                                                 ->visible(fn (callable $get) => $get('workshop_id')),
                                                         ]),
