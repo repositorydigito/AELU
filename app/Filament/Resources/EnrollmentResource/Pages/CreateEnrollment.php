@@ -154,7 +154,7 @@ class CreateEnrollment extends CreateRecord
         if (!empty($duplicateErrors)) {
             $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
             $duplicateList = implode(', ', $duplicateErrors);
-            
+
             Notification::make()
                 ->title('Inscripciones duplicadas detectadas')
                 ->body("El estudiante ya tiene inscripciones activas para {$monthName} en: {$duplicateList}. No se puede proceder hasta resolver estos duplicados.")

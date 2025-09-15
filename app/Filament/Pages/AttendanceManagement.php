@@ -152,7 +152,7 @@ class AttendanceManagement extends Page implements HasActions, HasForms
                 // Calcular estudiantes inscritos
                 $enrolledStudents = StudentEnrollment::whereHas('instructorWorkshop', function ($query) use ($workshop) {
                     $query->where('workshop_id', $workshop->id);
-                })->count();
+                })->where('payment_status', 'completed')->count();
 
                 // Calcular cupos disponibles
                 $availableSlots = max(0, ($workshop->capacity ?? 0) - $enrolledStudents);
@@ -215,6 +215,7 @@ class AttendanceManagement extends Page implements HasActions, HasForms
         $enrollments = StudentEnrollment::whereHas('instructorWorkshop', function ($query) {
             $query->where('workshop_id', $this->selectedWorkshop);
         })
+            ->where('payment_status', 'completed')
             ->with(['student', 'enrollmentClasses.workshopClass'])
             ->get();
 
