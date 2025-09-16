@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\MonthlyPeriod;
 use App\Models\Student;
 use App\Models\StudentEnrollment;
 use Dompdf\Dompdf;
@@ -33,6 +34,8 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
     public ?array $data = [];
 
     public $selectedStudent = null;
+
+    public $selectedPeriod = null;
 
     public $studentEnrollments = [];
 
@@ -67,7 +70,30 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
                         $this->loadStudentEnrollments();
                     })
                     ->required(),
+
+                Select::make('monthly_period_id')
+                    ->label('Período Mensual (Opcional)')
+                    ->placeholder('Selecciona un período (opcional)...')
+                    ->options(
+                        MonthlyPeriod::orderBy('year', 'desc')
+                            ->orderBy('month', 'desc')
+                            ->get()
+                            ->mapWithKeys(function ($period) {
+                                return [
+                                    $period->id => $this->generatePeriodName($period->month, $period->year),
+                                ];
+                            })
+                            ->toArray()
+                    )
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(function ($state) {
+                        $this->selectedPeriod = $state;
+                        $this->loadStudentEnrollments();
+                    })
+                    ->helperText('Deja vacío para ver todas las inscripciones del alumno'),
             ])
+            ->columns(2)
             ->statePath('data');
     }
 
@@ -76,24 +102,31 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         if (! $this->selectedStudent) {
             $this->studentEnrollments = [];
             $this->studentData = null;
-
             return;
         }
 
         // Cargar datos del estudiante
         $this->studentData = Student::find($this->selectedStudent);
 
-        // Cargar inscripciones del estudiante con todas las relaciones necesarias
-        $this->studentEnrollments = StudentEnrollment::where('student_id', $this->selectedStudent)
+        // Construir la consulta base
+        $query = StudentEnrollment::where('student_id', $this->selectedStudent)
             ->where('payment_status', 'completed')
             ->with([
                 'instructorWorkshop.workshop',
                 'instructorWorkshop.instructor',
                 'monthlyPeriod',
                 'enrollmentBatch.paymentRegisteredByUser',
-                'enrollmentBatch', // Para obtener el documento/ticket
+                'enrollmentBatch',
                 'creator',
-            ])
+            ]);
+
+        // Aplicar filtro de período si está seleccionado
+        if ($this->selectedPeriod) {
+            $query->where('monthly_period_id', $this->selectedPeriod);
+        }
+
+        // Ejecutar consulta y procesar resultados
+        $this->studentEnrollments = $query
             ->orderBy('enrollment_date', 'desc')
             ->get()
             ->map(function ($enrollment) {
@@ -154,10 +187,20 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         }
 
         try {
+            // Obtener el nombre del período si está seleccionado
+            $periodName = null;
+            if ($this->selectedPeriod) {
+                $period = MonthlyPeriod::find($this->selectedPeriod);
+                if ($period) {
+                    $periodName = $this->generatePeriodName($period->month, $period->year);
+                }
+            }
+
             // 1. Renderizar la vista Blade a HTML
             $html = View::make('reports.student-enrollments', [
                 'student' => $this->studentData,
                 'enrollments' => $this->studentEnrollments,
+                'period_filter' => $periodName,
                 'generated_at' => now()->format('d/m/Y H:i'),
             ])->render();
 
@@ -175,7 +218,12 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
             // 4. Renderizar el PDF
             $dompdf->render();
 
-            $fileName = 'inscripciones-'.str($this->studentData->first_names.'-'.$this->studentData->last_names)->slug().'.pdf';
+            // Nombre del archivo con período si aplica
+            $fileName = 'inscripciones-'.str($this->studentData->first_names.'-'.$this->studentData->last_names)->slug();
+            if ($periodName) {
+                $fileName .= '-'.str($periodName)->slug();
+            }
+            $fileName .= '.pdf';
 
             // 5. Descargar el PDF
             return response()->stream(function () use ($dompdf) {
@@ -212,5 +260,27 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         $monthName = $monthNames[$month] ?? 'Mes '.$month;
 
         return $monthName.' '.$year;
+    }
+
+    // Método para obtener información del filtro aplicado (útil para la vista)
+    public function getFilterDescription(): string
+    {
+        if (!$this->selectedStudent) {
+            return '';
+        }
+
+        $description = 'Mostrando ';
+
+        if ($this->selectedPeriod) {
+            $period = MonthlyPeriod::find($this->selectedPeriod);
+            if ($period) {
+                $periodName = $this->generatePeriodName($period->month, $period->year);
+                $description .= "inscripciones de {$periodName}";
+            }
+        } else {
+            $description .= 'todas las inscripciones históricas';
+        }
+
+        return $description;
     }
 }

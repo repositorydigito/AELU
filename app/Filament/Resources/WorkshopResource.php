@@ -518,9 +518,6 @@ class WorkshopResource extends Resource
                     ->label('Tarifa Mensual')
                     ->prefix('S/. ')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('capacity')
-                    ->label('Capacidad')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('current_period_enrollments')
                     ->label('Cupos Actuales')
                     ->getStateUsing(function (Workshop $record) {
