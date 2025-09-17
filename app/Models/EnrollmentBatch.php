@@ -13,6 +13,8 @@ class EnrollmentBatch extends Model
         'created_by',
         'batch_code',
         'total_amount',
+        'amount_paid',     
+        'change_amount', 
         'payment_status',
         'payment_method',
         'payment_due_date',
@@ -29,6 +31,8 @@ class EnrollmentBatch extends Model
 
     protected $casts = [
         'total_amount' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'change_amount' => 'decimal:2',
         'enrollment_date' => 'date',
         'payment_due_date' => 'date',
         'payment_date' => 'date',

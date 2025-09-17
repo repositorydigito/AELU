@@ -52,7 +52,7 @@
         }
 
         .student-details {
-            font-size: 9px;
+            font-size: 11px;
             display: flex;
             justify-content: space-between;
             border-top: 1px solid #666;
@@ -153,8 +153,7 @@
                 {{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }} - {{ $student->student_code ?? 'N/A' }}
             </div>
             <div class="student-details">
-                <span><strong>Ticket:</strong> {{ $enrollmentBatch->batch_code ?? str_pad($enrollmentBatch->id, 6, '0', STR_PAD_LEFT) }}</span>
-                <span><strong>Fecha:</strong> {{ $enrollmentBatch->created_at->format('d/m/Y') }}</span>
+                <strong>Ticket:</strong> {{ $enrollmentBatch->batch_code ?? str_pad($enrollmentBatch->id, 6, '0', STR_PAD_LEFT) }} //// <strong>Fecha:</strong> {{ $enrollmentBatch->created_at->format('d/m/Y') }}
             </div>
         </div>
 
@@ -174,9 +173,9 @@
                     @php
                         $workshop = $enrollment->instructorWorkshop;
                         $dayNames = [
-                            1 => 'LUN', 2 => 'MAR', 3 => 'MIE',
-                            4 => 'JUE', 5 => 'VIE', 6 => 'SAB',
-                            7 => 'DOM', 0 => 'DOM'
+                            1 => 'LUNES', 2 => 'MARTES', 3 => 'MIÉRCOLES',
+                            4 => 'JUEVES', 5 => 'VIERNES', 6 => 'SÁBADO',
+                            7 => 'DOMINGO', 0 => 'DOMINGO'
                         ];
                         $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'N/A';
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
@@ -235,9 +234,9 @@
             </tbody>
         </table>
 
-        <!-- Footer compacto -->
+        <!-- Footer con información de pago -->
         <div class="footer-section">
-            <!-- Fila del usuario -->
+            <!-- Fila del usuario y mes pagado -->
             <div class="footer-row">
                 <span><strong>USUARIO:</strong> {{ $created_by_user }}</span>
                 <span><strong>MES PAGADO:</strong>
@@ -248,6 +247,14 @@
                     @endif
                 </span>
             </div>
+
+            <!-- Fila del monto pagado y vuelto (solo para pagos en efectivo) -->
+            @if($enrollmentBatch->payment_method === 'cash' && $enrollmentBatch->amount_paid)
+            <div class="footer-row" style="margin-bottom: 4px;">
+                <span><strong>MONTO PAGADO:</strong> S/ {{ number_format($enrollmentBatch->amount_paid, 2) }}</span>
+                <span><strong>VUELTO:</strong> S/ {{ number_format($enrollmentBatch->change_amount ?? 0, 2) }}</span>
+            </div>
+            @endif
 
             <!-- Total en palabras -->
             <div class="total-words">

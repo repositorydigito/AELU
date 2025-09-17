@@ -319,6 +319,45 @@ class EnrollmentBatchResource extends Resource
                                         </div>
                                     ')),
 
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('amount_paid')
+                                            ->label('Monto Pagado')
+                                            ->numeric()
+                                            ->prefix('S/')
+                                            ->required()
+                                            ->default($record->total_amount)
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, Forms\Set $set) use ($record) {
+                                                $amountPaid = (float) $state;
+                                                $totalAmount = (float) $record->total_amount;
+                                                $change = $amountPaid - $totalAmount;
+                                                $set('change_amount', max(0, $change));
+                                            })
+                                            ->rules([
+                                                'required',
+                                                'numeric',
+                                                'min:0',
+                                                function () use ($record) {
+                                                    return function ($attribute, $value, $fail) use ($record) {
+                                                        if ((float) $value < (float) $record->total_amount) {
+                                                            $fail("El monto pagado (S/ {$value}) no puede ser menor al monto total (S/ {$record->total_amount}).");
+                                                        }
+                                                    };
+                                                }
+                                            ])
+                                            ->helperText('Ingresa el monto que recibiste del estudiante/socio'),
+
+                                        Forms\Components\TextInput::make('change_amount')
+                                            ->label('Vuelto')
+                                            ->numeric()
+                                            ->prefix('S/')
+                                            ->disabled()
+                                            ->default(0)
+                                            ->dehydrated(true)
+                                            ->helperText('Se calcula automáticamente'),
+                                    ]),
+
                                 Forms\Components\Textarea::make('payment_notes')
                                     ->label('Observaciones del Pago')
                                     ->rows(3)
@@ -327,6 +366,22 @@ class EnrollmentBatchResource extends Resource
                         }
                     })
                     ->action(function (EnrollmentBatch $record, array $data): void {
+                        // VALIDACIÓN: Verificar que el monto pagado sea suficiente
+                        if ($record->payment_method === 'cash') {
+                            $amountPaid = (float) ($data['amount_paid'] ?? 0);
+                            $totalAmount = (float) $record->total_amount;
+                            
+                            if ($amountPaid < $totalAmount) {
+                                Notification::make()
+                                    ->title('Error en el Pago')
+                                    ->body("El monto pagado (S/ ".number_format($amountPaid, 2).") es insuficiente. Se requiere S/ ".number_format($totalAmount, 2))
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+                                return; // Detener la ejecución
+                            }
+                        }
+
                         $updates = [
                             'payment_status' => 'completed',
                             'payment_date' => now(),
@@ -339,10 +394,19 @@ class EnrollmentBatchResource extends Resource
                             $updates['batch_code'] = $data['batch_code'];
                         }
 
+                        // Si es pago en efectivo, guardar monto pagado y vuelto
+                            if ($record->payment_method === 'cash') {
+                                $updates['amount_paid'] = $data['amount_paid'] ?? $record->total_amount;
+                                $updates['change_amount'] = $data['change_amount'] ?? 0;
+                            }
+
                         // Agregar notas si se proporcionaron
                         if (! empty($data['payment_notes'])) {
                             $existingNotes = $record->notes ? $record->notes."\n\n" : '';
-                            $updates['notes'] = $existingNotes.'Pago registrado por '.auth()->user()->name.' el '.now()->format('d/m/Y H:i').":\n".$data['payment_notes'];
+                            $paymentInfo = $record->payment_method === 'cash' 
+                                ? " (Pagado: S/ ".number_format($data['amount_paid'] ?? 0, 2).", Vuelto: S/ ".number_format($data['change_amount'] ?? 0, 2).")"
+                                : "";
+                            $updates['notes'] = $existingNotes.'Pago registrado por '.auth()->user()->name.' el '.now()->format('d/m/Y H:i').$paymentInfo.":\n".$data['payment_notes'];
                         }
 
                         $record->update($updates);                        

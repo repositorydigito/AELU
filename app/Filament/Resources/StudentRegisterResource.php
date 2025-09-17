@@ -74,17 +74,11 @@ class StudentRegisterResource extends Resource
                                                                     'CE' => 'Carné de Extranjería',
                                                                     'Pasaporte' => 'Pasaporte',
                                                                 ])
-                                                                ->required()
-                                                                ->validationMessages(['required' => 'Este campo es obligatorio']),
+                                                                ->nullable(),
 
                                                             TextInput::make('document_number')
                                                                 ->label('Número de documento')
-                                                                ->required()
-                                                                ->unique(ignoreRecord: true)
-                                                                ->validationMessages([
-                                                                    'required' => 'Este campo es obligatorio',
-                                                                    'unique' => 'Ya existe un estudiante registrado con este número de documento.',
-                                                                ])
+                                                                ->nullable()                                                                
                                                                 ->maxLength(15),
                                                         ]),
                                                 ]),
