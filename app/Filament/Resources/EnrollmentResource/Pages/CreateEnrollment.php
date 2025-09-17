@@ -6,6 +6,7 @@ use App\Filament\Resources\EnrollmentResource;
 use App\Models\StudentEnrollment;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Actions;
 
 class CreateEnrollment extends CreateRecord
 {
@@ -408,5 +409,18 @@ class CreateEnrollment extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return \App\Filament\Resources\EnrollmentBatchResource::getUrl('index');
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('save')
+                ->label('Guardar')
+                ->submit('create'),
+            Actions\Action::make('cancel')
+                ->label('Cancelar')
+                ->url(EnrollmentResource::getUrl('index'))
+                ->color('gray'),
+        ];
     }
 }

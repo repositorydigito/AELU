@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class EnrollmentBatchResource extends Resource
 {
@@ -165,31 +166,36 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('student.full_name')
                     ->label('Estudiante')
                     ->searchable(['students.first_names', 'students.last_names'])
-                    ->sortable()
-                    ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names
-                    ),
+                    ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names),
+                    
+                Tables\Columns\TextColumn::make('creator.name')
+                    ->label('Usuario')
+                    ->searchable(['users.name'])
+                    ->formatStateUsing(function (EnrollmentBatch $record): string {
+                        return $record->creator ? $record->creator->name : 'Sistema';
+                    }),
 
                 Tables\Columns\TextColumn::make('workshops_list')
                     ->label('Talleres')
                     ->limit(50)
                     ->tooltip(function (EnrollmentBatch $record): ?string {
                         return $record->workshops_list;
-                    }),
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('workshops_count')
                     ->label('Cantidad')
                     ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Taller' : ' Talleres'))
-                    ->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('total_classes')
                     ->label('Total Clases')
                     ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Clase' : ' Clases'))
-                    ->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Fecha de Inscripción')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->dateTime('d/m/Y H:i'),
 
                 Tables\Columns\TextColumn::make('payment_status')
                     ->label('Estado de Pago')
@@ -209,8 +215,7 @@ class EnrollmentBatchResource extends Resource
                         'credit_favor' => 'info',
                         'refunded' => 'danger',
                         default => 'gray',
-                    })
-                    ->sortable(),
+                    }),
 
                 Tables\Columns\TextColumn::make('payment_method')
                     ->label('Método de Pago')
@@ -218,20 +223,28 @@ class EnrollmentBatchResource extends Resource
                         'cash' => 'Efectivo',
                         'link' => 'Link',
                         default => $state,
-                    })
-                    ->sortable(),
+                    }),
 
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Total')
-                    ->prefix('S/')
-                    ->sortable(),
+                    ->prefix('S/'),
 
                 Tables\Columns\TextColumn::make('batch_code')
-                    ->label('Nº Documento')
+                    ->label('Nº Ticket')
                     ->placeholder('Sin código')
-                    ->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('created_by')
+                    ->label('Usuario')
+                    ->relationship('creator', 'name', function (Builder $query) {
+                        return $query->whereDoesntHave('roles', function (Builder $roleQuery) {
+                            $roleQuery->where('name', 'Delegado');
+                        });
+                    })
+                    ->searchable()
+                    ->preload(),
+
                 Tables\Filters\SelectFilter::make('payment_status')
                     ->label('Estado de Pago')
                     ->options([
@@ -268,7 +281,6 @@ class EnrollmentBatchResource extends Resource
                     }),
             ])
             ->actions([
-                /* Tables\Actions\EditAction::make()->label('Editar'), */
                 Tables\Actions\Action::make('download_ticket')
                     ->label('Descargar Ticket')
                     ->icon('heroicon-o-document-arrow-down')
@@ -333,15 +345,9 @@ class EnrollmentBatchResource extends Resource
                             $updates['notes'] = $existingNotes.'Pago registrado por '.auth()->user()->name.' el '.now()->format('d/m/Y H:i').":\n".$data['payment_notes'];
                         }
 
-                        $record->update($updates);
+                        $record->update($updates);                        
 
-                        // También actualizar todas las inscripciones individuales del lote
-                        /* $record->enrollments()->update([
-                            'payment_status' => 'completed',
-                            'payment_date' => now(),
-                        ]); */
-
-                        // Usa esto para disparar observers:
+                        // Actualicación que también funciona para disparar observers:
                         foreach ($record->enrollments as $enrollment) {
                             $enrollment->update([
                                 'payment_status' => 'completed',
@@ -414,7 +420,7 @@ class EnrollmentBatchResource extends Resource
 
                             $totalEnrollments = $record->enrollments()->count();
 
-                            \DB::transaction(function () use ($record, $data) {
+                            DB::transaction(function () use ($record, $data) {
                                 // Actualizar el estado del lote
                                 $record->update([
                                     'payment_status' => 'refunded',
@@ -452,10 +458,7 @@ class EnrollmentBatchResource extends Resource
                     ),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Eliminar seleccionados'),
-                ]),
+                
             ])
             ->defaultSort('created_at', 'desc');
     }
@@ -472,7 +475,7 @@ class EnrollmentBatchResource extends Resource
         return [
             'index' => Pages\ListEnrollmentBatches::route('/'),
             'create' => Pages\CreateEnrollmentBatch::route('/create'),
-            'edit' => Pages\EditEnrollmentBatch::route('/{record}/edit'),
+            // 'edit' => Pages\EditEnrollmentBatch::route('/{record}/edit'),
         ];
     }
 }

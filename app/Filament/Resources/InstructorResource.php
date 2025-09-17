@@ -677,11 +677,7 @@ class InstructorResource extends Resource
                             $count <= 3 => 'warning',
                             default => 'danger'
                         };
-                    })
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->withCount('instructorWorkshops')
-                            ->orderBy('instructor_workshops_count', $direction);
-                    }),
+                    }),                    
             ])
             ->filters([
 

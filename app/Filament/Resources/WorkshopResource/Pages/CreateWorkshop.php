@@ -5,6 +5,7 @@ namespace App\Filament\Resources\WorkshopResource\Pages;
 use App\Filament\Resources\WorkshopResource;
 use App\Models\WorkshopClass;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Actions;
 
 class CreateWorkshop extends CreateRecord
 {
@@ -13,6 +14,19 @@ class CreateWorkshop extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return WorkshopResource::getUrl('index');
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('save')
+                ->label('Guardar')
+                ->submit('create'),
+            Actions\Action::make('cancel')
+                ->label('Cancelar')
+                ->url(WorkshopResource::getUrl('index'))
+                ->color('gray'),
+        ];
     }
 
     protected function afterCreate(): void

@@ -32,17 +32,11 @@ use Illuminate\Database\Eloquent\Builder;
 class StudentRegisterResource extends Resource
 {
     protected static ?string $model = Student::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-
     protected static ?string $navigationLabel = 'Alumnos';
-
     protected static ?string $pluralModelLabel = 'Alumnos';
-
     protected static ?string $modelLabel = 'Alumno';
-
     protected static ?string $navigationGroup = 'Gestión';
-
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -629,27 +623,13 @@ class StudentRegisterResource extends Resource
             ->columns([
                 TextColumn::make('last_names')
                     ->label('Apellidos')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
                 TextColumn::make('first_names')
                     ->label('Nombres')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
                 TextColumn::make('student_code')
                     ->label('Código')
-                    ->searchable()
-                    ->sortable(),
-                /* TextColumn::make('age')
-                    ->label('Edad')
-                    ->getStateUsing(fn (Student $record) => $record->age . ' años')
-                    ->sortable()
-                    ->alignCenter()
-                    ->color(fn (Student $record) => match (true) {
-                        $record->age < 60 => 'info',
-                        $record->age >= 60 && $record->age < 65 => 'success',
-                        $record->age >= 65 => 'warning',
-                        default => 'gray'
-                    }), */
+                    ->searchable(),
                 TextColumn::make('category_partner')
                     ->label('Categoría')
                     ->badge()
