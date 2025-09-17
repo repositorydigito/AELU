@@ -16,7 +16,7 @@ class StudentEnrollmentController extends Controller
         // 1. Cargar el lote de inscripciones con todas las relaciones necesarias
         $enrollmentBatch = \App\Models\EnrollmentBatch::with([
             'student',
-            'creator', // Cargar la relación con el usuario
+            'creator', 
             'enrollments.instructorWorkshop.workshop',
             'enrollments.instructorWorkshop.instructor',
             'enrollments.monthlyPeriod',
@@ -99,7 +99,7 @@ class StudentEnrollmentController extends Controller
         $dompdf->loadHtml($html);
 
         // 10. Establecer el tamaño del papel
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper('A5', 'portrait');
 
         // 11. Renderizar el PDF
         $dompdf->render();

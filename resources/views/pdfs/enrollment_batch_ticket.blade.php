@@ -6,188 +6,166 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 10px;
             padding: 0;
-            font-size: 12px;
-            line-height: 1.2;
+            font-size: 11px;
+            line-height: 1.1;
             color: #333;
         }
 
         .ticket-container {
             border: 2px solid #000;
-            padding: 15px;
-            margin-bottom: 30px;
+            padding: 8px;
+            height: calc(100vh - 20px);
+            box-sizing: border-box;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             border-bottom: 1px solid #000;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 14px;
+            margin: 0 0 4px 0;
+            font-size: 13px;
             font-weight: bold;
         }
 
-        .student-name {
-            margin: 0;
-            padding: 2px 5px;
+        .student-info {
+            background-color: #f0f0f0;
             border: 1px solid #000;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .user-fields {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-        }
-
-        .user-field {
-            border: 1px solid #000;
-            padding: 2px 5px;
-            width: 45%;
+            padding: 4px 6px;
+            margin-bottom: 6px;
             text-align: center;
         }
 
-        .info-row {
-            display: flex;
-            margin-bottom: 5px;
-            align-items: center;
-        }
-
-        .info-label {
+        .student-name-row {
+            font-size: 12px;
             font-weight: bold;
-            width: 30%;
-            border: 1px solid #000;
-            padding: 3px 5px;
-            background-color: #f0f0f0;
+            margin-bottom: 2px;
         }
 
-        .info-value {
-            border: 1px solid #000;
-            padding: 3px 5px;
-            flex: 1;
-            margin-left: -1px;
+        .student-code {
+            display: inline;
+        }
+
+        .student-details {
+            font-size: 9px;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #666;
+            padding-top: 2px;
         }
 
         .workshops-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0;
+            margin: 8px 0;
+            font-size: 11px;
         }
 
         .workshops-table th,
         .workshops-table td {
             border: 1px solid #000;
-            padding: 6px 4px;
+            padding: 5px 4px;
             text-align: center;
-            font-size: 10px;
             vertical-align: middle;
         }
 
         .workshops-table th {
             background-color: #f0f0f0;
             font-weight: bold;
+            font-size: 10px;
         }
 
-        .workshops-table td {
-            vertical-align: middle;
-        }
-
-        .taller-col { width: 30%; }
-        .horario-col { width: 20%; }
-        .fechas-col {
-            width: 20%;
-            overflow: hidden;
-            word-wrap: break-word;
-        }
-        .clases-col { width: 10%; }
-        .importe-col { width: 20%; }
+        .taller-col { width: 28%; text-align: left; }
+        .horario-col { width: 22%; }
+        .clases-col { width: 12%; }
+        .fechas-col { width: 20%; }
+        .importe-col { width: 18%; }
 
         .class-dates {
-            font-size: 9px;
+            font-size: 10px;
             line-height: 1.3;
             text-align: center;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 4px;
         }
 
         .class-date-item {
+            display: inline;
             white-space: nowrap;
-            display: inline-block;
+        }
+
+        .total-row {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            font-size: 12px;
         }
 
         .footer-section {
             margin-top: 10px;
-            border-top: 1px solid #000;
+            border-top: 2px solid #000;
             padding-top: 8px;
+            font-size: 11px;
         }
 
         .footer-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            background-color: #f9f9f9;
+            border: 2px solid #000;
+            gap: 30px;
         }
 
-        .footer-label {
+        .footer-left, .footer-right {
             font-weight: bold;
+            font-size: 12px;
         }
 
         .total-words {
-            margin-top: 5px;
-            border: 1px solid #000;
-            padding: 5px;
+            margin-top: 8px;
+            border: 2px solid #000;
+            padding: 6px 8px;
             background-color: #f9f9f9;
+            font-size: 11px;
+            text-align: center;
+            font-weight: bold;
         }
 
-        .size-indicator {
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            font-size: 8px;
-            color: #666;
+        .compact-text {
+            font-size: 10px;
         }
     </style>
 </head>
 <body>
     <div class="ticket-container">
+        <!-- Header optimizado -->
         <div class="header">
             <h1>PROGRAMA ADULTO MAYOR AELU (PAMA)</h1>
-            <div class="student-name">
-                {{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }}
+        </div>
+
+        <!-- Información del estudiante con código integrado -->
+        <div class="student-info">
+            <div class="student-name-row">
+                {{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }} - {{ $student->student_code ?? 'N/A' }}
+            </div>
+            <div class="student-details">
+                <span><strong>Ticket:</strong> {{ $enrollmentBatch->batch_code ?? str_pad($enrollmentBatch->id, 6, '0', STR_PAD_LEFT) }}</span>
+                <span><strong>Fecha:</strong> {{ $enrollmentBatch->created_at->format('d/m/Y') }}</span>
             </div>
         </div>
 
-        <div class="info-row">
-            <div class="info-label">USUARIO</div>
-            <div class="info-value">{{ $created_by_user ?? 'Admin' }}</div>
-        </div>
-
-        <div class="info-row">
-            <div class="info-label">TICKET N°</div>
-            <div class="info-value">{{ $enrollmentBatch->batch_code ?? str_pad($enrollmentBatch->id, 6, '0', STR_PAD_LEFT) }}</div>
-            <div class="info-label">FECHA</div>
-            <div class="info-value">{{ $enrollmentBatch->enrollment_date->format('d/m/Y') }}</div>
-        </div>
-
-        <div class="info-row">
-            <div class="info-label">CÓDIGO</div>
-            <div class="info-value">{{ $student->student_code ?? 'N/A' }}</div>
-        </div>
-
+        <!-- Tabla de talleres optimizada -->
         <table class="workshops-table">
             <thead>
                 <tr>
                     <th class="taller-col">TALLER</th>
                     <th class="horario-col">HORARIO</th>
                     <th class="clases-col">N° CLASES</th>
-                    <th class="fechas-col">FECHAS DE CLASES</th>
+                    <th class="fechas-col">FECHAS</th>
                     <th class="importe-col">IMPORTE</th>
                 </tr>
             </thead>
@@ -196,15 +174,15 @@
                     @php
                         $workshop = $enrollment->instructorWorkshop;
                         $dayNames = [
-                            1 => 'lunes', 2 => 'martes', 3 => 'miércoles',
-                            4 => 'jueves', 5 => 'viernes', 6 => 'sábado',
-                            7 => 'domingo', 0 => 'domingo'
+                            1 => 'LUN', 2 => 'MAR', 3 => 'MIE',
+                            4 => 'JUE', 5 => 'VIE', 6 => 'SAB',
+                            7 => 'DOM', 0 => 'DOM'
                         ];
-                        $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'día ' . $workshop->day_of_week;
-                        $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('g:i a.');
-                        $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('g:i a.');
+                        $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'N/A';
+                        $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
+                        $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
 
-                        // Obtener las fechas de las clases específicas a las que se inscribió
+                        // Obtener las fechas de las clases específicas
                         $enrollmentClasses = $enrollment->enrollmentClasses()
                             ->with('workshopClass')
                             ->orderBy('created_at', 'asc')
@@ -218,7 +196,7 @@
                             }
                         }
 
-                        // Si no hay clases específicas, mostrar todas las clases del taller
+                        // Si no hay clases específicas, mostrar las del taller
                         if (empty($classDates) && $workshop->workshop) {
                             $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $workshop->workshop->id)
                                 ->where('monthly_period_id', $enrollment->monthly_period_id)
@@ -233,45 +211,47 @@
                         }
                     @endphp
                     <tr>
-                        <td style="text-align: left;">{{ strtoupper($workshop->workshop->name) }}</td>
-                        <td>{{ $dayInSpanish }}<br>{{ $startTime }} - {{ $endTime }}</td>
-                        <td>{{ $enrollment->number_of_classes }}</td>
-                        <td>
+                        <td style="text-align: left; font-size: 9px; padding-left: 6px;">{{ strtoupper($workshop->workshop->name) }}</td>
+                        <td class="compact-text" style="text-align: center;">{{ $dayInSpanish }}<br>{{ $startTime }}-{{ $endTime }}</td>
+                        <td style="text-align: center; font-weight: bold;">{{ $enrollment->number_of_classes }}</td>
+                        <td style="text-align: center;">
                             <div class="class-dates">
                                 @if(!empty($classDates))
-                                    @foreach($classDates as $date)
-                                        <div class="class-date-item">{{ $date }} || </div>
-                                    @endforeach
+                                    {{ implode(' | ', $classDates) }}
                                 @else
-                                    <div class="class-date-item">Por definir</div>
+                                    Por definir
                                 @endif
                             </div>
                         </td>
-                        <td>{{ number_format($enrollment->total_amount, 2) }}</td>
+                        <td style="text-align: center; font-weight: bold;">{{ number_format($enrollment->total_amount, 2) }}</td>
                     </tr>
                 @endforeach
 
-                <!-- Fila del total -->
-                <tr style="background-color: #f0f0f0; font-weight: bold;">
-                    <td colspan="4" style="text-align: right; padding-right: 10px;">IMPORTE TOTAL:</td>
-                    <td>S/ {{ number_format($enrollmentBatch->total_amount, 2) }}</td>
+                <!-- Fila del total optimizada -->
+                <tr class="total-row">
+                    <td colspan="4" style="text-align: right; padding-right: 6px;">TOTAL:</td>
+                    <td><strong>S/ {{ number_format($enrollmentBatch->total_amount, 2) }}</strong></td>
                 </tr>
             </tbody>
         </table>
 
+        <!-- Footer compacto -->
         <div class="footer-section">
+            <!-- Fila del usuario -->
             <div class="footer-row">
+                <span><strong>USUARIO:</strong> {{ $created_by_user }}</span>
                 <span><strong>MES PAGADO:</strong>
                     @if($enrollmentBatch->enrollments->first() && $enrollmentBatch->enrollments->first()->monthlyPeriod)
-                        {{ strtoupper(\Carbon\Carbon::createFromDate($enrollmentBatch->enrollments->first()->monthlyPeriod->year, $enrollmentBatch->enrollments->first()->monthlyPeriod->month)->translatedFormat('F Y')) }}
+                        {{ strtoupper(\Carbon\Carbon::createFromDate($enrollmentBatch->enrollments->first()->monthlyPeriod->year, $enrollmentBatch->enrollments->first()->monthlyPeriod->month)->translatedFormat('M Y')) }}
                     @else
-                        {{ strtoupper(\Carbon\Carbon::parse($enrollmentBatch->enrollment_date)->translatedFormat('F Y')) }}
+                        {{ strtoupper(\Carbon\Carbon::parse($enrollmentBatch->created_at)->translatedFormat('M Y')) }}
                     @endif
                 </span>
             </div>
 
+            <!-- Total en palabras -->
             <div class="total-words">
-                <strong>SON:</strong> {{ $totalInWords ?? 'CIENTO DIEZ Y 00/100 SOLES' }}
+                <strong>SON:</strong> {{ $totalInWords ?? 'CANTIDAD EN PALABRAS' }}
             </div>
         </div>
     </div>
