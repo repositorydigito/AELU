@@ -4,6 +4,7 @@ namespace App\Filament\Resources\EnrollmentResource\Pages;
 
 use App\Filament\Resources\EnrollmentResource;
 use App\Models\StudentEnrollment;
+use App\Models\EnrollmentBatch;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Actions;
@@ -11,28 +12,100 @@ use Filament\Actions;
 class CreateEnrollment extends CreateRecord
 {
     protected static string $resource = EnrollmentResource::class;
-
     protected static ?string $title = 'Crear Inscripción';
+    protected ?int $editingBatchId = null;
+    protected ?EnrollmentBatch $editingBatch = null;
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        // Detectar si estamos editando un batch existente
+        $editBatchId = request()->query('edit_batch');
+
+        if ($editBatchId) {
+            $this->editingBatchId = $editBatchId;
+            $this->editingBatch = \App\Models\EnrollmentBatch::with(['enrollments.instructorWorkshop.workshop'])
+                ->find($editBatchId);
+
+            if ($this->editingBatch) {
+                $this->fillFormFromExistingBatch();
+            }
+        }
+    }
+
+    protected function fillFormFromExistingBatch(): void
+    {
+        if (!$this->editingBatch) return;
+
+        // Pre-poblar datos básicos del formulario
+        $this->form->fill([
+            'student_id' => $this->editingBatch->student_id,
+            'payment_method' => $this->editingBatch->payment_method,
+            'payment_status' => $this->editingBatch->payment_status,
+            'notes' => $this->editingBatch->notes,
+        ]);
+
+        // Pre-poblar período mensual basado en las inscripciones existentes
+        $firstEnrollment = $this->editingBatch->enrollments->first();
+        if ($firstEnrollment) {
+            $this->form->fill([
+                'selected_monthly_period_id' => $firstEnrollment->monthly_period_id,
+            ]);
+
+            // Pre-poblar talleres seleccionados
+            $selectedWorkshops = $this->editingBatch->enrollments->pluck('instructor_workshop_id')->toArray();
+            $this->form->fill([
+                'selected_workshops' => json_encode($selectedWorkshops),
+            ]);
+
+            // Pre-poblar detalles de talleres
+            $workshopDetails = [];
+            foreach ($this->editingBatch->enrollments as $enrollment) {
+                $workshopDetails[] = [
+                    'instructor_workshop_id' => $enrollment->instructor_workshop_id,
+                    'enrollment_type' => $enrollment->enrollment_type,
+                    'number_of_classes' => $enrollment->number_of_classes,
+                    'enrollment_date' => $enrollment->enrollment_date,
+                    'selected_classes' => $enrollment->enrollmentClasses->pluck('workshop_class_id')->toArray(),
+                ];
+            }
+
+            $this->form->fill([
+                'workshop_details' => $workshopDetails,
+            ]);
+        }
+    }
 
     public function getTitle(): string
     {
+        if ($this->editingBatch) {
+            return 'Modificar Inscripción #' . $this->editingBatch->id;
+        }
+
         return 'Crear Inscripción';
     }
-
     public function getBreadcrumb(): string
     {
-        return 'Crear';
+        return $this->editingBatch ? 'Modificar' : 'Crear';
     }
 
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
+        // Detectar si estamos editando o creando
+        $isEditing = $this->editingBatch !== null;
+
+        if ($isEditing) {
+            return $this->handleRecordUpdate($data);
+        }
+
         // Obtener los talleres seleccionados
         $selectedWorkshops = json_decode($data['selected_workshops'] ?? '[]', true);
         $workshopDetails = $data['workshop_details'] ?? [];
         $paymentMethod = $data['payment_method'] ?? 'cash';
         $paymentStatus = $data['payment_status'] ?? 'pending';
 
-        // 🔥 VALIDAR QUE SE HAYA SELECCIONADO UN PERÍODO (CAMPO GLOBAL)
+        // VALIDAR QUE SE HAYA SELECCIONADO UN PERÍODO (CAMPO GLOBAL)
         if (empty($data['selected_monthly_period_id'])) {
             Notification::make()
                 ->title('Error')
@@ -53,7 +126,7 @@ class CreateEnrollment extends CreateRecord
             throw new \Exception('No se seleccionaron talleres');
         }
 
-        // 🔥 OBTENER EL PERÍODO SELECCIONADO (CAMPO GLOBAL)
+        // OBTENER EL PERÍODO SELECCIONADO (CAMPO GLOBAL)
         $selectedMonthlyPeriodId = $data['selected_monthly_period_id'];
         $monthlyPeriod = \App\Models\MonthlyPeriod::find($selectedMonthlyPeriodId);
 
@@ -67,11 +140,11 @@ class CreateEnrollment extends CreateRecord
             throw new \Exception('Período mensual no válido');
         }
 
-        // 🔥 OBTENER INFORMACIÓN DEL ESTUDIANTE PARA VERIFICAR SI ES PRE-PAMA
+        // OBTENER INFORMACIÓN DEL ESTUDIANTE PARA VERIFICAR SI ES PRE-PAMA
         $student = \App\Models\Student::find($data['student_id']);
         $isPrepama = $student && in_array($student->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
 
-        // 🔥 VALIDACIÓN PREVIA DE CUPOS PARA TODOS LOS TALLERES SELECCIONADOS
+        // VALIDACIÓN PREVIA DE CUPOS PARA TODOS LOS TALLERES SELECCIONADOS
         $capacityErrors = [];
         foreach ($selectedWorkshops as $workshopId) {
             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
@@ -118,7 +191,7 @@ class CreateEnrollment extends CreateRecord
         // Actualizar selectedWorkshops con los nuevos IDs
         $selectedWorkshops = array_values($workshopIdMapping);
 
-        // 🔥 VALIDACIÓN TEMPRANA DE DUPLICADOS - DETENER TODO SI HAY PROBLEMAS
+        // VALIDACIÓN TEMPRANA DE DUPLICADOS - DETENER TODO SI HAY PROBLEMAS
         $duplicateErrors = [];
         foreach ($workshopDetails as $detail) {
             if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
@@ -202,7 +275,7 @@ class CreateEnrollment extends CreateRecord
                 continue; // Saltar este taller
             }
 
-            // 🔥 CÁLCULO DE PRECIO CON LÓGICA PRE-PAMA
+            // CÁLCULO DE PRECIO CON LÓGICA PRE-PAMA
             $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($detail['instructor_workshop_id']);
             $numberOfClasses = $detail['number_of_classes'];
 
@@ -273,7 +346,7 @@ class CreateEnrollment extends CreateRecord
                 'student_id' => $data['student_id'],
                 'instructor_workshop_id' => $detail['instructor_workshop_id'],
                 'enrollment_batch_id' => $enrollmentBatch->id,
-                'monthly_period_id' => $detail['monthly_period_id'], // 🔥 USAR EL PERÍODO SELECCIONADO
+                'monthly_period_id' => $detail['monthly_period_id'],
                 'enrollment_type' => $detail['enrollment_type'] ?? 'specific_classes',
                 'number_of_classes' => $detail['number_of_classes'],
                 'price_per_quantity' => $detail['price_per_class'],
@@ -313,6 +386,229 @@ class CreateEnrollment extends CreateRecord
 
         // Retornar el lote creado (requerido por Filament)
         return $enrollmentBatch;
+    }
+
+    protected function handleRecordUpdate(array $data): \Illuminate\Database\Eloquent\Model
+    {
+        $selectedWorkshops = json_decode($data['selected_workshops'] ?? '[]', true);
+        $workshopDetails = $data['workshop_details'] ?? [];
+        $paymentMethod = $data['payment_method'] ?? 'cash';
+        $paymentStatus = $data['payment_status'] ?? 'pending';
+
+        // Validaciones básicas (reutilizar las del método original)
+        if (empty($data['selected_monthly_period_id'])) {
+            Notification::make()
+                ->title('Error')
+                ->body('Debes seleccionar un período mensual.')
+                ->danger()
+                ->send();
+            throw new \Exception('No se seleccionó período mensual');
+        }
+
+        if (empty($selectedWorkshops)) {
+            Notification::make()
+                ->title('Error')
+                ->body('Debes seleccionar al menos un taller.')
+                ->danger()
+                ->send();
+            throw new \Exception('No se seleccionaron talleres');
+        }
+
+        $selectedMonthlyPeriodId = $data['selected_monthly_period_id'];
+        $monthlyPeriod = \App\Models\MonthlyPeriod::find($selectedMonthlyPeriodId);
+
+        if (!$monthlyPeriod) {
+            Notification::make()
+                ->title('Error')
+                ->body('El período mensual seleccionado no es válido.')
+                ->danger()
+                ->send();
+            throw new \Exception('Período mensual no válido');
+        }
+
+        $student = \App\Models\Student::find($data['student_id']);
+
+        // PASO 1: Eliminar inscripciones existentes del batch
+        foreach ($this->editingBatch->enrollments as $enrollment) {
+            // Eliminar enrollment_classes asociadas
+            $enrollment->enrollmentClasses()->delete();
+            // Eliminar la inscripción
+            $enrollment->delete();
+        }
+
+        // PASO 2: Crear las nuevas inscripciones (reutilizar lógica del método original)
+        $totalAmount = 0;
+        $validWorkshopDetails = [];
+
+        // Asegurar que todos los workshops existan para el período seleccionado
+        $workshopIdMapping = [];
+        foreach ($selectedWorkshops as $workshopId) {
+            $newWorkshopId = $this->ensureWorkshopExistsForPeriod($workshopId, $selectedMonthlyPeriodId);
+            $workshopIdMapping[$workshopId] = $newWorkshopId;
+        }
+
+        // Actualizar las referencias en workshopDetails
+        foreach ($workshopDetails as $index => $detail) {
+            $originalWorkshopId = $detail['instructor_workshop_id'];
+            if (isset($workshopIdMapping[$originalWorkshopId])) {
+                $workshopDetails[$index]['instructor_workshop_id'] = $workshopIdMapping[$originalWorkshopId];
+            }
+        }
+
+        $selectedWorkshops = array_values($workshopIdMapping);
+
+        // Validar duplicados (excluyendo el batch actual)
+        $duplicateErrors = [];
+        foreach ($workshopDetails as $detail) {
+            if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
+                continue;
+            }
+
+            $existingActiveEnrollment = \App\Models\StudentEnrollment::where('student_id', $data['student_id'])
+                ->where('instructor_workshop_id', $detail['instructor_workshop_id'])
+                ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                ->where('enrollment_batch_id', '!=', $this->editingBatch->id) // Excluir batch actual
+                ->whereNotIn('payment_status', ['refunded'])
+                ->first();
+
+            if ($existingActiveEnrollment) {
+                $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                    ->find($detail['instructor_workshop_id']);
+
+                if ($instructorWorkshop) {
+                    $workshopName = $instructorWorkshop->workshop->name;
+                    $statusText = match($existingActiveEnrollment->payment_status) {
+                        'pending' => 'en proceso',
+                        'completed' => 'inscrito',
+                        'to_pay' => 'por pagar',
+                        'credit_favor' => 'con crédito a favor',
+                        default => $existingActiveEnrollment->payment_status
+                    };
+
+                    $duplicateErrors[] = "'{$workshopName}' (ya {$statusText})";
+                }
+            }
+        }
+
+        if (!empty($duplicateErrors)) {
+            $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
+            $duplicateList = implode(', ', $duplicateErrors);
+
+            Notification::make()
+                ->title('Inscripciones duplicadas detectadas')
+                ->body("El estudiante ya tiene inscripciones activas para {$monthName} en: {$duplicateList}. No se puede proceder hasta resolver estos duplicados.")
+                ->danger()
+                ->persistent()
+                ->send();
+
+            $this->halt();
+        }
+
+        // Procesar talleres y calcular totales (reutilizar lógica del método original)
+        foreach ($workshopDetails as $detail) {
+            if (!isset($detail['instructor_workshop_id']) || !in_array($detail['instructor_workshop_id'], $selectedWorkshops)) {
+                continue;
+            }
+
+            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($detail['instructor_workshop_id']);
+            if (!$instructorWorkshop) {
+                continue;
+            }
+
+            // Validar cupos disponibles
+            $currentEnrollments = \App\Models\StudentEnrollment::where('instructor_workshop_id', $detail['instructor_workshop_id'])
+                ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                ->where('payment_status', 'completed')
+                ->where('enrollment_batch_id', '!=', $this->editingBatch->id) // Excluir batch actual
+                ->distinct('student_id')
+                ->count('student_id');
+
+            $capacity = $instructorWorkshop->workshop->capacity ?? 0;
+            $availableSpots = $capacity - $currentEnrollments;
+
+            if ($availableSpots <= 0) {
+                $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
+
+                Notification::make()
+                    ->title('Cupos agotados')
+                    ->body("El taller '{$instructorWorkshop->workshop->name}' ya no tiene cupos disponibles para {$monthName}. Cupos: {$currentEnrollments}/{$capacity}")
+                    ->danger()
+                    ->send();
+
+                continue;
+            }
+
+            // Calcular precio (reutilizar lógica del método original)
+            $numberOfClasses = $detail['number_of_classes'];
+            $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
+                ->where('number_of_classes', $numberOfClasses)
+                ->where('for_volunteer_workshop', false)
+                ->first();
+
+            $baseWorkshopTotal = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
+            $workshopTotal = $baseWorkshopTotal * $student->inscription_multiplier;
+            $totalAmount += $workshopTotal;
+
+            $detail['calculated_total'] = $workshopTotal;
+            $detail['price_per_class'] = $workshopTotal / $numberOfClasses;
+            $detail['monthly_period_id'] = $selectedMonthlyPeriodId;
+            $validWorkshopDetails[] = $detail;
+        }
+
+        if (empty($validWorkshopDetails)) {
+            Notification::make()
+                ->title('Error en la modificación')
+                ->body('No se pudo procesar ninguna inscripción válida.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            $this->halt();
+        }
+
+        // PASO 3: Actualizar el batch existente
+        $this->editingBatch->update([
+            'total_amount' => $totalAmount,
+            'payment_status' => $paymentStatus,
+            'payment_method' => $paymentMethod,
+            'enrollment_date' => $validWorkshopDetails[0]['enrollment_date'],
+            'notes' => $data['notes'] ?? null,
+            'updated_at' => now(),
+        ]);
+
+        // PASO 4: Crear las nuevas inscripciones
+        $createdEnrollments = [];
+        foreach ($validWorkshopDetails as $detail) {
+            $enrollment = StudentEnrollment::create([
+                'student_id' => $data['student_id'],
+                'instructor_workshop_id' => $detail['instructor_workshop_id'],
+                'enrollment_batch_id' => $this->editingBatch->id,
+                'monthly_period_id' => $detail['monthly_period_id'],
+                'enrollment_type' => $detail['enrollment_type'] ?? 'specific_classes',
+                'number_of_classes' => $detail['number_of_classes'],
+                'price_per_quantity' => $detail['price_per_class'],
+                'total_amount' => $detail['calculated_total'],
+                'payment_method' => $paymentMethod,
+                'payment_status' => $paymentStatus,
+                'enrollment_date' => $detail['enrollment_date'],
+                'pricing_notes' => $data['notes'] ?? null,
+            ]);
+
+            $createdEnrollments[] = $enrollment;
+            $this->createEnrollmentClasses($enrollment, $detail);
+        }
+
+        // Notificación de éxito
+        $count = count($createdEnrollments);
+
+        Notification::make()
+            ->title('¡Inscripción modificada exitosamente!')
+            ->body("Se actualizó el lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . ' correctamente.')
+            ->success()
+            ->persistent()
+            ->send();
+
+        return $this->editingBatch;
     }
 
     protected function createEnrollmentClasses($enrollment, $workshopDetail): void
@@ -419,7 +715,7 @@ class CreateEnrollment extends CreateRecord
                 ->submit('create'),
             Actions\Action::make('cancel')
                 ->label('Cancelar')
-                ->url(EnrollmentResource::getUrl('index'))
+                ->url(\App\Filament\Resources\EnrollmentBatchResource::getUrl('index'))
                 ->color('gray'),
         ];
     }

@@ -520,6 +520,22 @@ class EnrollmentBatchResource extends Resource
                     })
                     ->visible(fn (EnrollmentBatch $record): bool => in_array($record->payment_status, ['pending', 'completed'])
                     ),
+                Tables\Actions\Action::make('edit_full')
+                    ->label('Editar')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->url(function (EnrollmentBatch $record): string {
+                        return EnrollmentResource::getUrl('create', [
+                            'edit_batch' => $record->id,
+                            'student_id' => $record->student_id,
+                            'payment_method' => $record->payment_method,
+                            'payment_status' => $record->payment_status,
+                            'notes' => $record->notes,
+                        ]);
+                    })
+                    ->visible(fn (EnrollmentBatch $record): bool =>
+                        in_array($record->payment_status, ['pending', 'to_pay'])
+                    ),
             ])
             ->bulkActions([
 
