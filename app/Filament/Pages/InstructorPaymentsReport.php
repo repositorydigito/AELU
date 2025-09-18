@@ -263,7 +263,7 @@ class InstructorPaymentsReport extends Page implements HasActions, HasForms
             $dompdf = new Dompdf($options);
 
             $dompdf->loadHtml($html);
-            $dompdf->setPaper('A4', 'landscape');
+            $dompdf->setPaper('A4', 'portrait');
             $dompdf->render();
 
             // Generar nombre de archivo

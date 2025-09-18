@@ -262,7 +262,7 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
             $dompdf = new Dompdf($options);
 
             $dompdf->loadHtml($html);
-            $dompdf->setPaper('A4', 'landscape');
+            $dompdf->setPaper('A4', 'portrait');
             $dompdf->render();
 
             $fileName = 'kardex-'.str_replace(' ', '-', strtolower($instructorName)).'-'.

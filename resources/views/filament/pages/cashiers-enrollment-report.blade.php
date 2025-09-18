@@ -15,6 +15,46 @@
             </div>
         </x-filament::section>
 
+        <!-- Sección Resumen -->
+        @if(!empty($cashierEnrollments))
+        <x-filament::section>
+            <x-slot name="heading">
+                Resumen de Pagos
+            </x-slot>
+
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                <div class="flex justify-between items-center text-center">
+                    <div class="flex-1">
+                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {{ $paymentSummary['total_enrollments'] }} Inscripciones en total
+                        </span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-sm font-medium text-green-600 dark:text-green-400">
+                            {{ $paymentSummary['cash_count'] }} Efectivo
+                        </span>
+                        <span class="text-xs text-green-600 dark:text-green-400 ml-2">
+                            (S/ {{ number_format($paymentSummary['cash_amount'], 2) }})
+                        </span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-sm font-medium text-purple-600 dark:text-purple-400">
+                            {{ $paymentSummary['link_count'] }} Link
+                        </span>
+                        <span class="text-xs text-purple-600 dark:text-purple-400 ml-2">
+                            (S/ {{ number_format($paymentSummary['link_amount'], 2) }})
+                        </span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            Total: S/ {{ number_format($paymentSummary['total_amount'], 2) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </x-filament::section>
+        @endif
+
         <!-- Tabla de inscripciones -->
         @if(!empty($cashierEnrollments))
         <x-filament::section>
@@ -33,7 +73,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Clases</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Método Pago</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Ticket</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

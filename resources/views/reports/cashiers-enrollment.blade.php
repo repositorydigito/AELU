@@ -24,27 +24,29 @@
         }
         .summary {
             background-color: #f5f5f5;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 20px;
             border-radius: 5px;
+            border: 1px solid #ddd;
         }
-        .summary-grid {
+        .horizontal-summary {
             display: flex;
-            justify-content: space-around;
+            align-items: center;
+            justify-content: space-between;
             text-align: center;
         }
-        .summary-item {
+        .summary-text {
             flex: 1;
-        }
-        .summary-item h3 {
-            margin: 0;
-            font-size: 14px;
+            font-size: 9px;
             color: #333;
         }
-        .summary-item p {
-            margin: 5px 0 0 0;
-            font-size: 9px;
-            color: #666;
+        .summary-separator {
+            margin: 0 8px;
+            color: #999;
+            font-weight: bold;
+        }
+        .total-text {
+            font-weight: bold;
         }
         .table {
             width: 100%;
@@ -68,24 +70,6 @@
         .table tr:nth-child(even) {
             background-color: #f9f9f9;
         }
-        .workshops-list {
-            font-size: 7px;
-            line-height: 1.2;
-        }
-        .workshop-item {
-            margin-bottom: 3px;
-            padding-bottom: 2px;
-            border-bottom: 1px solid #eee;
-        }
-        .workshop-item:last-child {
-            border-bottom: none;
-        }
-        .footer {
-            margin-top: 20px;
-            text-align: center;
-            font-size: 8px;
-            color: #666;
-        }
     </style>
 </head>
 <body>
@@ -97,36 +81,28 @@
     </div>
 
     <div class="summary">
-        <div class="summary-grid">
-            <div class="summary-item">
-                <h3>{{ count($enrollments) }}</h3>
-                <p>Total Lotes</p>
-            </div>
-            <div class="summary-item">
-                <h3>{{ collect($enrollments)->sum('workshops_count') }}</h3>
-                <p>Total Talleres</p>
-            </div>
-            <div class="summary-item">
-                <h3>{{ collect($enrollments)->sum('total_classes') }}</h3>
-                <p>Total Clases</p>
-            </div>
-            <div class="summary-item">
-                <h3>S/ {{ number_format(collect($enrollments)->sum('total_amount'), 2) }}</h3>
-                <p>Total Recaudado</p>
-            </div>
+        <div class="horizontal-summary">
+            <span class="summary-text">{{ $payment_summary['total_enrollments'] }} Inscripciones en total</span>
+            <span class="summary-separator">|</span>
+            <span class="summary-text cash-text">{{ $payment_summary['cash_count'] }} Efectivo (S/ {{ number_format($payment_summary['cash_amount'], 2) }})</span>
+            <span class="summary-separator">|</span>
+            <span class="summary-text link-text">{{ $payment_summary['link_count'] }} Link (S/ {{ number_format($payment_summary['link_amount'], 2) }})</span>
+            <span class="summary-separator">|</span>
+            <span class="summary-text total-text"><strong>Total: S/ {{ number_format($payment_summary['total_amount'], 2) }}</strong></span>
         </div>
     </div>
 
     <table class="table">
         <thead>
             <tr>
-                <th style="width: 12%;">Fecha Pago</th>
-                <th style="width: 18%;">Estudiante</th>
-                <th style="width: 25%;">Taller</th>
-                <th style="width: 20%;">Instructor</th>
-                <th style="width: 8%;">Clases</th>
-                <th style="width: 10%;">Monto</th>
-                <th style="width: 7%;">Método</th>
+                <th style="width: 11%;">Fecha Pago</th>
+                <th style="width: 16%;">Estudiante</th>
+                <th style="width: 22%;">Taller</th>
+                <th style="width: 18%;">Instructor</th>
+                <th style="width: 7%;">Clases</th>
+                <th style="width: 9%;">Monto</th>
+                <th style="width: 8%;">Método Pago</th>
+                <th style="width: 9%;">N° Ticket</th>
             </tr>
         </thead>
         <tbody>
@@ -149,13 +125,11 @@
                 <td style="text-align: center;">{{ $enrollment['number_of_classes'] }}</td>
                 <td style="text-align: right;"><strong>S/ {{ number_format($enrollment['total_amount'], 2) }}</strong></td>
                 <td style="text-align: center;">{{ $enrollment['payment_method'] }}</td>
+                <td style="text-align: center; font-size: 7px;">{{ $enrollment['batch_code'] }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div class="footer">
-        <p>Reporte generado automáticamente por el Sistema de Gestión PAMA</p>
-    </div>
 </body>
 </html>

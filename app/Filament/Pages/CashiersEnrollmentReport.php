@@ -42,6 +42,15 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
 
     public $cashierEnrollments = [];
 
+    public $paymentSummary = [
+        'total_enrollments' => 0,
+        'cash_count' => 0,
+        'cash_amount' => 0,
+        'link_count' => 0,
+        'link_amount' => 0,
+        'total_amount' => 0,
+    ];
+
     public function mount(): void
     {
         $this->form->fill();
@@ -92,7 +101,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
     {
         if (! $this->selectedCashier || ! $this->selectedDateFrom || ! $this->selectedDateTo) {
             $this->cashierEnrollments = [];
-
+            $this->resetPaymentSummary();
             return;
         }
 
@@ -117,7 +126,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
 
         if ($enrollments->isEmpty()) {
             $this->cashierEnrollments = [];
-
+            $this->resetPaymentSummary();
             return;
         }
 
@@ -144,6 +153,34 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
                 'payment_status' => $batch ? $this->getPaymentStatusText($batch->payment_status) : 'N/A',
             ];
         })->toArray();
+
+        $this->calculatePaymentSummary();
+    }
+
+    private function resetPaymentSummary(): void
+    {
+        $this->paymentSummary = [
+            'total_enrollments' => 0,
+            'cash_count' => 0,
+            'cash_amount' => 0,
+            'link_count' => 0,
+            'link_amount' => 0,
+            'total_amount' => 0,
+        ];
+    }
+
+    private function calculatePaymentSummary(): void
+    {
+        $enrollments = collect($this->cashierEnrollments);
+
+        $this->paymentSummary = [
+            'total_enrollments' => $enrollments->count(),
+            'cash_count' => $enrollments->where('payment_method', 'Efectivo')->count(),
+            'cash_amount' => $enrollments->where('payment_method', 'Efectivo')->sum('total_amount'),
+            'link_count' => $enrollments->where('payment_method', 'Link')->count(),
+            'link_amount' => $enrollments->where('payment_method', 'Link')->sum('total_amount'),
+            'total_amount' => $enrollments->sum('total_amount'),
+        ];
     }
 
     private function getPaymentStatusText($status): string
@@ -195,6 +232,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
 
             $html = View::make('reports.cashiers-enrollment', [
                 'enrollments' => $this->cashierEnrollments,
+                'payment_summary' => $this->paymentSummary,
                 'cashier_name' => $cashierName,
                 'date_from' => \Carbon\Carbon::parse($this->selectedDateFrom)->format('d/m/Y'),
                 'date_to' => \Carbon\Carbon::parse($this->selectedDateTo)->format('d/m/Y'),
@@ -207,7 +245,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             $dompdf = new Dompdf($options);
 
             $dompdf->loadHtml($html);
-            $dompdf->setPaper('A4', 'landscape'); // Horizontal para más columnas
+            $dompdf->setPaper('A4', 'portrait');
 
             $dompdf->render();
 
