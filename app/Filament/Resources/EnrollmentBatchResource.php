@@ -167,7 +167,7 @@ class EnrollmentBatchResource extends Resource
                     ->label('Estudiante')
                     ->searchable(['students.first_names', 'students.last_names'])
                     ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names),
-                    
+
                 Tables\Columns\TextColumn::make('creator.name')
                     ->label('Usuario')
                     ->searchable(['users.name'])
@@ -370,7 +370,7 @@ class EnrollmentBatchResource extends Resource
                         if ($record->payment_method === 'cash') {
                             $amountPaid = (float) ($data['amount_paid'] ?? 0);
                             $totalAmount = (float) $record->total_amount;
-                            
+
                             if ($amountPaid < $totalAmount) {
                                 Notification::make()
                                     ->title('Error en el Pago')
@@ -403,13 +403,13 @@ class EnrollmentBatchResource extends Resource
                         // Agregar notas si se proporcionaron
                         if (! empty($data['payment_notes'])) {
                             $existingNotes = $record->notes ? $record->notes."\n\n" : '';
-                            $paymentInfo = $record->payment_method === 'cash' 
+                            $paymentInfo = $record->payment_method === 'cash'
                                 ? " (Pagado: S/ ".number_format($data['amount_paid'] ?? 0, 2).", Vuelto: S/ ".number_format($data['change_amount'] ?? 0, 2).")"
                                 : "";
                             $updates['notes'] = $existingNotes.'Pago registrado por '.auth()->user()->name.' el '.now()->format('d/m/Y H:i').$paymentInfo.":\n".$data['payment_notes'];
                         }
 
-                        $record->update($updates);                        
+                        $record->update($updates);
 
                         // Actualicación que también funciona para disparar observers:
                         foreach ($record->enrollments as $enrollment) {
@@ -522,7 +522,7 @@ class EnrollmentBatchResource extends Resource
                     ),
             ])
             ->bulkActions([
-                
+
             ])
             ->defaultSort('created_at', 'desc');
     }

@@ -469,15 +469,6 @@ class WorkshopResource extends Resource
             $html .= "<span class='font-medium'>S/ ".number_format($price, 2).' </span>';
             $html .= '</div>';
         }
-        /* $html .= '</div></div>';
-
-        $html .= '</div>';
-
-        $html .= '<div class="mt-4 text-sm text-gray-600">';
-        $html .= "<p><strong>Tarifa base por clase:</strong> S/ " . number_format($basePerClass, 2) . "</p>";
-        $html .= "<p><strong>Recargo aplicado:</strong> {$surchargePercentage}% (multiplicador: {$surchargeMultiplier})</p>";
-        $html .= "<p><strong>Precio con recargo:</strong> S/ " . number_format($basePerClass * $surchargeMultiplier, 2) . " por clase individual</p>";
-        $html .= '</div>'; */
 
         return $html;
     }
@@ -530,7 +521,7 @@ class WorkshopResource extends Resource
                             return 'N/A';
                         }
 
-                        $capacityInfo = $record->getCapacityInfoForPeriod($currentPeriod->id);
+                        $capacityInfo = $record->getCapacityInfoForPeriod($record->monthly_period_id);
 
                         return "{$capacityInfo['available_spots']}/{$capacityInfo['total_capacity']}";
                     })
@@ -544,7 +535,7 @@ class WorkshopResource extends Resource
                             return 'gray';
                         }
 
-                        $capacityInfo = $record->getCapacityInfoForPeriod($currentPeriod->id);
+                        $capacityInfo = $record->getCapacityInfoForPeriod($record->monthly_period_id);
 
                         if ($capacityInfo['is_full']) {
                             return 'danger';
