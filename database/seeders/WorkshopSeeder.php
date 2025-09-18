@@ -115,7 +115,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -127,7 +127,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -139,7 +139,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -151,7 +151,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -163,7 +163,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -175,7 +175,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -187,7 +187,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -199,7 +199,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -211,7 +211,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -223,7 +223,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -235,7 +235,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -247,7 +247,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -259,7 +259,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 20,
+                'standard_monthly_fee' => 25,
                 'monthly_period_id' => 9,
             ],
             [
@@ -271,7 +271,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 120,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 40,
                 'monthly_period_id' => 9,
             ],
             [
@@ -283,7 +283,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 75,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 40,
                 'monthly_period_id' => 9,
             ],
             [
@@ -295,7 +295,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -307,7 +307,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -319,7 +319,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -331,7 +331,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 120,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 20,
                 'monthly_period_id' => 9,
             ],
             [
@@ -343,7 +343,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -355,7 +355,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -367,7 +367,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 120,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 35,
+                'standard_monthly_fee' => 40,
                 'monthly_period_id' => 9,
             ],
             [
@@ -379,7 +379,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 120,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 35,
+                'standard_monthly_fee' => 40,
                 'monthly_period_id' => 9,
             ],
             [
@@ -391,7 +391,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -403,7 +403,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -415,7 +415,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -487,7 +487,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 40,
+                'standard_monthly_fee' => 60,
                 'monthly_period_id' => 9,
             ],
             [
@@ -499,7 +499,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 40,
+                'standard_monthly_fee' => 60,
                 'monthly_period_id' => 9,
             ],
             [
@@ -511,7 +511,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -523,7 +523,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -535,7 +535,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 25,
+                'standard_monthly_fee' => 30,
                 'monthly_period_id' => 9,
             ],
             [
@@ -559,7 +559,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 50,
+                'standard_monthly_fee' => 60,
                 'monthly_period_id' => 9,
             ],
             [
@@ -571,7 +571,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 50,
+                'standard_monthly_fee' => 60,
                 'monthly_period_id' => 9,
             ],
             [
@@ -583,7 +583,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 50,
+                'standard_monthly_fee' => 60,
                 'monthly_period_id' => 9,
             ],
             [
@@ -595,7 +595,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 35,
+                'standard_monthly_fee' => 40,
                 'monthly_period_id' => 9,
             ],
             [
@@ -607,7 +607,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 35,
+                'standard_monthly_fee' => 40,
                 'monthly_period_id' => 9,
             ],
             [
@@ -631,7 +631,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 35,
+                'standard_monthly_fee' => 20,
                 'monthly_period_id' => 9,
             ],
             [
@@ -655,7 +655,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 50,
+                'standard_monthly_fee' => 60,
                 'monthly_period_id' => 9,
             ],
             [
@@ -667,7 +667,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 90,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 50,
+                'standard_monthly_fee' => 60,
                 'monthly_period_id' => 9,
             ],
             [
@@ -679,7 +679,7 @@ class WorkshopSeeder extends Seeder
                 'duration' => 60,
                 'capacity' => 20,
                 'number_of_classes' => 4,
-                'standard_monthly_fee' => 35,
+                'standard_monthly_fee' => 40,
                 'monthly_period_id' => 9,
             ],
             [
