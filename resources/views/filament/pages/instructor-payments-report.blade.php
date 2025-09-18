@@ -41,6 +41,7 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Horario</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Período</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tarifa/Porcentaje</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha de Pago</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Ticket</th>
@@ -61,6 +62,14 @@
                                         ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
                                         : 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' }}">
                                     {{ $payment['payment_type'] }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {{ $payment['payment_type'] === 'Voluntario'
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' }}">
+                                    {{ $payment['rate_or_percentage'] }}
                                 </span>
                             </td>
                             <td class="px-4 py-4 text-sm font-semibold text-gray-900 dark:text-white">S/ {{ number_format($payment['calculated_amount'], 2) }}</td>

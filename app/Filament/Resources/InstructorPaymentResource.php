@@ -184,12 +184,10 @@ class InstructorPaymentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('instructor_info')
+                Tables\Columns\TextColumn::make('instructor.full_name')
                     ->label('Instructor')
-                    ->getStateUsing(fn (InstructorPayment $record) => "{$record->instructor->first_names} {$record->instructor->last_names}"
-                    )
-                    ->searchable(['instructor.first_names', 'instructor.last_names'])
-                    ->sortable(['instructor.first_names', 'instructor.last_names']),
+                    ->searchable(['instructors.first_names', 'instructors.last_names'])
+                    ->formatStateUsing(fn ($record) => $record->instructor->first_names.' '.$record->instructor->last_names),
 
                 Tables\Columns\TextColumn::make('workshop_schedule')
                     ->label('Taller y Horario')
@@ -227,16 +225,14 @@ class InstructorPaymentResource extends Resource
 
                         return "{$dayOfWeek} {$startTime}-{$endTime}";
                     })
-                    ->weight(FontWeight::Medium)
-                    ->searchable(['instructorWorkshop.workshop.name']),
+                    ->weight(FontWeight::Medium),
 
                 Tables\Columns\TextColumn::make('period_info')
                     ->label('Período')
                     ->getStateUsing(fn (InstructorPayment $record) => \Carbon\Carbon::create()->month($record->monthlyPeriod->month)
                         ->year($record->monthlyPeriod->year)
-                        ->format('m/Y') // Este es el formato que necesitas: MM/YYYY
-                    )
-                    ->sortable(['monthlyPeriod.year', 'monthlyPeriod.month']),
+                        ->format('m/Y')
+                ),
 
                 Tables\Columns\BadgeColumn::make('payment_type')
                     ->label('Tipo')
@@ -250,12 +246,26 @@ class InstructorPaymentResource extends Resource
                         default => $state,
                     }),
 
+                Tables\Columns\TextColumn::make('rate_or_percentage')
+                    ->label('Tarifa/Porcentaje')
+                    ->getStateUsing(function (InstructorPayment $record) {
+                        if ($record->payment_type === 'volunteer') {
+                            return $record->applied_volunteer_percentage
+                                ? number_format($record->applied_volunteer_percentage * 100) . '%'
+                                : 'N/A';
+                        } elseif ($record->payment_type === 'hourly') {
+                            return $record->applied_hourly_rate
+                                ? 'S/ ' . number_format($record->applied_hourly_rate, 2)
+                                : 'N/A';
+                        }
+                        return 'N/A';
+                    }),
+
                 Tables\Columns\TextColumn::make('calculated_amount')
                     ->label('Monto a Pagar')
                     ->prefix('S/ ')
                     ->weight(FontWeight::Bold)
-                    ->color('success')
-                    ->sortable(),
+                    ->color('success'),
 
                 Tables\Columns\IconColumn::make('payment_status')
                     ->label('Estado')

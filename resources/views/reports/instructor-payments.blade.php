@@ -78,6 +78,7 @@
                 <th>Horario</th>
                 <th>Período</th>
                 <th>Tipo</th>
+                <th>Tarifa/Porcentaje</th>
                 <th>Monto</th>
                 <th>Fecha de Pago</th>
                 <th>N° Ticket</th>
@@ -93,6 +94,7 @@
                 <td>{{ $payment['workshop_schedule'] }}</td>
                 <td>{{ $payment['period_name'] }}</td>
                 <td>{{ $payment['payment_type'] }}</td>
+                <td style="text-align: center; font-weight: bold;">{{ $payment['rate_or_percentage'] }}</td>
                 <td>S/ {{ number_format($payment['calculated_amount'], 2) }}</td>
                 <td>{{ $payment['payment_date'] }}</td>
                 <td>{{ $payment['document_number'] }}</td>

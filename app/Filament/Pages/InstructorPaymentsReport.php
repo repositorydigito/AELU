@@ -24,21 +24,13 @@ class InstructorPaymentsReport extends Page implements HasActions, HasForms
     use InteractsWithForms;
 
     protected static string $view = 'filament.pages.instructor-payments-report';
-
     protected static ?string $title = 'Reporte de pagos por Profesor';
-
     protected static bool $shouldRegisterNavigation = false;
-
     public ?array $data = [];
-
     public $selectedInstructor = null;
-
     public $selectedPeriod = null;
-
     public $instructorPayments = [];
-
     public $instructorData = null;
-
     public $periodData = null;
 
     public function mount(): void
@@ -168,8 +160,31 @@ class InstructorPaymentsReport extends Page implements HasActions, HasForms
                 'payment_status' => $payment->payment_status === 'paid' ? 'Pagado' : 'Pendiente',
                 'payment_date' => $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y') : 'Sin fecha',
                 'document_number' => $payment->document_number ?? 'Sin documento',
+                'rate_or_percentage' => $this->getRateOrPercentage($payment),
+                'rate_or_percentage_value' => $this->getRateOrPercentageValue($payment),
             ];
         })->toArray();
+    }
+
+    private function getRateOrPercentage($payment): string
+    {
+        if ($payment->payment_type === 'volunteer') {
+            return $payment->applied_volunteer_percentage
+                ? number_format($payment->applied_volunteer_percentage * 100) . '%'
+                : 'N/A';
+        } elseif ($payment->payment_type === 'hourly') {
+            return $payment->applied_hourly_rate
+                ? 'S/ ' . number_format($payment->applied_hourly_rate, 2)
+                : 'N/A';
+        }
+        return 'N/A';
+    }
+
+    private function getRateOrPercentageValue($payment): float
+    {
+        return $payment->payment_type === 'volunteer'
+            ? ($payment->applied_volunteer_percentage ?? 0) * 100
+            : ($payment->applied_hourly_rate ?? 0);
     }
 
     private function getPaymentDetails($payment): string

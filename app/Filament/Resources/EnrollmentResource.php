@@ -1029,7 +1029,7 @@ class EnrollmentResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('student.full_name')
                     ->label('Estudiante')
-                    ->searchable(['student.first_names', 'student.last_names'])
+                    ->searchable(['students.first_names', 'students.last_names'])
                     ->sortable()
                     ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names
                     ),
