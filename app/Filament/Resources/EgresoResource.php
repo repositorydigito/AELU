@@ -15,17 +15,11 @@ use Illuminate\Support\HtmlString;
 class EgresoResource extends Resource
 {
     protected static ?string $model = ExpenseDetail::class;
-
     protected static ?string $navigationLabel = 'Egresos';
-
     protected static ?string $pluralModelLabel = 'Egresos';
-
     protected static ?string $modelLabel = 'Egreso';
-
     protected static ?int $navigationSort = 2;
-
     protected static ?string $navigationGroup = 'Tesorería';
-
     protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-down';
 
     public static function form(Form $form): Form
@@ -109,16 +103,6 @@ class EgresoResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('expense.concept')
-                    ->label('Concepto')
-                    ->relationship('expense', 'concept')
-                    ->options([
-                        'Taller de Cocina' => '👨‍🍳 Taller de Cocina',
-                        'Compra de materiales' => '📦 Compra de materiales',
-                        'Pago a Profesores' => '👩‍🏫 Pago a profesores',
-                        'Otros' => '📋 Otros',
-                    ]),
-
                 Tables\Filters\Filter::make('date')
                     ->label('Fecha de Gasto')
                     ->form([
@@ -143,93 +127,6 @@ class EgresoResource extends Resource
                             ->when(
                                 $data['date_until'],
                                 fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
-                            );
-                    }),
-
-                Tables\Filters\Filter::make('created_date')
-                    ->label('Fecha de Registro')
-                    ->form([
-                        Forms\Components\Section::make()
-                            ->schema([
-                                Forms\Components\Grid::make(2)
-                                    ->schema([
-                                        Forms\Components\DatePicker::make('created_from')
-                                            ->label('Desde'),
-                                        Forms\Components\DatePicker::make('created_until')
-                                            ->label('Hasta'),
-                                    ]),
-                            ])
-                            ->heading('Fecha de Registro'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['created_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['created_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                            );
-                    }),
-
-                Tables\Filters\Filter::make('amount_range')
-                    ->label('Rango de Monto')
-                    ->form([
-                        Forms\Components\Section::make()
-                            ->schema([
-                                Forms\Components\Grid::make(2)
-                                    ->schema([
-                                        Forms\Components\TextInput::make('amount_from')
-                                            ->label('Monto Desde')
-                                            ->numeric()
-                                            ->prefix('S/.'),
-                                        Forms\Components\TextInput::make('amount_until')
-                                            ->label('Monto Hasta')
-                                            ->numeric()
-                                            ->prefix('S/.'),
-                                    ]),
-                            ])
-                            ->heading('Rango de Monto'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['amount_from'],
-                                fn (Builder $query, $amount): Builder => $query->where('amount', '>=', $amount),
-                            )
-                            ->when(
-                                $data['amount_until'],
-                                fn (Builder $query, $amount): Builder => $query->where('amount', '<=', $amount),
-                            );
-                    }),
-
-                Tables\Filters\TernaryFilter::make('has_voucher')
-                    ->label('Con Voucher')
-                    ->placeholder('Todos')
-                    ->trueLabel('Con voucher')
-                    ->falseLabel('Sin voucher')
-                    ->queries(
-                        true: fn (Builder $query) => $query->whereHas('expense', function ($q) {
-                            $q->whereNotNull('voucher_path');
-                        }),
-                        false: fn (Builder $query) => $query->whereHas('expense', function ($q) {
-                            $q->whereNull('voucher_path');
-                        }),
-                    ),
-
-                Tables\Filters\Filter::make('razon_social')
-                    ->label('Proveedor')
-                    ->form([
-                        Forms\Components\TextInput::make('proveedor')
-                            ->label('Buscar proveedor')
-                            ->placeholder('Nombre del proveedor'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['proveedor'],
-                                fn (Builder $query, $proveedor): Builder => $query->where('razon_social', 'like', "%{$proveedor}%"),
                             );
                     }),
             ])

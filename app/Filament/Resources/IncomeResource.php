@@ -14,17 +14,11 @@ use Illuminate\Database\Eloquent\Builder;
 class IncomeResource extends Resource
 {
     protected static ?string $model = StudentEnrollment::class;
-
     protected static ?string $navigationLabel = 'Ingresos';
-
     protected static ?string $pluralModelLabel = 'Ingresos';
-
     protected static ?string $modelLabel = 'Ingreso';
-
     protected static ?int $navigationSort = 1;
-
     protected static ?string $navigationGroup = 'Tesorería';
-
     protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-up';
 
     public static function form(Form $form): Form
@@ -112,13 +106,6 @@ class IncomeResource extends Resource
                     ->options([
                         'cash' => 'Efectivo',
                         'link' => 'Link de Pago',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('enrollment_type')
-                    ->label('Tipo de Inscripción')
-                    ->options([
-                        'full_month' => 'Regular',
-                        'specific_classes' => 'Recuperación',
                     ]),
 
                 Tables\Filters\Filter::make('enrollment_date_filter')
