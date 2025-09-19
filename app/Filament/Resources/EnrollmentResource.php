@@ -33,6 +33,8 @@ class EnrollmentResource extends Resource
                     Forms\Components\Wizard\Step::make('Seleccionar Estudiante y Talleres')
                         ->icon('heroicon-o-user-plus')
                         ->schema([
+                            Forms\Components\Hidden::make('editing_batch_id')
+                                ->default(null),
                             Forms\Components\Select::make('selected_monthly_period_id')
                                 ->label('Período Mensual')
                                 ->options(function () {
@@ -352,7 +354,7 @@ class EnrollmentResource extends Resource
 
                             $student = \App\Models\Student::find($studentId);
                             if (! $student || $student->is_maintenance_current === false) {
-                                throw ValidationException::withMessages(['student_id' => 'El estudiante seleccionado no está al día con el mantenimiento mensual']);
+                                throw ValidationException::withMessages(['student_id' => 'El estudiante seleccionado no esta al dia con el mantenimiento mensual']);
                             }
 
                             $selectedWorkshops = json_decode($get('selected_workshops') ?? '[]', true);
@@ -362,19 +364,10 @@ class EnrollmentResource extends Resource
 
                             $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
                             if (! $selectedMonthlyPeriodId) {
-                                throw ValidationException::withMessages(['selected_monthly_period_id' => 'Debe seleccionar un período mensual']);
+                                throw ValidationException::withMessages(['selected_monthly_period_id' => 'Debe seleccionar un periodo mensual']);
                             }
 
-                            // Validar cupos disponibles para cada taller seleccionado
-                            foreach ($selectedWorkshops as $workshopId) {
-                                $instructorWorkshop = \App\Models\InstructorWorkshop::find($workshopId);
-                                if ($instructorWorkshop && method_exists($instructorWorkshop, 'isFullForPeriod') && $instructorWorkshop->isFullForPeriod($selectedMonthlyPeriodId)) {
-                                    $workshopName = $instructorWorkshop->workshop->name ?? 'Taller desconocido';
-                                    throw ValidationException::withMessages(['selected_workshops' => "El taller '{$workshopName}' no tiene cupos disponibles para el período seleccionado."]);
-                                }
-                            }
-
-                            // Validar clases específicas para cada taller
+                            // Validar clases especificas para cada taller
                             $workshopDetails = $get('workshop_details') ?? [];
                             $errors = [];
 
@@ -384,7 +377,7 @@ class EnrollmentResource extends Resource
 
                                 if ($numberOfClasses > 0) {
                                     if (empty($selectedClasses)) {
-                                        $errors["workshop_details.{$index}.selected_classes"] = 'Debes seleccionar las clases específicas para este taller.';
+                                        $errors["workshop_details.{$index}.selected_classes"] = 'Debes seleccionar las clases especificas para este taller.';
                                     } elseif (count($selectedClasses) !== $numberOfClasses) {
                                         $errors["workshop_details.{$index}.selected_classes"] = "Debes seleccionar exactamente {$numberOfClasses} clase".($numberOfClasses > 1 ? 's' : '').' para este taller.';
                                     }

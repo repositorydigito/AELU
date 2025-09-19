@@ -505,6 +505,7 @@
             },
 
             init() {
+                this.initializePreSelectedWorkshops();
                 this.updatePreviousWorkshops();
 
                 const observer = new MutationObserver(() => {
@@ -513,8 +514,32 @@
 
                 observer.observe(this.$el, {
                     attributes: true,
-                    attributeFilter: ['data-previous-workshops', 'data-student-id']
+                    attributeFilter: ['data-previous-workshops', 'data-student-id', 'data-workshops']
                 });
+
+                // Escuchar eventos de Livewire para actualizar talleres seleccionados
+                if (window.Livewire) {
+                    window.Livewire.on('workshopsUpdated', (workshops) => {
+                        this.selectedWorkshops = Array.isArray(workshops) ? workshops : [];
+                        this.updateHiddenInput();
+                    });
+                }
+            },
+
+            // Inicializar talleres pre-seleccionados
+            initializePreSelectedWorkshops() {
+                // Buscar si hay un input hidden con talleres ya seleccionados
+                const hiddenInput = document.querySelector('input[name="selected_workshops"]');
+                if (hiddenInput && hiddenInput.value) {
+                    try {
+                        const preSelected = JSON.parse(hiddenInput.value);
+                        if (Array.isArray(preSelected)) {
+                            this.selectedWorkshops = preSelected;
+                        }
+                    } catch (e) {
+                        console.log('No se pudieron cargar talleres pre-seleccionados:', e);
+                    }
+                }
             },
 
             updatePreviousWorkshops() {
@@ -598,6 +623,22 @@
                 setTimeout(() => {
                     this.showNotification = false;
                 }, 3000);
+            },
+
+            // Actualizar input hidden
+            updateHiddenInput() {
+                this.$nextTick(() => {
+                    const namedInput = document.querySelector('input[name="selected_workshops"]');
+                    if (namedInput) {
+                        namedInput.value = this.selectedWorkshopsJson;
+                        namedInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        namedInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+
+                    if (window.Livewire) {
+                        window.Livewire.emit('workshopsUpdated', this.selectedWorkshops);
+                    }
+                });
             },
 
             nextPage() {
