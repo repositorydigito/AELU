@@ -169,8 +169,7 @@ class EnrollmentBatchResource extends Resource
                     ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names),
 
                 Tables\Columns\TextColumn::make('created_by_name')
-                    ->label('Usuario')
-                    ->searchable(['users.name']),                    
+                    ->label('Usuario'),
 
                 Tables\Columns\TextColumn::make('workshops_list')
                     ->label('Talleres')
@@ -188,11 +187,11 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('total_classes')
                     ->label('Total Clases')
                     ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Clase' : ' Clases'))
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true),                
 
-                Tables\Columns\TextColumn::make('created_at')
+                Tables\Columns\TextColumn::make('updated_at')
                     ->label('Fecha de Inscripción')
-                    ->dateTime('d/m/Y H:i'),
+                    ->dateTime('d/m/Y H:i'),                    
 
                 Tables\Columns\TextColumn::make('payment_status')
                     ->label('Estado de Pago')
@@ -537,7 +536,7 @@ class EnrollmentBatchResource extends Resource
             ->bulkActions([
 
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('updated_at', 'desc');
     }
 
     public static function getRelations(): array
