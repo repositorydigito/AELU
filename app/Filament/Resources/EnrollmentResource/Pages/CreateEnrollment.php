@@ -611,6 +611,17 @@ class CreateEnrollment extends CreateRecord
             // Notificación de éxito (fuera de la transacción)
             $count = count($this->tempCreatedEnrollments ?? []);
 
+            // Usuario que editó
+            $this->editingBatch->update([
+                'updated_by' => auth()->id(),
+                'updated_at' => now(),
+            ]);
+
+            // Cambiar también created_by al editar:
+            if ($this->editingBatch->created_by === null) {
+                $this->editingBatch->update(['created_by' => auth()->id()]);
+            }
+
             Notification::make()
                 ->title('¡Inscripción modificada exitosamente!')
                 ->body("Se actualizó el lote con {$count} inscripción" . ($count > 1 ? 'es' : '') . ' correctamente.')

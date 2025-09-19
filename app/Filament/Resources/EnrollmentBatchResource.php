@@ -168,12 +168,9 @@ class EnrollmentBatchResource extends Resource
                     ->searchable(['students.first_names', 'students.last_names'])
                     ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names),
 
-                Tables\Columns\TextColumn::make('creator.name')
+                Tables\Columns\TextColumn::make('created_by_name')
                     ->label('Usuario')
-                    ->searchable(['users.name'])
-                    ->formatStateUsing(function (EnrollmentBatch $record): string {
-                        return $record->creator ? $record->creator->name : 'Sistema';
-                    }),
+                    ->searchable(['users.name']),                    
 
                 Tables\Columns\TextColumn::make('workshops_list')
                     ->label('Talleres')

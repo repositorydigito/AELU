@@ -132,6 +132,7 @@ class AutoGenerateNextMonthEnrollments extends Command
                         'notes' => 'Generación automática basada en inscripciones del mes anterior',
                         'auto_generated' => true,
                         'source_batch_id' => $batch->id,
+                        'created_by' => 'null',
                     ]);
 
                     $totalAmount = 0;
