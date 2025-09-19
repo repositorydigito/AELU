@@ -497,11 +497,7 @@ class CreateEnrollment extends CreateRecord
         // Si hay duplicados REALES, detener el proceso
         if (!empty($duplicateErrors)) {
             $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
-            $duplicateList = implode(', ', $duplicateErrors);
-
-            \Log::error('DUPLICADOS REALES ENCONTRADOS EN EDICION', [
-                'duplicates' => $duplicateErrors
-            ]);
+            $duplicateList = implode(', ', $duplicateErrors);            
 
             Notification::make()
                 ->title('Inscripciones duplicadas detectadas')
