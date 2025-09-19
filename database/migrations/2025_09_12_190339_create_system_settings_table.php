@@ -47,6 +47,27 @@ return new class extends Migration
             'type' => 'integer',
             'description' => 'Horas de gracia después del día límite'
         ]);
+
+        \App\Models\SystemSetting::create([
+            'key' => 'auto_generate_enabled',
+            'value' => 'false',
+            'type' => 'boolean',
+            'description' => 'Habilitar/deshabilitar generación automática de inscripciones para el mes siguiente'
+        ]);
+
+        \App\Models\SystemSetting::create([
+            'key' => 'auto_generate_day',
+            'value' => '20',
+            'type' => 'integer',
+            'description' => 'Día del mes para generar inscripciones del mes siguiente'
+        ]);
+
+        \App\Models\SystemSetting::create([
+            'key' => 'auto_generate_time',
+            'value' => '23:59:59',
+            'type' => 'string',
+            'description' => 'Hora del día para ejecutar generación automática'
+        ]);
     }
     
     public function down(): void

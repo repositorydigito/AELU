@@ -28,6 +28,9 @@ class SystemSettings extends Page
             'auto_cancel_enabled' => SystemSetting::get('auto_cancel_enabled', false),
             'auto_cancel_day' => SystemSetting::get('auto_cancel_day', 28),
             'auto_cancel_time' => SystemSetting::get('auto_cancel_time', '23:59:59'),
+            'auto_generate_enabled' => SystemSetting::get('auto_generate_enabled', false),
+            'auto_generate_day' => SystemSetting::get('auto_generate_day', 20),
+            'auto_generate_time' => SystemSetting::get('auto_generate_time', '23:59:59'),
         ]);
     }
 
@@ -81,6 +84,52 @@ class SystemSettings extends Page
                     ])
                     ->columns(1),
 
+                Forms\Components\Section::make('Generación Automática de Inscripciones')
+                    ->description('Configuración para generar automáticamente inscripciones para el mes siguiente')
+                    ->schema([
+                        Forms\Components\Toggle::make('auto_generate_enabled')
+                            ->label('Habilitar Generación Automática')
+                            ->helperText('Activar o desactivar la generación automática de inscripciones para el mes siguiente')
+                            ->live()
+                            ->columnSpanFull(),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('auto_generate_day')
+                                    ->label('Día del Mes')
+                                    ->helperText('Día del mes para ejecutar la generación (1-31)')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->maxValue(31)
+                                    ->default(20)
+                                    ->required()
+                                    ->disabled(fn (Forms\Get $get) => !$get('auto_generate_enabled')),
+
+                                Forms\Components\TimePicker::make('auto_generate_time')
+                                    ->label('Hora de Ejecución')
+                                    ->helperText('Hora del día para ejecutar la generación')
+                                    ->default('23:59:59')
+                                    ->seconds(false)
+                                    ->required()
+                                    ->disabled(fn (Forms\Get $get) => !$get('auto_generate_enabled')),
+                            ]),
+
+                        Forms\Components\Placeholder::make('auto_generate_info')
+                            ->label('Información')
+                            ->content(function (Forms\Get $get) {
+                                if (!$get('auto_generate_enabled')) {
+                                    return 'La generación automática está deshabilitada.';
+                                }
+
+                                $day = $get('auto_generate_day') ?? 20;
+                                $time = $get('auto_generate_time') ?? '23:59:59';
+                                
+                                return "Las inscripciones del mes siguiente se generarán automáticamente cada día {$day} del mes a las {$time} basándose en las inscripciones completadas del mes actual.";
+                            })
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(1),
+
                 Forms\Components\Section::make('Comandos de Prueba')
                     ->description('Herramientas para probar la funcionalidad')
                     ->schema([
@@ -119,11 +168,17 @@ class SystemSettings extends Page
 
         try {
             SystemSetting::set('auto_cancel_enabled', $data['auto_cancel_enabled'], 'boolean');
+            SystemSetting::set('auto_generate_enabled', $data['auto_generate_enabled'], 'boolean');
             
             // Solo guardar estos valores si la funcionalidad está habilitada
             if ($data['auto_cancel_enabled']) {
                 SystemSetting::set('auto_cancel_day', $data['auto_cancel_day'] ?? 28, 'integer');
                 SystemSetting::set('auto_cancel_time', $data['auto_cancel_time'] ?? '23:59:59', 'string');
+            }
+
+            if ($data['auto_generate_enabled']) {
+                SystemSetting::set('auto_generate_day', $data['auto_generate_day'] ?? 20, 'integer');
+                SystemSetting::set('auto_generate_time', $data['auto_generate_time'] ?? '23:59:59', 'string');
             }
 
             Notification::make()

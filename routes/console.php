@@ -12,3 +12,8 @@ Schedule::command('enrollments:auto-cancel')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();
+
+Schedule::command('enrollments:auto-generate')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
