@@ -21,6 +21,7 @@ class Workshop extends Model
         'capacity',
         'number_of_classes',
         'place',
+        'modality',
         'monthly_period_id',
         'additional_comments',
     ];
