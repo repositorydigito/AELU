@@ -1,5 +1,6 @@
 <div x-data="workshopSelector()"
      data-previous-workshops="{{ json_encode($getViewData()['previous_workshops'] ?? []) }}"
+     data-current-enrolled-workshops="{{ json_encode($getViewData()['current_enrolled_workshops'] ?? []) }}"
      data-student-id="{{ $getViewData()['student_id'] ?? '' }}"
      data-workshops="{{ json_encode($workshops->values()->toArray()) }}">
     @php
@@ -35,6 +36,7 @@
         $workshopsForJs = $workshops->values()->toArray();
         $selectedWorkshopsForJs = $workshops->where('selected', true)->pluck('id')->toArray();
         $previousWorkshopIdsForJs = $previousWorkshopIds;
+        $currentEnrolledWorkshopIdsForJs = $getViewData()['current_enrolled_workshops'] ?? [];
     @endphp
 
     <style>
@@ -43,6 +45,17 @@
         }
         .workshop-card:hover {
             transform: translateY(-2px);
+        }
+        .workshop-card-enrolled {
+            background-color: #fef3c7 !important;
+            border-color: #f59e0b !important;
+            opacity: 0.7 !important;
+            cursor: not-allowed !important;
+        }
+        
+        .workshop-card-enrolled:hover {
+            transform: none !important;
+            box-shadow: none !important;
         }
         input[type="text"]:focus {
             transform: scale(1.02);
@@ -247,14 +260,20 @@
                             class="workshop-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md relative"
                             x-bind:class="{
                                 'border-primary-500 bg-primary-50 ring-2 ring-primary-200': selectedWorkshops.includes(workshop.id),
-                                'border-gray-200 bg-white hover:border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_full,
+                                'workshop-card-enrolled': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
+                                'border-gray-200 bg-white hover:border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_full && !workshop.is_enrolled,
                                 'border-red-200 bg-red-50 opacity-60 cursor-not-allowed': workshop.is_full
                             }"
-                            x-on:click="!workshop.is_full && toggleWorkshop(workshop.id)"
+                            x-on:click="!workshop.is_full && !workshop.is_enrolled && toggleWorkshop(workshop.id)"
                         >
                             <!-- Badge de cupos agotados -->
                             <div x-cloak x-show="workshop.is_full" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
                                 Cupos Agotados
+                            </div>
+
+                            <!-- Badge de ya inscrito -->
+                            <div x-cloak x-show="workshop.is_enrolled && !workshop.is_full" class="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
+                                Inscrito
                             </div>
 
                             <!-- Header del taller -->
@@ -273,7 +292,8 @@
                                         class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
                                         x-bind:class="{
                                             'border-primary-500 bg-primary-500': selectedWorkshops.includes(workshop.id),
-                                            'border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_full,
+                                            'border-yellow-500 bg-yellow-100': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
+                                            'border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_full && !workshop.is_enrolled,
                                             'border-red-300 bg-red-100': workshop.is_full
                                         }"
                                     >
@@ -297,6 +317,17 @@
                                             viewBox="0 0 24 24"
                                         >
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                        <!-- Ícono de usuario para ya inscrito -->
+                                        <svg
+                                            class="w-4 h-4 text-yellow-600"
+                                            x-cloak
+                                            x-show="workshop.is_enrolled && !selectedWorkshops.includes(workshop.id)"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                         </svg>
                                     </div>
                                 </div>
@@ -450,6 +481,7 @@
             allWorkshops: @json($workshopsForJs),
             selectedWorkshops: @json($selectedWorkshopsForJs),
             previousWorkshopIds: [],
+            currentEnrolledWorkshopIds: [],
             lastStudentId: null,
             searchQuery: '',
             currentPage: 1,
@@ -514,7 +546,7 @@
 
                 observer.observe(this.$el, {
                     attributes: true,
-                    attributeFilter: ['data-previous-workshops', 'data-student-id', 'data-workshops']
+                    attributeFilter: ['data-previous-workshops', 'data-current-enrolled-workshops', 'data-student-id', 'data-workshops']
                 });
 
                 // Escuchar eventos de Livewire para actualizar talleres seleccionados
@@ -570,6 +602,19 @@
                         this.previousWorkshopIds = [];
                     }
                 }
+
+                // Manejar talleres existentes en el periodo actual
+                const enrolledAttr = this.$el.getAttribute('data-current-enrolled-workshops');
+                if (enrolledAttr) {
+                    try {
+                        this.currentEnrolledWorkshopIds = JSON.parse(enrolledAttr);
+                    } catch (e) {
+                        console.error('Error parsing data-current-enrolled-workshops:', e);
+                        this.currentEnrolledWorkshopIds = [];
+                    }
+                } else {
+                    this.currentEnrolledWorkshopIds = [];
+                }
             },
 
             clearSearch() {
@@ -592,6 +637,11 @@
                 const workshop = this.allWorkshops.find(w => w.id === workshopId);
                 if (workshop && workshop.is_full) {
                     this.showCapacityAlert(workshop.name);
+                    return;
+                }
+
+                if (workshop && workshop.is_enrolled) {
+                    this.showEnrolledAlert(workshop.name);
                     return;
                 }
 
@@ -618,6 +668,15 @@
 
             showCapacityAlert(workshopName) {
                 this.notificationMessage = `El taller "${workshopName}" no tiene cupos disponibles`;
+                this.showNotification = true;
+
+                setTimeout(() => {
+                    this.showNotification = false;
+                }, 3000);
+            },
+
+            showEnrolledAlert(workshopName) {
+                this.notificationMessage = `El estudiante ya está inscrito en "${workshopName}" para este período`;
                 this.showNotification = true;
 
                 setTimeout(() => {

@@ -219,17 +219,28 @@ class EnrollmentResource extends Resource
                                             $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
                                             $previousWorkshopIds = json_decode($get('previous_workshops') ?? '[]', true);
 
+                                            // Obtener inscripciones activas del estudiante para el período actual
+                                            $currentEnrolledWorkshopIds = [];
+                                            if ($studentId && $selectedMonthlyPeriodId) {
+                                                $currentEnrolledWorkshopIds = \App\Models\StudentEnrollment::where('student_id', $studentId)
+                                                    ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                                                    ->whereNotIn('payment_status', ['refunded'])
+                                                    ->pluck('instructor_workshop_id')
+                                                    ->toArray();
+                                            }
+
                                             if (! $selectedMonthlyPeriodId) {
                                                 return [
                                                     'workshops' => collect(),
                                                     'student_id' => $studentId,
                                                     'previous_workshops' => [],
+                                                    'current_enrolled_workshops' => $currentEnrolledWorkshopIds,
                                                     'selected_monthly_period_id' => null,
                                                 ];
                                             }
 
                                             // Función helper para mapear datos de taller
-                                            $mapWorkshopData = function ($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds) {
+                                            $mapWorkshopData = function ($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds, $currentEnrolledWorkshopIds) {
                                                 try {
                                                     // Verificar que todas las relaciones están cargadas
                                                     if (! $instructorWorkshop || ! $instructorWorkshop->workshop || ! $instructorWorkshop->instructor) {
@@ -276,6 +287,7 @@ class EnrollmentResource extends Resource
                                                         'available_spots' => $availableSpots,
                                                         'is_full' => $availableSpots <= 0,
                                                         'is_previous' => in_array($instructorWorkshop->id, $previousWorkshopIds),
+                                                        'is_enrolled' => in_array($instructorWorkshop->id, $currentEnrolledWorkshopIds),
                                                     ];
                                                 } catch (\Exception $e) {
                                                     return null;
@@ -294,7 +306,7 @@ class EnrollmentResource extends Resource
                                                         ->get();
 
                                                     foreach ($instructorWorkshops as $instructorWorkshop) {
-                                                        $mappedData = $mapWorkshopData($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds);
+                                                        $mappedData = $mapWorkshopData($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds, $currentEnrolledWorkshopIds);
                                                         if ($mappedData) {
                                                             $currentWorkshops->push($mappedData);
                                                         }
@@ -309,7 +321,7 @@ class EnrollmentResource extends Resource
                                                         ->get();
 
                                                     foreach ($previousInstructorWorkshops as $instructorWorkshop) {
-                                                        $mappedData = $mapWorkshopData($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds);
+                                                        $mappedData = $mapWorkshopData($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds, $currentEnrolledWorkshopIds);
                                                         if ($mappedData) {
                                                             $previousWorkshopsData->push($mappedData);
                                                         }
@@ -323,6 +335,7 @@ class EnrollmentResource extends Resource
                                                     'workshops' => $allWorkshops,
                                                     'student_id' => $studentId,
                                                     'previous_workshops' => $previousWorkshopIds,
+                                                    'current_enrolled_workshops' => $currentEnrolledWorkshopIds,
                                                     'selected_monthly_period_id' => $selectedMonthlyPeriodId,
                                                 ];
                                             } catch (\Exception $e) {
@@ -330,6 +343,7 @@ class EnrollmentResource extends Resource
                                                     'workshops' => collect(),
                                                     'student_id' => $studentId,
                                                     'previous_workshops' => [],
+                                                    'current_enrolled_workshops' => [],
                                                     'selected_monthly_period_id' => $selectedMonthlyPeriodId,
                                                 ];
                                             }
