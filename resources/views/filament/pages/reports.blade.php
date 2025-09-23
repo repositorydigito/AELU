@@ -31,5 +31,14 @@
             </ul>
         </x-filament::section>
 
+        <x-filament::section class="rounded-xl shadow-lg">
+            <x-slot name="heading">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Reporte Mensual</h2>
+            </x-slot>
+            <ul class="space-y-3 text-gray-700 dark:text-gray-300">
+                <li><a href="{{ url('/admin/monthly-instructor-report') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Reporte de Pagos Mensual</a></li>
+            </ul>
+        </x-filament::section>
+
     </div>
 </x-filament-panels::page>
