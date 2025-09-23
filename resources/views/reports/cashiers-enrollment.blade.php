@@ -95,14 +95,13 @@
     <table class="table">
         <thead>
             <tr>
-                <th style="width: 11%;">Fecha Pago</th>
-                <th style="width: 16%;">Estudiante</th>
-                <th style="width: 22%;">Taller</th>
-                <th style="width: 18%;">Instructor</th>
-                <th style="width: 7%;">Clases</th>
-                <th style="width: 9%;">Monto</th>
-                <th style="width: 8%;">Método Pago</th>
-                <th style="width: 9%;">N° Ticket</th>
+                <th style="width: 14%;">Fecha Pago</th>
+                <th style="width: 20%;">Estudiante</th>
+                <th style="width: 25%;">Talleres</th>
+                <th style="width: 10%;">Monto</th>
+                <th style="width: 9%;">Método</th>
+                <th style="width: 8%;">Estado</th>
+                <th style="width: 14%;">Nº Ticket</th>
             </tr>
         </thead>
         <tbody>
@@ -117,14 +116,14 @@
                     <small>{{ $enrollment['student_code'] }}</small>
                 </td>
                 <td>
-                    <strong>{{ $enrollment['workshop_name'] }}</strong>
+                    <strong>{{ $enrollment['workshops_count'] }} taller(es)</strong><br>
+                    <small>{{ Str::limit($enrollment['workshops_list'], 60) }}</small>
                 </td>
-                <td>
-                    {{ $enrollment['instructor_name'] }}
-                </td>
-                <td style="text-align: center;">{{ $enrollment['number_of_classes'] }}</td>
                 <td style="text-align: right;"><strong>S/ {{ number_format($enrollment['total_amount'], 2) }}</strong></td>
                 <td style="text-align: center;">{{ $enrollment['payment_method'] }}</td>
+                <td style="text-align: center; font-size: 7px;">
+                    {{ $enrollment['payment_status'] }}
+                </td>
                 <td style="text-align: center; font-size: 7px;">{{ $enrollment['batch_code'] }}</td>
             </tr>
             @endforeach

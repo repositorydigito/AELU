@@ -68,12 +68,11 @@
                         <tr class="bg-gray-50 dark:bg-gray-800">
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Pago</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estudiante</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taller</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Instructor</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Clases</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Talleres</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto Total</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Método Pago</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Ticket</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nº Ticket</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -92,13 +91,10 @@
                                 </div>
                             </td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                                <p class="font-medium">{{ $enrollment['workshop_name'] }}</p>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $enrollment['instructor_name'] }}
-                            </td>
-                            <td class="px-4 py-4 text-sm text-center text-gray-900 dark:text-white">
-                                {{ $enrollment['number_of_classes'] }}
+                                <div>
+                                    <p class="font-medium">{{ $enrollment['workshops_count'] }} taller(es)</p>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs">{{ Str::limit($enrollment['workshops_list'], 50) }}</p>
+                                </div>
                             </td>
                             <td class="px-4 py-4 text-sm font-semibold text-gray-900 dark:text-white">
                                 S/ {{ number_format($enrollment['total_amount'], 2) }}
@@ -110,6 +106,9 @@
                                         : 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' }}">
                                     {{ $enrollment['payment_method'] }}
                                 </span>
+                            </td>
+                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+                                {{ $enrollment['payment_status'] }}
                             </td>
                             <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $enrollment['batch_code'] }}

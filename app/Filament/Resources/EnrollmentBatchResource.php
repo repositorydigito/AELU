@@ -187,11 +187,11 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('total_classes')
                     ->label('Total Clases')
                     ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Clase' : ' Clases'))
-                    ->toggleable(isToggledHiddenByDefault: true),                
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Fecha de Inscripción')
-                    ->dateTime('d/m/Y H:i'),                    
+                    ->dateTime('d/m/Y H:i'),
 
                 Tables\Columns\TextColumn::make('payment_status')
                     ->label('Estado de Pago')
@@ -227,8 +227,7 @@ class EnrollmentBatchResource extends Resource
 
                 Tables\Columns\TextColumn::make('batch_code')
                     ->label('Nº Ticket')
-                    ->placeholder('Sin código')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->placeholder('Sin código'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('created_by')
@@ -282,8 +281,43 @@ class EnrollmentBatchResource extends Resource
                     ->icon('heroicon-o-document-arrow-down')
                     ->url(fn (EnrollmentBatch $record): string => route('enrollment.batch.ticket', ['batchId' => $record->id]))
                     ->openUrlInNewTab()
-                    ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'completed' && $record->payment_method === 'cash')
+                    ->visible(fn (EnrollmentBatch $record): bool =>
+                        // Mostrar para inscripciones completadas con efectivo O anuladas que tengan batch_code
+                        ($record->payment_status === 'completed' && $record->payment_method === 'cash') ||
+                        ($record->payment_status === 'refunded' && $record->payment_method === 'cash' && !empty($record->batch_code) && $record->batch_code !== 'Sin código')
+                    )
                     ->color('success'),
+                Tables\Actions\Action::make('view_cancellation_reason')
+                    ->label('Motivo')
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->modalHeading('Motivo de Anulación')
+                    ->modalContent(function (EnrollmentBatch $record) {
+                        $cancelledBy = $record->cancelledBy ? $record->cancelledBy->name : 'Usuario no disponible';
+                        $cancelledAt = $record->cancelled_at ? $record->cancelled_at->format('d/m/Y H:i') : 'Fecha no disponible';
+                        $reason = $record->cancellation_reason ?: 'No se especificó motivo';
+
+                        return new \Illuminate\Support\HtmlString("
+                            <div class='space-y-4'>
+                                <div class='bg-red-50 border border-red-200 rounded-lg p-4'>
+                                    <h4 class='font-medium text-red-800 mb-2'>Información de la Anulación</h4>
+                                    <div class='text-sm text-red-700 space-y-1'>
+                                        <p><strong>Anulado por:</strong> {$cancelledBy}</p>
+                                        <p><strong>Fecha:</strong> {$cancelledAt}</p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class='font-medium text-gray-900 mb-2'>Motivo:</h4>
+                                    <div class='bg-gray-50 border border-gray-200 rounded-lg p-3'>
+                                        <p class='text-sm text-gray-700'>{$reason}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ");
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'refunded'),
                 Tables\Actions\Action::make('register_payment')
                     ->label('Pago')
                     ->icon('heroicon-o-currency-dollar')

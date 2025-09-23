@@ -63,7 +63,9 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
                 Select::make('cashier_id')
                     ->label('Cajero')
                     ->placeholder('Selecciona un cajero...')
-                    ->options(\App\Models\User::role('Cajero')->pluck('name', 'id'))
+                    ->options(\App\Models\User::whereDoesntHave('roles', function ($query) {
+                        $query->where('name', 'Delegado');
+                    })->pluck('name', 'id'))
                     ->searchable()
                     ->live()
                     ->afterStateUpdated(function ($state) {
@@ -108,49 +110,42 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         $dateFromForQuery = \Carbon\Carbon::parse($this->selectedDateFrom)->format('Y-m-d');
         $dateToForQuery = \Carbon\Carbon::parse($this->selectedDateTo)->format('Y-m-d');
 
-        // Obtener StudentEnrollments individuales en lugar de agrupar por lotes
-        $enrollments = \App\Models\StudentEnrollment::with([
+        // Obtener EnrollmentBatch en lugar de StudentEnrollments individuales
+        $enrollmentBatches = \App\Models\EnrollmentBatch::with([
             'student',
-            'instructorWorkshop.workshop',
-            'instructorWorkshop.instructor',
-            'enrollmentBatch.paymentRegisteredByUser',
-            'enrollmentBatch',
+            'paymentRegisteredByUser',
+            'enrollments.instructorWorkshop.workshop'  // Para contar talleres
         ])
-            ->whereHas('enrollmentBatch', function ($query) use ($dateFromForQuery, $dateToForQuery) {
-                $query->where('payment_registered_by_user_id', $this->selectedCashier)
-                    ->whereDate('payment_registered_at', '>=', $dateFromForQuery)
-                    ->whereDate('payment_registered_at', '<=', $dateToForQuery);
-            })
-            ->orderBy('enrollment_date', 'desc')
+            ->where('payment_registered_by_user_id', $this->selectedCashier)
+            ->whereDate('payment_registered_at', '>=', $dateFromForQuery)
+            ->whereDate('payment_registered_at', '<=', $dateToForQuery)
+            ->orderBy('payment_registered_at', 'desc')
             ->get();
 
-        if ($enrollments->isEmpty()) {
+        if ($enrollmentBatches->isEmpty()) {
             $this->cashierEnrollments = [];
             $this->resetPaymentSummary();
             return;
         }
 
-        $this->cashierEnrollments = $enrollments->map(function ($enrollment) {
-            $student = $enrollment->student;
-            $batch = $enrollment->enrollmentBatch;
-            $cashier = $batch ? $batch->paymentRegisteredByUser : null;
-            $workshop = $enrollment->instructorWorkshop->workshop ?? null;
-            $instructor = $enrollment->instructorWorkshop->instructor ?? null;
+        $this->cashierEnrollments = $enrollmentBatches->map(function ($batch) {
+            $student = $batch->student;
+            $cashier = $batch->paymentRegisteredByUser;
 
             return [
-                'id' => $enrollment->id,
+                'id' => $batch->id,
                 'student_name' => $student ? ($student->first_names.' '.$student->last_names) : 'N/A',
                 'student_code' => $student->student_code ?? 'N/A',
                 'cashier_name' => $cashier ? $cashier->name : 'N/A',
-                'payment_registered_time' => $batch && $batch->payment_registered_at ? $batch->payment_registered_at->format('d/m/Y H:i') : 'N/A',
-                'enrollment_date' => $enrollment->enrollment_date->format('d/m/Y'),
-                'workshop_name' => $workshop->name ?? 'N/A',
-                'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A',
-                'number_of_classes' => $enrollment->number_of_classes,
-                'total_amount' => $enrollment->total_amount,
-                'payment_method' => $batch && $batch->payment_method === 'cash' ? 'Efectivo' : 'Link',
-                'batch_code' => $batch ? ($batch->batch_code ?? 'Sin código') : 'Sin lote',
-                'payment_status' => $batch ? $this->getPaymentStatusText($batch->payment_status) : 'N/A',
+                'payment_registered_time' => $batch->payment_registered_at ? $batch->payment_registered_at->format('d/m/Y H:i') : 'N/A',
+                'enrollment_date' => $batch->enrollment_date ? $batch->enrollment_date->format('d/m/Y') : 'N/A',
+                'workshops_count' => $batch->enrollments->count(), // Número de talleres
+                'workshops_list' => $batch->enrollments->pluck('instructorWorkshop.workshop.name')->join(', '), // Lista de talleres
+                'total_amount' => $batch->total_amount,
+                'amount_paid' => $batch->amount_paid,
+                'payment_method' => $this->getPaymentMethodText($batch->payment_method),
+                'batch_code' => $batch->batch_code ?? 'Sin código',
+                'payment_status' => $this->getPaymentStatusText($batch->payment_status),
             ];
         })->toArray();
 
@@ -173,13 +168,16 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
     {
         $enrollments = collect($this->cashierEnrollments);
 
+        // Filtrar solo los no anulados para los cálculos de montos
+        $activeEnrollments = $enrollments->where('payment_status', '!=', 'Anulado');
+
         $this->paymentSummary = [
             'total_enrollments' => $enrollments->count(),
-            'cash_count' => $enrollments->where('payment_method', 'Efectivo')->count(),
-            'cash_amount' => $enrollments->where('payment_method', 'Efectivo')->sum('total_amount'),
-            'link_count' => $enrollments->where('payment_method', 'Link')->count(),
-            'link_amount' => $enrollments->where('payment_method', 'Link')->sum('total_amount'),
-            'total_amount' => $enrollments->sum('total_amount'),
+            'cash_count' => $activeEnrollments->where('payment_method', 'Efectivo')->count(),
+            'cash_amount' => $activeEnrollments->where('payment_method', 'Efectivo')->sum('total_amount'),
+            'link_count' => $activeEnrollments->where('payment_method', 'Link')->count(),
+            'link_amount' => $activeEnrollments->where('payment_method', 'Link')->sum('total_amount'),
+            'total_amount' => $activeEnrollments->sum('total_amount'),
         ];
     }
 
@@ -190,8 +188,17 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             'to_pay' => 'Por Pagar',
             'completed' => 'Inscrito',
             'credit_favor' => 'Crédito a Favor',
-            'refunded' => 'Devuelto',
+            'refunded' => 'Anulado',
             default => $status,
+        };
+    }
+
+    private function getPaymentMethodText($method): string
+    {
+        return match ($method) {
+            'cash' => 'Efectivo',
+            'link' => 'Link',
+            default => 'N/A',
         };
     }
 
