@@ -51,11 +51,22 @@
             border-color: #f59e0b !important;
             opacity: 0.7 !important;
             cursor: not-allowed !important;
-        }
-        
+        }        
         .workshop-card-enrolled:hover {
             transform: none !important;
             box-shadow: none !important;
+        }
+        .workshop-card-full {
+            background-color: #fee2e2 !important;
+            border-color: #dc2626 !important;
+            border-width: 2px !important;
+            opacity: 0.75 !important;
+            cursor: not-allowed !important;
+        }        
+        .workshop-card-full:hover {
+            transform: none !important;
+            box-shadow: none !important;
+            border-color: #dc2626 !important;
         }
         input[type="text"]:focus {
             transform: scale(1.02);
@@ -262,7 +273,7 @@
                                 'border-primary-500 bg-primary-50 ring-2 ring-primary-200': selectedWorkshops.includes(workshop.id),
                                 'workshop-card-enrolled': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
                                 'border-gray-200 bg-white hover:border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_full && !workshop.is_enrolled,
-                                'border-red-200 bg-red-50 opacity-60 cursor-not-allowed': workshop.is_full
+                                'workshop-card-full': workshop.is_full
                             }"
                             x-on:click="!workshop.is_full && !workshop.is_enrolled && toggleWorkshop(workshop.id)"
                         >
