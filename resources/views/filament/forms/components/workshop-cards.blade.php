@@ -143,13 +143,19 @@
                             class="workshop-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md relative"
                             x-bind:class="{
                                 'border-blue-500 bg-blue-100 ring-2 ring-blue-200': selectedWorkshops.includes(workshop.id),
-                                'border-blue-300 bg-blue-50 hover:border-blue-400': !selectedWorkshops.includes(workshop.id)
+                                'workshop-card-enrolled': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
+                                'border-blue-300 bg-blue-50 hover:border-blue-400': !selectedWorkshops.includes(workshop.id) && !workshop.is_enrolled
                             }"
-                            x-on:click="toggleWorkshop(workshop.id)"
+                            x-on:click="!workshop.is_enrolled && toggleWorkshop(workshop.id)"
                         >
-                            <!-- Badge de taller previo -->
-                            <div class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium z-5">
+                            <!-- Badge de mes anterior (solo si no está inscrito) -->
+                            <div x-cloak x-show="!workshop.is_enrolled" class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium z-5">
                                 Mes Anterior
+                            </div>
+
+                            <!-- Badge de ya inscrito (prioridad sobre mes anterior) -->
+                            <div x-cloak x-show="workshop.is_enrolled" class="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
+                                Inscrito
                             </div>
 
                             <!-- Header del taller (igual que el grid principal) -->
@@ -168,7 +174,8 @@
                                         class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
                                         x-bind:class="{
                                             'border-primary-500 bg-primary-500': selectedWorkshops.includes(workshop.id),
-                                            'border-gray-300': !selectedWorkshops.includes(workshop.id)
+                                            'border-yellow-500 bg-yellow-100': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
+                                            'border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_enrolled
                                         }"
                                     >
                                         <svg
