@@ -6,25 +6,25 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 10px;
+            margin: 1.5mm;
             padding: 0;
             font-size: 11px;
-            line-height: 1.1;
+            line-height: 1.13;
             color: #333;
         }
 
         .ticket-container {
-            border: 2px solid #000;
-            padding: 8px;
-            height: calc(100vh - 20px);
+            border: 1.2px solid #000;
+            padding: 6px 4px 4px 4px;
+            min-height: 0;
             box-sizing: border-box;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #000;
-            padding-bottom: 6px;
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
         }
 
         .header h1 {
@@ -69,7 +69,7 @@
         .workshops-table th,
         .workshops-table td {
             border: 1px solid #000;
-            padding: 5px 4px;
+            padding: 4px 3px;
             text-align: center;
             vertical-align: middle;
         }
@@ -77,18 +77,18 @@
         .workshops-table th {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 10px;
+            font-size: 10.5px;
         }
 
-        .taller-col { width: 28%; text-align: left; }
-        .horario-col { width: 22%; }
-        .clases-col { width: 12%; }
-        .fechas-col { width: 20%; }
-        .importe-col { width: 18%; }
+    .taller-col { width: 27%; text-align: left; }
+    .horario-col { width: 20%; }
+    .clases-col { width: 10%; }
+    .fechas-col { width: 25%; }
+    .importe-col { width: 18%; }
 
         .class-dates {
             font-size: 10px;
-            line-height: 1.3;
+            line-height: 1.13;
             text-align: center;
         }
 
@@ -100,35 +100,35 @@
         .total-row {
             background-color: #f0f0f0;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .footer-section {
-            margin-top: 10px;
-            border-top: 2px solid #000;
-            padding-top: 8px;
+            margin-top: 6px;
+            border-top: 1.2px solid #000;
+            padding-top: 6px;
             font-size: 11px;
         }
 
         .footer-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            padding: 6px 8px;
+            margin-bottom: 5px;
+            padding: 4px 6px;
             background-color: #f9f9f9;
-            border: 2px solid #000;
-            gap: 30px;
+            border: 1.2px solid #000;
+            gap: 12px;
         }
 
         .footer-left, .footer-right {
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .total-words {
-            margin-top: 8px;
-            border: 2px solid #000;
-            padding: 6px 8px;
+            margin-top: 6px;
+            border: 1.2px solid #000;
+            padding: 4px 6px;
             background-color: #f9f9f9;
             font-size: 11px;
             text-align: center;
@@ -236,25 +236,36 @@
 
         <!-- Footer con información de pago -->
         <div class="footer-section">
-            <!-- Fila del usuario y mes pagado -->
-            <div class="footer-row">
-                <span><strong>USUARIO:</strong> {{ $created_by_user }}</span>
-                <span><strong>MES PAGADO:</strong>
-                    @if($enrollmentBatch->enrollments->first() && $enrollmentBatch->enrollments->first()->monthlyPeriod)
-                        {{ strtoupper(\Carbon\Carbon::createFromDate($enrollmentBatch->enrollments->first()->monthlyPeriod->year, $enrollmentBatch->enrollments->first()->monthlyPeriod->month)->translatedFormat('M Y')) }}
-                    @else
-                        {{ strtoupper(\Carbon\Carbon::parse($enrollmentBatch->created_at)->translatedFormat('M Y')) }}
-                    @endif
-                </span>
-            </div>
-
             <!-- Fila del monto pagado y vuelto (solo para pagos en efectivo) -->
             @if($enrollmentBatch->payment_method === 'cash' && $enrollmentBatch->amount_paid)
-            <div class="footer-row" style="margin-bottom: 4px;">
-                <span><strong>MONTO PAGADO:</strong> S/ {{ number_format($enrollmentBatch->amount_paid, 2) }}</span>
-                <span><strong>VUELTO:</strong> S/ {{ number_format($enrollmentBatch->change_amount ?? 0, 2) }}</span>
-            </div>
+            <table width="100%" style="margin-bottom:4px; border-collapse:collapse; border:1.2px solid #000; background-color:#f9f9f9;">
+                <tr>
+                    <td style="font-weight:bold; font-size:11px; padding:4px 6px; text-align:left; border:none;">
+                        MONTO PAGADO: S/ {{ number_format($enrollmentBatch->amount_paid, 2) }}
+                    </td>
+                    <td style="font-weight:bold; font-size:11px; padding:4px 6px; text-align:right; border:none;">
+                        VUELTO: S/ {{ number_format($enrollmentBatch->change_amount ?? 0, 2) }}
+                    </td>
+                </tr>
+            </table>
             @endif
+
+            <!-- Fila del usuario y mes pagado -->
+            <table width="100%" style="margin-bottom:5px; border-collapse:collapse; border:1.2px solid #000; background-color:#f9f9f9;">
+                <tr>
+                    <td style="font-weight:bold; font-size:11px; padding:4px 6px; text-align:left; border:none;">
+                        USUARIO: {{ $created_by_user }}
+                    </td>
+                    <td style="font-weight:bold; font-size:11px; padding:4px 6px; text-align:right; border:none;">
+                        MES PAGADO:
+                        @if($enrollmentBatch->enrollments->first() && $enrollmentBatch->enrollments->first()->monthlyPeriod)
+                            {{ strtoupper(\Carbon\Carbon::createFromDate($enrollmentBatch->enrollments->first()->monthlyPeriod->year, $enrollmentBatch->enrollments->first()->monthlyPeriod->month)->translatedFormat('M Y')) }}
+                        @else
+                            {{ strtoupper(\Carbon\Carbon::parse($enrollmentBatch->created_at)->translatedFormat('M Y')) }}
+                        @endif
+                    </td>
+                </tr>
+            </table>
 
             <!-- Total en palabras -->
             <div class="total-words">

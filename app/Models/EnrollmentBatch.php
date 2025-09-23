@@ -13,8 +13,8 @@ class EnrollmentBatch extends Model
         'created_by',
         'batch_code',
         'total_amount',
-        'amount_paid',     
-        'change_amount', 
+        'amount_paid',
+        'change_amount',
         'payment_status',
         'payment_method',
         'payment_due_date',
@@ -50,7 +50,8 @@ class EnrollmentBatch extends Model
                 if ($batch->payment_method === 'link') {
                     $batch->batch_code = 'Sin código';
                 } else {
-                    $batch->batch_code = 'INS-'.now()->format('Ymd').'-'.strtoupper(Str::random(6));
+                    $nextNumber = static::where('payment_method', 'cash')->count() + 1;
+                    $batch->batch_code = str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
                 }
             }
 
