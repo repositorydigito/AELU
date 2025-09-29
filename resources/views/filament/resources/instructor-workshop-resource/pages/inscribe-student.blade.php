@@ -3,6 +3,7 @@
         <h2 class="text-lg font-bold mb-2">Horario Seleccionado</h2>
         <ul>
             <li><strong>Taller:</strong> {{ $record->workshop->name }}</li>
+            <li><strong>Modalidad:</strong> {{ $record->workshop->modality ?? 'No especificada' }}</li>
             <li><strong>Instructor:</strong> {{ $record->instructor->first_names }} {{ $record->instructor->last_names }} </li>
             <li><strong>Día:</strong> {{ ['0'=>'Domingo','1'=>'Lunes','2'=>'Martes','3'=>'Miércoles','4'=>'Jueves','5'=>'Viernes','6'=>'Sábado'][$record->day_of_week] ?? $record->day_of_week }}</li>
             <li><strong>Hora:</strong> {{ $record->start_time->format('h:i a') }} - {{ $record->end_time->format('h:i a') }}

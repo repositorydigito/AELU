@@ -273,6 +273,7 @@ class EnrollmentResource extends Resource
                                                     return [
                                                         'id' => $instructorWorkshop->id,
                                                         'name' => $instructorWorkshop->workshop->name,
+                                                        'modality' => $instructorWorkshop->workshop->modality ?? 'No especificada',
                                                         'instructor' => $instructorWorkshop->instructor->first_names.' '.$instructorWorkshop->instructor->last_names,
                                                         'day' => $dayInSpanish,
                                                         'start_time' => \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i'),
@@ -410,7 +411,7 @@ class EnrollmentResource extends Resource
 
                                     Forms\Components\Placeholder::make('workshop_info')
                                         ->label('')
-                                        ->content(function (Forms\Get $get) {
+                                        ->content(function (Forms\Get $get, Forms\Set $set) {
                                             $workshopId = $get('instructor_workshop_id');
                                             if (! $workshopId) {
                                                 return 'Taller no seleccionado';
@@ -430,11 +431,13 @@ class EnrollmentResource extends Resource
                                                 7 => 'Domingo', 0 => 'Domingo',
                                             ];
                                             $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día '.$workshop->day_of_week;
+                                            $modality = $workshop->workshop->modality ?? 'No especificada';
 
                                             return new \Illuminate\Support\HtmlString("
                                                 <div class='bg-gray-50 p-4 rounded-lg'>
                                                     <h3 class='font-semibold text-lg text-gray-900'>{$workshop->workshop->name}</h3>
                                                     <div class='mt-2 space-y-1 text-sm text-gray-600'>
+                                                        <p><strong>Modalidad:</strong> <span class='text-blue-600 font-medium'>{$modality}</span></p>
                                                         <p><strong>Profesor:</strong> {$workshop->instructor->first_names} {$workshop->instructor->last_names}</p>
                                                         <p><strong>Día:</strong> {$dayInSpanish}</p>
                                                         <p><strong>Hora:</strong> ".\Carbon\Carbon::parse($workshop->start_time)->format('H:i').' - '.\Carbon\Carbon::parse($workshop->end_time ?? $workshop->start_time)->format('H:i')."</p>
@@ -720,13 +723,15 @@ class EnrollmentResource extends Resource
                                                     $priceInfo = 'S/ '.number_format($basePrice, 2).' + S/ '.number_format($prepamaCharge, 2).' (PRE-PAMA) = S/ '.number_format($finalPrice, 2);
                                                 }
 
+                                                $modality = $instructorWorkshop->workshop->modality ?? 'No especificada';
+                                                
                                                 $html .= "
                                                     <div class='bg-green-50 border border-green-200 rounded-lg p-4'>
                                                         <div class='flex justify-between items-start'>
                                                             <div class='flex-1'>
                                                                 <h4 class='font-semibold text-green-800'>{$instructorWorkshop->workshop->name}</h4>
                                                                 <p class='text-sm text-green-600 mt-1'>
-                                                                    {$dayInSpanish} • ".\Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i A').' - '.\Carbon\Carbon::parse($instructorWorkshop->end_time ?? $instructorWorkshop->start_time)->format('H:i A')." • {$classesLabel}
+                                                                    <span class='font-medium'>Modalidad:</span> {$modality} • {$dayInSpanish} • ".\Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i A').' - '.\Carbon\Carbon::parse($instructorWorkshop->end_time ?? $instructorWorkshop->start_time)->format('H:i A')." • {$classesLabel}
                                                                 </p>
                                                                 {$classDatesText}
                                                             </div>
