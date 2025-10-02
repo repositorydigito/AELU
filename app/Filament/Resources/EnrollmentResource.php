@@ -596,7 +596,7 @@ class EnrollmentResource extends Resource
                                         ->default(now()->format('Y-m-d')),
                                 ])
                                 ->addable(false)
-                                ->deletable(false)
+                                ->deletable(true)
                                 ->reorderable(false)
                                 ->columnSpanFull(),
 

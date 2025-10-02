@@ -184,10 +184,15 @@ class InstructorPaymentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('instructor.full_name')
-                    ->label('Instructor')
-                    ->searchable(['instructors.first_names', 'instructors.last_names'])
-                    ->formatStateUsing(fn ($record) => $record->instructor->first_names.' '.$record->instructor->last_names),
+                Tables\Columns\TextColumn::make('instructor.last_names')
+                    ->label('Apellidos')
+                    ->searchable(['instructors.last_names'])
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('instructor.first_names')
+                    ->label('Nombres')
+                    ->searchable(['instructors.first_names'])
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('workshop_schedule')
                     ->label('Taller y Horario')
@@ -261,6 +266,42 @@ class InstructorPaymentResource extends Resource
                         return 'N/A';
                     }),
 
+                Tables\Columns\TextColumn::make('rate_or_percentage')
+                    ->label('Tarifa/Porcentaje')
+                    ->getStateUsing(function (InstructorPayment $record) {
+                        if ($record->payment_type === 'volunteer') {
+                            return $record->applied_volunteer_percentage
+                                ? number_format($record->applied_volunteer_percentage * 100) . '%'
+                                : 'N/A';
+                        } elseif ($record->payment_type === 'hourly') {
+                            return $record->applied_hourly_rate
+                                ? 'S/ ' . number_format($record->applied_hourly_rate, 2)
+                                : 'N/A';
+                        }
+                        return 'N/A';
+                    }),
+
+                Tables\Columns\TextColumn::make('base_amount')
+                    ->label('Monto Base')
+                    ->getStateUsing(function (InstructorPayment $record) {
+                        if ($record->payment_type === 'volunteer' && $record->applied_volunteer_percentage && $record->calculated_amount > 0) {
+                            $baseAmount = $record->calculated_amount / $record->applied_volunteer_percentage;
+                            return 'S/ ' . number_format($baseAmount, 2);
+                        } elseif ($record->payment_type === 'hourly' && $record->applied_hourly_rate && $record->calculated_amount > 0) {
+                            $hours = $record->calculated_amount / $record->applied_hourly_rate;
+                            return number_format($hours, 2) . ' horas';
+                        }
+                        return 'N/A';
+                    })
+                    ->tooltip(function (InstructorPayment $record) {
+                        if ($record->payment_type === 'volunteer') {
+                            return 'Monto total sobre el cual se aplicó el ' . number_format($record->applied_volunteer_percentage * 100) . '%';
+                        } elseif ($record->payment_type === 'hourly') {
+                            return 'Horas trabajadas a S/ ' . number_format($record->applied_hourly_rate, 2) . ' por hora';
+                        }
+                        return null;
+                    }),
+
                 Tables\Columns\TextColumn::make('calculated_amount')
                     ->label('Monto a Pagar')
                     ->prefix('S/ ')
@@ -297,14 +338,6 @@ class InstructorPaymentResource extends Resource
                     ->getOptionLabelFromRecordUsing(fn ($record) => $record->year.' - '.\Carbon\Carbon::create()->month($record->month)->translatedFormat('F')
                     )
                     ->label('Período')
-                    ->native(false),
-
-                Tables\Filters\SelectFilter::make('instructor_id')
-                    ->relationship('instructor', 'first_names')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_names} {$record->last_names}"
-                    )
-                    ->label('Instructor')
-                    ->searchable()
                     ->native(false),
 
                 Tables\Filters\SelectFilter::make('payment_type')
