@@ -40,8 +40,18 @@ class EnrollmentResource extends Resource
                                 ->options(function () {
                                     $currentDate = now();
                                     $nextDate = now()->addMonth();
+                                    $previousDate = now()->subMonth();
 
                                     $options = [];
+
+                                    // Buscar período del mes anterior
+                                    $previousPeriod = \App\Models\MonthlyPeriod::where('year', $previousDate->year)
+                                        ->where('month', $previousDate->month)
+                                        ->first();
+
+                                    if ($previousPeriod) {
+                                        $options[$previousPeriod->id] = $previousDate->translatedFormat('F Y');
+                                    }
 
                                     // Buscar período del mes actual
                                     $currentPeriod = \App\Models\MonthlyPeriod::where('year', $currentDate->year)
