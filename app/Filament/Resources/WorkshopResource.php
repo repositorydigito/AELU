@@ -485,6 +485,8 @@ class WorkshopResource extends Resource
                 Tables\Columns\TextColumn::make('end_time')
                     ->label('Hora de Fin')
                     ->time('H:i A'),
+                Tables\Columns\TextColumn::make('modality')
+                    ->label('Modalidad'),                    
                 Tables\Columns\TextColumn::make('monthlyPeriod')
                     ->label('Mes')
                     ->getStateUsing(function (Workshop $record) {
