@@ -16,17 +16,11 @@ use Illuminate\Support\Facades\DB;
 class EnrollmentBatchResource extends Resource
 {
     protected static ?string $model = EnrollmentBatch::class;
-
     protected static ?string $navigationLabel = 'Inscripciones';
-
     protected static ?string $pluralModelLabel = 'Inscripciones';
-
     protected static ?string $modelLabel = 'Inscripción';
-
     protected static ?int $navigationSort = 4;
-
     protected static ?string $navigationGroup = 'Gestión';
-
     protected static ?string $navigationIcon = 'heroicon-o-pencil-square';
 
     public static function form(Form $form): Form
@@ -166,7 +160,7 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('student.full_name')
                     ->label('Estudiante')
                     ->searchable(['students.first_names', 'students.last_names'])
-                    ->formatStateUsing(fn ($record) => $record->student->first_names.' '.$record->student->last_names),
+                    ->formatStateUsing(fn ($record) => $record->student->last_names.' '.$record->student->first_names),
 
                 Tables\Columns\TextColumn::make('created_by_name')
                     ->label('Usuario'),
@@ -192,6 +186,19 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Fecha de Inscripción')
                     ->dateTime('d/m/Y H:i'),
+
+                Tables\Columns\TextColumn::make('mes_inscripcion')
+                    ->label('Mes')
+                    ->getStateUsing(function ($record) {
+                        $firstEnrollment = $record->enrollments->first();
+                        if ($firstEnrollment && $firstEnrollment->monthlyPeriod) {
+                            return ucfirst(\Carbon\Carbon::createFromDate(
+                                $firstEnrollment->monthlyPeriod->year,
+                                $firstEnrollment->monthlyPeriod->month
+                            )->translatedFormat('F Y'));
+                        }
+                        return ucfirst(\Carbon\Carbon::parse($record->updated_at)->translatedFormat('F Y'));
+                    }),
 
                 Tables\Columns\TextColumn::make('payment_status')
                     ->label('Estado de Pago')
