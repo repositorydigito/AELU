@@ -39,27 +39,19 @@ class WorkshopResource extends Resource
                         Forms\Components\Select::make('monthly_period_id')
                             ->label('Período Mensual')
                             ->options(function ($livewire) {
-                                $currentDate = now();
+                                $currentYear = now()->year;
                                 $query = \App\Models\MonthlyPeriod::query();
 
-                                // Si estamos editando, incluir también el período actual del taller
-                                // para que sea visible aunque esté fuera del rango normal
+                                // Si estamos editando, incluir el período actual del taller
                                 if ($livewire instanceof \Filament\Resources\Pages\EditRecord && $livewire->record->monthly_period_id) {
                                     $currentWorkshopPeriodId = $livewire->record->monthly_period_id;
-
-                                    $query->where(function ($q) use ($currentDate, $currentWorkshopPeriodId) {
-                                        $q->where(function ($subQ) use ($currentDate) {
-                                            $subQ->where('month', '>=', $currentDate->month)
-                                                ->where('year', '>=', $currentDate->year)
-                                                ->where('year', '<=', $currentDate->year + 2);
-                                        })
+                                    $query->where(function ($q) use ($currentYear, $currentWorkshopPeriodId) {
+                                        $q->whereIn('year', [$currentYear, $currentYear + 1])
                                             ->orWhere('id', $currentWorkshopPeriodId);
                                     });
                                 } else {
-                                    // Para crear nuevo taller, solo períodos futuros
-                                    $query->where('month', '>=', $currentDate->month)
-                                        ->where('year', '>=', $currentDate->year)
-                                        ->where('year', '<=', $currentDate->year + 2);
+                                    // Para crear nuevo taller, mostrar todos los meses del año actual y siguiente
+                                    $query->whereIn('year', [$currentYear, $currentYear + 1]);
                                 }
 
                                 return $query->orderBy('year', 'asc')
@@ -67,7 +59,6 @@ class WorkshopResource extends Resource
                                     ->get()
                                     ->mapWithKeys(function ($period) {
                                         $date = \Carbon\Carbon::create($period->year, $period->month, 1);
-
                                         return [$period->id => $date->translatedFormat('F Y')];
                                     });
                             })
@@ -494,6 +485,8 @@ class WorkshopResource extends Resource
                 Tables\Columns\TextColumn::make('end_time')
                     ->label('Hora de Fin')
                     ->time('H:i A'),
+                Tables\Columns\TextColumn::make('modality')
+                    ->label('Modalidad'),                    
                 Tables\Columns\TextColumn::make('monthlyPeriod')
                     ->label('Mes')
                     ->getStateUsing(function (Workshop $record) {
