@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->string('batch_code');
+            $table->string('batch_code')->nullable();
             $table->decimal('total_amount', 10, 2); // Monto total de todas las inscripciones
             $table->enum('payment_status', ['pending', 'to_pay', 'completed', 'credit_favor', 'refunded'])->default('pending');
             $table->string('payment_method'); // cash, link

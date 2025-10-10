@@ -415,8 +415,28 @@ class EnrollmentBatchResource extends Resource
                                     ->danger()
                                     ->persistent()
                                     ->send();
-                                return; // Detener la ejecución
+                                return;
                             }
+                        }
+
+                        // Generar batch_code al momento del pago
+                        $batchCode = null;
+                        if ($record->payment_method === 'cash') {
+                            $userId = $record->created_by ?? auth()->id();
+                            $user = \App\Models\User::find($userId);
+                            
+                            if ($user && !empty($user->enrollment_code)) {
+                                $userPaidEnrollmentCount = \App\Models\EnrollmentBatch::where('created_by', $userId)
+                                    ->where('payment_method', 'cash')
+                                    ->where('payment_status', 'completed')
+                                    ->whereNotNull('batch_code')
+                                    ->count();
+                                
+                                $nextNumber = $userPaidEnrollmentCount + 1;
+                                $batchCode = $user->enrollment_code . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                            }
+                        } elseif ($record->payment_method === 'link' && isset($data['batch_code'])) {
+                            $batchCode = $data['batch_code'];
                         }
 
                         $updates = [
@@ -427,8 +447,8 @@ class EnrollmentBatchResource extends Resource
                         ];
 
                         // Si es pago por link, también actualizar el código
-                        if ($record->payment_method === 'link' && isset($data['batch_code'])) {
-                            $updates['batch_code'] = $data['batch_code'];
+                        if ($batchCode) {
+                            $updates['batch_code'] = $batchCode;
                         }
 
                         // Si es pago en efectivo, guardar monto pagado y vuelto
