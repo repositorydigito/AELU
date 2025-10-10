@@ -39,19 +39,31 @@ class WorkshopResource extends Resource
                         Forms\Components\Select::make('monthly_period_id')
                             ->label('Período Mensual')
                             ->options(function ($livewire) {
-                                $currentYear = now()->year;
+                                $currentDate = now();
                                 $query = \App\Models\MonthlyPeriod::query();
 
                                 // Si estamos editando, incluir el período actual del taller
                                 if ($livewire instanceof \Filament\Resources\Pages\EditRecord && $livewire->record->monthly_period_id) {
                                     $currentWorkshopPeriodId = $livewire->record->monthly_period_id;
-                                    $query->where(function ($q) use ($currentYear, $currentWorkshopPeriodId) {
-                                        $q->whereIn('year', [$currentYear, $currentYear + 1])
-                                            ->orWhere('id', $currentWorkshopPeriodId);
+                                    $query->where(function ($q) use ($currentDate, $currentWorkshopPeriodId) {
+                                        $q->where(function ($q) use ($currentDate) {
+                                            // Meses desde el actual hasta fin del año actual
+                                            $q->where('year', $currentDate->year)
+                                                ->where('month', '>=', $currentDate->month);
+                                        })
+                                        ->orWhere('year', $currentDate->year + 1) // Todo el próximo año
+                                        ->orWhere('id', $currentWorkshopPeriodId); // Mantener el período actual si está editando
                                     });
                                 } else {
-                                    // Para crear nuevo taller, mostrar todos los meses del año actual y siguiente
-                                    $query->whereIn('year', [$currentYear, $currentYear + 1]);
+                                    // Para crear nuevo taller
+                                    $query->where(function ($q) use ($currentDate) {
+                                        $q->where(function ($q) use ($currentDate) {
+                                            // Meses desde el actual hasta fin del año actual
+                                            $q->where('year', $currentDate->year)
+                                                ->where('month', '>=', $currentDate->month);
+                                        })
+                                        ->orWhere('year', $currentDate->year + 1); // Todo el próximo año
+                                    });
                                 }
 
                                 return $query->orderBy('year', 'asc')
