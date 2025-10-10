@@ -24,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'enrollment_code',
     ];
 
     /**
@@ -52,5 +53,31 @@ class User extends Authenticatable
     public function paymentRegisteredBatches()
     {
         return $this->hasMany(EnrollmentBatch::class, 'payment_registered_by_user_id');
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($user) {
+            // Verificar si el usuario NO tiene el rol Delegado
+            // Usamos 'created' en lugar de 'creating' porque necesitamos que el usuario 
+            // ya exista en la BD para poder verificar sus roles
+            if (!$user->hasRole('Delegado') && empty($user->enrollment_code)) {
+                // Obtener el último código asignado
+                $lastUser = static::whereNotNull('enrollment_code')
+                    ->orderBy('enrollment_code', 'desc')
+                    ->first();
+                
+                if ($lastUser && $lastUser->enrollment_code) {
+                    $nextCode = str_pad((int)$lastUser->enrollment_code + 1, 3, '0', STR_PAD_LEFT);
+                } else {
+                    $nextCode = '001';
+                }
+                
+                $user->enrollment_code = $nextCode;
+                $user->saveQuietly();
+            }
+        });
     }
 }

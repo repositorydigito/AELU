@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 class EnrollmentBatch extends Model
 {
@@ -45,19 +46,45 @@ class EnrollmentBatch extends Model
         parent::boot();
 
         static::creating(function ($batch) {
+            // Guardar el usuario que está creando la inscripción
+            if (Auth::check() && empty($batch->created_by)) {
+                $batch->created_by = Auth::id();
+            }
+
             // Generar batch_code según el método de pago
             if (empty($batch->batch_code)) {
                 if ($batch->payment_method === 'link') {
                     $batch->batch_code = 'Sin código';
                 } else {
-                    $nextNumber = static::where('payment_method', 'cash')->count() + 1;
-                    $batch->batch_code = str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                    // Obtener el usuario actual
+                    $userId = Auth::check() ? Auth::id() : $batch->created_by;
+                    
+                    if ($userId) {
+                        $user = User::find($userId);
+                        
+                        // Verificar que el usuario tenga código de inscripción
+                        if ($user && !empty($user->enrollment_code)) {
+                            // Contar inscripciones previas de este usuario (solo con método 'cash')
+                            $userEnrollmentCount = static::where('created_by', $userId)
+                                ->where('payment_method', 'cash')
+                                ->count();
+                            
+                            // Generar el correlativo del usuario (siguiente número)
+                            $nextNumber = $userEnrollmentCount + 1;
+                            
+                            // Formato: XXX-YYYYYY
+                            $batch->batch_code = $user->enrollment_code . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                        } else {
+                            // Fallback: si no tiene código (ej: Delegado), usar correlativo simple
+                            $nextNumber = static::where('payment_method', 'cash')->count() + 1;
+                            $batch->batch_code = str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                        }
+                    } else {
+                        // Si no hay usuario, usar correlativo simple
+                        $nextNumber = static::where('payment_method', 'cash')->count() + 1;
+                        $batch->batch_code = str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                    }
                 }
-            }
-
-            // Guardar el usuario que está creando la inscripción
-            if (Auth::check() && empty($batch->created_by)) {
-                $batch->created_by = Auth::id();
             }
         });
     }
