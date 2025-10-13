@@ -342,6 +342,7 @@ class InstructorResource extends Resource
                                                                         $end = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
                                                                         $day = $workshop->day_of_week ?? 'N/A';
                                                                         $period = 'Sin periodo';
+                                                                        $modality = $workshop->modality ?? 'Sin modalidad';
                                                                         if ($workshop->monthly_period_id) {
                                                                             $mp = \App\Models\MonthlyPeriod::find($workshop->monthly_period_id);
                                                                             if ($mp) {
@@ -355,7 +356,7 @@ class InstructorResource extends Resource
                                                                                 $period = 'Periodo no disponible';
                                                                             }
                                                                         }
-                                                                        $label = "{$workshop->name} - {$day} {$start}-{$end} - {$period}";
+                                                                        $label = "{$workshop->name} - {$day} {$start}-{$end} - {$period} - {$modality}";
                                                                         return [$workshop->id => $label];
                                                                     });
                                                                 })
