@@ -165,6 +165,16 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('created_by_name')
                     ->label('Usuario'),
 
+                Tables\Columns\TextColumn::make('updatedBy.name')
+                    ->label('Editado por')
+                    ->placeholder('Sin ediciones')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('paidBy.name')
+                    ->label('Pagado por')
+                    ->placeholder('Pendiente')                    
+                    ->toggleable(isToggledHiddenByDefault: true),                    
+
                 Tables\Columns\TextColumn::make('workshops_list')
                     ->label('Talleres')
                     ->limit(50)
@@ -444,6 +454,7 @@ class EnrollmentBatchResource extends Resource
                             'payment_date' => now(),
                             'payment_registered_by_user_id' => auth()->id(),
                             'payment_registered_at' => now(),
+                            'paid_by' => auth()->id(),
                         ];
 
                         // Si es pago por link, también actualizar el código

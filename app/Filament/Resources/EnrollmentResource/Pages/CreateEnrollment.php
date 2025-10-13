@@ -576,6 +576,7 @@ class CreateEnrollment extends CreateRecord
                     'payment_method' => $paymentMethod,
                     'enrollment_date' => $validWorkshopDetails[0]['enrollment_date'],
                     'notes' => $data['notes'] ?? null,
+                    'updated_by' => auth()->id(),
                     'updated_at' => now(),
                 ]);
 
