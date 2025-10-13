@@ -142,11 +142,11 @@
                         <div
                             class="workshop-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md relative"
                             x-bind:class="{
-                                'border-blue-500 bg-blue-100 ring-2 ring-blue-200': selectedWorkshops.includes(workshop.id),
-                                'workshop-card-enrolled': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
-                                'border-blue-300 bg-blue-50 hover:border-blue-400': !selectedWorkshops.includes(workshop.id) && !workshop.is_enrolled
+                                'border-blue-500 bg-blue-100 ring-2 ring-blue-200': isWorkshopSelected(workshop.id),
+                                'workshop-card-enrolled': workshop.is_enrolled && !isWorkshopSelected(workshop.id),
+                                'border-blue-300 bg-blue-50 hover:border-blue-400': !isWorkshopSelected(workshop.id) && !workshop.is_enrolled
                             }"
-                            x-on:click="!workshop.is_enrolled && toggleWorkshop(workshop.id)"
+                            x-on:click="toggleWorkshop(workshop.id)"
                         >
                             <!-- Badge de mes anterior (solo si no está inscrito) -->
                             <div x-cloak x-show="!workshop.is_enrolled" class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium z-5">
@@ -154,7 +154,7 @@
                             </div>
 
                             <!-- Badge de ya inscrito (prioridad sobre mes anterior) -->
-                            <div x-cloak x-show="workshop.is_enrolled" class="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
+                            <div x-cloak x-show="workshop.is_enrolled && !workshop.is_full && !isWorkshopSelected(workshop.id)" class="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
                                 Inscrito
                             </div>
 
@@ -179,15 +179,15 @@
                                     <div
                                         class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
                                         x-bind:class="{
-                                            'border-primary-500 bg-primary-500': selectedWorkshops.includes(workshop.id),
-                                            'border-yellow-500 bg-yellow-100': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
-                                            'border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_enrolled
+                                            'border-primary-500 bg-primary-500': isWorkshopSelected(workshop.id),
+                                            'border-yellow-500 bg-yellow-100': workshop.is_enrolled && !isWorkshopSelected(workshop.id),
+                                            'border-gray-300': !isWorkshopSelected(workshop.id) && !workshop.is_enrolled
                                         }"
                                     >
                                         <svg
                                             class="w-4 h-4 text-white"
                                             x-cloak
-                                            x-show="selectedWorkshops.includes(workshop.id)"
+                                            x-show="isWorkshopSelected(workshop.id)"
                                             fill="currentColor"
                                             viewBox="0 0 20 20"
                                         >
@@ -283,12 +283,12 @@
                         <div
                             class="workshop-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md relative"
                             x-bind:class="{
-                                'border-primary-500 bg-primary-50 ring-2 ring-primary-200': selectedWorkshops.includes(workshop.id),
-                                'workshop-card-enrolled': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
-                                'border-gray-200 bg-white hover:border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_full && !workshop.is_enrolled,
-                                'workshop-card-full': workshop.is_full
+                                'border-primary-500 bg-primary-50 ring-2 ring-primary-200': isWorkshopSelected(workshop.id),
+                                'workshop-card-enrolled': workshop.is_enrolled && !isWorkshopSelected(workshop.id),
+                                'border-gray-200 bg-white hover:border-gray-300': !isWorkshopSelected(workshop.id) && !workshop.is_full,
+                                'workshop-card-full': workshop.is_full && !isWorkshopSelected(workshop.id)
                             }"
-                            x-on:click="!workshop.is_full && !workshop.is_enrolled && toggleWorkshop(workshop.id)"
+                            x-on:click="!workshop.is_full && toggleWorkshop(workshop.id)"
                         >
                             <!-- Badge de cupos agotados -->
                             <div x-cloak x-show="workshop.is_full" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
@@ -296,7 +296,7 @@
                             </div>
 
                             <!-- Badge de ya inscrito -->
-                            <div x-cloak x-show="workshop.is_enrolled && !workshop.is_full" class="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
+                            <div x-cloak x-show="workshop.is_enrolled && !isWorkshopSelected(workshop.id)" class="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium z-10">
                                 Inscrito
                             </div>
 
@@ -321,9 +321,9 @@
                                     <div
                                         class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors"
                                         x-bind:class="{
-                                            'border-primary-500 bg-primary-500': selectedWorkshops.includes(workshop.id),
-                                            'border-yellow-500 bg-yellow-100': workshop.is_enrolled && !selectedWorkshops.includes(workshop.id),
-                                            'border-gray-300': !selectedWorkshops.includes(workshop.id) && !workshop.is_full && !workshop.is_enrolled,
+                                            'border-primary-500 bg-primary-500': isWorkshopSelected(workshop.id),
+                                            'border-yellow-500 bg-yellow-100': workshop.is_enrolled && !isWorkshopSelected(workshop.id),
+                                            'border-gray-300': !isWorkshopSelected(workshop.id) && !workshop.is_full && !workshop.is_enrolled,
                                             'border-red-300 bg-red-100': workshop.is_full
                                         }"
                                     >
@@ -331,7 +331,7 @@
                                         <svg
                                             class="w-4 h-4 text-white"
                                             x-cloak
-                                            x-show="selectedWorkshops.includes(workshop.id)"
+                                            x-show="isWorkshopSelected(workshop.id)"
                                             fill="currentColor"
                                             viewBox="0 0 20 20"
                                         >
@@ -352,7 +352,7 @@
                                         <svg
                                             class="w-4 h-4 text-yellow-600"
                                             x-cloak
-                                            x-show="workshop.is_enrolled && !selectedWorkshops.includes(workshop.id)"
+                                            x-show="workshop.is_enrolled && !isWorkshopSelected(workshop.id)"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -533,6 +533,11 @@
                 return JSON.stringify(this.selectedWorkshops);
             },
 
+            // Helper para verificar si un taller está seleccionado
+            isWorkshopSelected(workshopId) {
+                return this.selectedWorkshops.includes(workshopId);
+            },
+
             get filteredWorkshops() {
                 const baseWorkshops = this.allWorkshops.filter(workshop =>
                     !this.previousWorkshopIds.includes(workshop.id)
@@ -577,15 +582,7 @@
                 observer.observe(this.$el, {
                     attributes: true,
                     attributeFilter: ['data-previous-workshops', 'data-current-enrolled-workshops', 'data-student-id', 'data-workshops']
-                });
-
-                // Escuchar eventos de Livewire para actualizar talleres seleccionados
-                if (window.Livewire) {
-                    window.Livewire.on('workshopsUpdated', (workshops) => {
-                        this.selectedWorkshops = Array.isArray(workshops) ? workshops : [];
-                        this.updateHiddenInput();
-                    });
-                }
+                });                
             },
 
             // Inicializar talleres pre-seleccionados
@@ -600,6 +597,19 @@
                         }
                     } catch (e) {
                         console.log('No se pudieron cargar talleres pre-seleccionados:', e);
+                    }
+                }
+                
+                // También verificar el atributo data-workshops del elemento principal
+                const mainElement = this.$el;
+                if (mainElement) {
+                    const workshopsAttr = mainElement.getAttribute('data-workshops');
+                    if (workshopsAttr) {
+                        try {
+                            const allWorkshops = JSON.parse(workshopsAttr);
+                        } catch (e) {
+                            console.error('Error parseando workshops:', e);
+                        }
                     }
                 }
             },
@@ -665,23 +675,31 @@
 
             toggleWorkshop(workshopId) {
                 const workshop = this.allWorkshops.find(w => w.id === workshopId);
+                
+                // Verificar si está lleno
                 if (workshop && workshop.is_full) {
                     this.showCapacityAlert(workshop.name);
                     return;
                 }
 
-                if (workshop && workshop.is_enrolled) {
+                // Solo mostrar alerta de "ya inscrito" si NO está en selectedWorkshops
+                if (workshop && workshop.is_enrolled && !this.selectedWorkshops.includes(workshopId)) {
                     this.showEnrolledAlert(workshop.name);
                     return;
                 }
 
                 const index = this.selectedWorkshops.indexOf(workshopId);
+                
                 if (index > -1) {
-                    this.selectedWorkshops.splice(index, 1);
+                    // Si está seleccionado, removerlo
+                    const newArray = this.selectedWorkshops.filter(id => id !== workshopId);
+                    this.selectedWorkshops = newArray;
                 } else {
-                    this.selectedWorkshops.push(workshopId);
-                }
+                    // Si no está seleccionado, agregarlo
+                    this.selectedWorkshops = [...this.selectedWorkshops, workshopId];
+                }                
 
+                // FORZAR RE-RENDER del componente
                 this.$nextTick(() => {
                     const namedInput = document.querySelector('input[name="selected_workshops"]');
                     if (namedInput) {
@@ -689,10 +707,9 @@
                         namedInput.dispatchEvent(new Event('input', { bubbles: true }));
                         namedInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
-
-                    if (window.Livewire) {
-                        window.Livewire.emit('workshopsUpdated', this.selectedWorkshops);
-                    }
+                    
+                    // Forzar Alpine a re-evaluar todas las directivas x-bind
+                    Alpine.nextTick(() => {});
                 });
             },
 

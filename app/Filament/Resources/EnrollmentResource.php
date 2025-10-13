@@ -232,10 +232,17 @@ class EnrollmentResource extends Resource
                                             // Obtener inscripciones activas del estudiante para el período actual
                                             $currentEnrolledWorkshopIds = [];
                                             if ($studentId && $selectedMonthlyPeriodId) {
-                                                $currentEnrolledWorkshopIds = \App\Models\StudentEnrollment::where('student_id', $studentId)
+                                                $query = \App\Models\StudentEnrollment::where('student_id', $studentId)
                                                     ->where('monthly_period_id', $selectedMonthlyPeriodId)
-                                                    ->whereNotIn('payment_status', ['refunded'])
-                                                    ->pluck('instructor_workshop_id')
+                                                    ->whereNotIn('payment_status', ['refunded']);
+                                                
+                                                // Excluir el batch actual si estamos editando
+                                                $editingBatchId = $get('editing_batch_id');
+                                                if ($editingBatchId) {
+                                                    $query->where('enrollment_batch_id', '!=', $editingBatchId);
+                                                }
+                                                
+                                                $currentEnrolledWorkshopIds = $query->pluck('instructor_workshop_id')
                                                     ->toArray();
                                             }
 

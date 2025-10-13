@@ -82,10 +82,7 @@ class CreateEnrollment extends CreateRecord
         $formData['workshop_details'] = $workshopDetails;
 
         // Aplicar todos los datos al formulario
-        $this->form->fill($formData);
-
-        // IMPORTANTE: Forzar actualización del componente de talleres
-        $this->dispatch('workshopsUpdated', $selectedWorkshops);
+        $this->form->fill($formData);        
     }
 
     public function getTitle(): string
