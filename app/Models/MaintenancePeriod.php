@@ -26,7 +26,16 @@ class MaintenancePeriod extends Model
             ->where('month', $now->month)
             ->first();
     }
-
+    public static function getMinimumAcceptablePeriod()
+    {
+        $now = Carbon::now();
+        
+        $previousMonth = $now->copy()->subMonth();
+        
+        return self::where('year', $previousMonth->year)
+            ->where('month', $previousMonth->month)
+            ->first();
+    }
     public function isEqualOrAfter(MaintenancePeriod $otherPeriod): bool
     {
         if ($this->year > $otherPeriod->year) {
@@ -39,7 +48,6 @@ class MaintenancePeriod extends Model
 
         return false;
     }
-
     public function isBefore(MaintenancePeriod $otherPeriod): bool
     {
         return ! $this->isEqualOrAfter($otherPeriod);

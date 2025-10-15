@@ -100,14 +100,14 @@ class Student extends Model
             return false;
         }
 
-        $currentPeriod = MaintenancePeriod::getCurrentPeriod();
+        $minimumAcceptablePeriod = MaintenancePeriod::getMinimumAcceptablePeriod();
 
-        // Si no existe el período actual, return false por seguridad
-        if (! $currentPeriod) {
+        // Si no existe el período mínimo aceptable, return false por seguridad
+        if (! $minimumAcceptablePeriod) {
             return false;
         }
 
-        return $this->maintenancePeriod->isEqualOrAfter($currentPeriod);
+        return $this->maintenancePeriod->isEqualOrAfter($minimumAcceptablePeriod);
     }
 
     public function getMaintenanceStatusText(): string
