@@ -216,7 +216,7 @@
                         <td style="text-align: center;">
                             <div class="class-dates">
                                 @if(!empty($classDates))
-                                    {{ implode(' | ', $classDates) }}
+                                    {{ implode(' - ', $classDates) }}
                                 @else
                                     Por definir
                                 @endif
