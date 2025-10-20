@@ -21,6 +21,10 @@ class IncomeResource extends Resource
     protected static ?string $navigationGroup = 'Tesorería';
     protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-up';
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('view_any_income');
+    }
     public static function form(Form $form): Form
     {
         return $form

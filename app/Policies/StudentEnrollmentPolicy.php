@@ -15,7 +15,8 @@ class StudentEnrollmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('view_any_income') || $user->can('view_any_enrollment::batch');
     }
 
     /**
@@ -23,7 +24,8 @@ class StudentEnrollmentPolicy
      */
     public function view(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('view_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('view_income') || $user->can('view_enrollment::batch');
     }
 
     /**
@@ -31,7 +33,9 @@ class StudentEnrollmentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_income');
+        // Para crear inscripciones, necesita permisos de enrollment_batch O enrollment
+        // NO necesita permisos de income
+        return $user->can('create_enrollment::batch') || $user->can('create_enrollment');
     }
 
     /**
@@ -39,7 +43,9 @@ class StudentEnrollmentPolicy
      */
     public function update(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('update_income');
+        // Para actualizar inscripciones, necesita permisos de enrollment_batch O enrollment
+        // NO necesita permisos de income
+        return $user->can('update_enrollment::batch') || $user->can('update_enrollment');
     }
 
     /**
@@ -47,7 +53,9 @@ class StudentEnrollmentPolicy
      */
     public function delete(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('delete_income');
+        // Para eliminar inscripciones, necesita permisos de enrollment_batch O enrollment
+        // NO necesita permisos de income
+        return $user->can('delete_enrollment::batch') || $user->can('delete_enrollment');
     }
 
     /**
@@ -55,7 +63,8 @@ class StudentEnrollmentPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('delete_any_income') || $user->can('delete_any_enrollment::batch');
     }
 
     /**
@@ -63,7 +72,8 @@ class StudentEnrollmentPolicy
      */
     public function forceDelete(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('force_delete_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('force_delete_income') || $user->can('force_delete_enrollment::batch');
     }
 
     /**
@@ -71,7 +81,8 @@ class StudentEnrollmentPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('force_delete_any_income') || $user->can('force_delete_any_enrollment::batch');
     }
 
     /**
@@ -79,7 +90,8 @@ class StudentEnrollmentPolicy
      */
     public function restore(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('restore_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('restore_income') || $user->can('restore_enrollment::batch');
     }
 
     /**
@@ -87,7 +99,8 @@ class StudentEnrollmentPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('restore_any_income') || $user->can('restore_any_enrollment::batch');
     }
 
     /**
@@ -95,7 +108,8 @@ class StudentEnrollmentPolicy
      */
     public function replicate(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('replicate_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('replicate_income') || $user->can('replicate_enrollment::batch');
     }
 
     /**
@@ -103,6 +117,7 @@ class StudentEnrollmentPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_income');
+        // Permitir si el usuario tiene permisos de income O de enrollment_batch
+        return $user->can('reorder_income') || $user->can('reorder_enrollment::batch');
     }
 }
