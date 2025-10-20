@@ -45,6 +45,7 @@ class EditWorkshop extends EditRecord
                     'raw_date' => $class->class_date->format('Y-m-d'),
                     'day' => $workshop->day_of_week,
                     'is_holiday' => false,
+                    'status' => $class->status,
                 ];
             }
             $data['schedule_data'] = $scheduleData;
@@ -70,7 +71,7 @@ class EditWorkshop extends EditRecord
                     'class_date' => $classData['raw_date'],
                     'start_time' => $workshop->start_time,
                     'end_time' => $workshop->end_time, // Asegúrate de que end_time esté calculado
-                    'status' => 'scheduled',
+                    'status' => $classData['status'] ?? 'scheduled',
                     'max_capacity' => $workshop->capacity,
                 ]);
             }

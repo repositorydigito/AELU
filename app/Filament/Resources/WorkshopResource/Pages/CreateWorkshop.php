@@ -42,7 +42,7 @@ class CreateWorkshop extends CreateRecord
                     'class_date' => $classData['raw_date'],
                     'start_time' => $workshop->start_time,
                     'end_time' => $workshop->end_time,
-                    'status' => 'scheduled',
+                    'status' => $classData['status'] ?? 'scheduled',
                     'max_capacity' => $workshop->capacity,
                 ]);
             }

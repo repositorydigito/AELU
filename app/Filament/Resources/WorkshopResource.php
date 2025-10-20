@@ -302,33 +302,44 @@ class WorkshopResource extends Resource
                                     $fields = [];
 
                                     foreach ($scheduleData as $index => $class) {
-                                        $fields[] = Forms\Components\DatePicker::make("class_date_{$index}")
-                                            ->label('Clase '.($index + 1).' *')
-                                            ->default($class['raw_date'])
-                                            ->required()
-                                            ->rules([
-                                                function (Get $get) {
-                                                    return function (string $attribute, $value, \Closure $fail) use ($get) {
-                                                        $monthlyPeriodId = $get('monthly_period_id');
-                                                        if (! $monthlyPeriodId || ! $value) {
-                                                            return;
-                                                        }
+                                        $fields[] = Forms\Components\Grid::make(2)
+                                            ->schema([
+                                                Forms\Components\DatePicker::make("class_date_{$index}")
+                                                    ->label('Clase '.($index + 1).' *')
+                                                    ->default($class['raw_date'])
+                                                    ->required()
+                                                    ->rules([
+                                                        function (Get $get) {
+                                                            return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                                                $monthlyPeriodId = $get('monthly_period_id');
+                                                                if (! $monthlyPeriodId || ! $value) {
+                                                                    return;
+                                                                }
 
-                                                        $period = \App\Models\MonthlyPeriod::find($monthlyPeriodId);
-                                                        if (! $period) {
-                                                            return;
-                                                        }
+                                                                // Obtener el periodo mensual
+                                                                $period = \App\Models\MonthlyPeriod::find($monthlyPeriodId);
+                                                                if (! $period) {
+                                                                    return;
+                                                                }
 
-                                                        $selectedDate = \Carbon\Carbon::parse($value);
-                                                        $startDate = \Carbon\Carbon::parse($period->start_date);
-                                                        $endDate = \Carbon\Carbon::parse($period->end_date);
+                                                                $selectedDate = \Carbon\Carbon::parse($value);
+                                                                $startDate = \Carbon\Carbon::parse($period->start_date);
+                                                                $endDate = \Carbon\Carbon::parse($period->end_date);
 
-                                                        if ($selectedDate->lt($startDate) || $selectedDate->gt($endDate)) {
-                                                            $monthName = $startDate->translatedFormat('F Y');
-                                                            $fail("La fecha debe estar dentro del período ({$monthName})");
-                                                        }
-                                                    };
-                                                },
+                                                                // Validar si la fecha seleccionada está dentro del periodo
+                                                                if ($selectedDate->lt($startDate) || $selectedDate->gt($endDate)) {
+                                                                    $monthName = $startDate->translatedFormat('F Y');
+                                                                    $fail("La fecha debe estar dentro del período ({$monthName})");
+                                                                }
+                                                            };
+                                                        },
+                                                    ]),
+
+                                                // Campo para marcar la clase como cancelada
+                                                Forms\Components\Checkbox::make("is_cancelled_{$index}")
+                                                    ->label('Cancelada')
+                                                    ->default($class['status'] === 'cancelled')
+                                                    // ->helperText('Marcar si esta clase está cancelada')
                                             ]);
                                     }
 
@@ -338,8 +349,10 @@ class WorkshopResource extends Resource
                                     $scheduleData = $get('schedule_data') ?? [];
                                     $formData = [];
 
+                                    // Llenar los datos del formulario con las fechas de las clases
                                     foreach ($scheduleData as $index => $class) {
                                         $formData["class_date_{$index}"] = $class['raw_date'];
+                                        $formData["is_cancelled_{$index}"] = $class['status'] === 'cancelled';
                                     }
 
                                     return $formData;
@@ -352,26 +365,28 @@ class WorkshopResource extends Resource
                                         $newDate = $data["class_date_{$index}"];
                                         $carbonDate = \Carbon\Carbon::parse($newDate);
 
+                                        // Mantener el estado anterior si existe, sino usar el nuevo
+                                        $isCancelled = isset($data["is_cancelled_{$index}"]) && $data["is_cancelled_{$index}"];
+                                        $status = $isCancelled ? 'cancelled' : 'scheduled';
+
                                         $updatedScheduleData[] = [
                                             'class_number' => $class['class_number'],
                                             'date' => $carbonDate->format('d/m/Y'),
                                             'raw_date' => $carbonDate->format('Y-m-d'),
                                             'day' => $class['day'],
                                             'is_holiday' => $class['is_holiday'],
+                                            'status' => $status,
                                         ];
                                     }
 
+                                    // Actualizar los datos del formulario
                                     $set('schedule_data', $updatedScheduleData);
 
-                                    // Si estamos editando, actualizar workshop_classes
+                                    // Si estamos editando, actualizamos las clases en la base de datos
                                     if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
                                         self::updateWorkshopClassesInDatabase($livewire->record, $updatedScheduleData);
                                     }
                                 }),
-                            /* ->disabled(fn ($livewire) =>
-                                    $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                    $livewire->record->hasEnrollments()
-                                ), */
                         ])
                             ->extraAttributes(['class' => 'flex justify-center mt-4']),
 
@@ -498,7 +513,7 @@ class WorkshopResource extends Resource
                     ->label('Hora de Fin')
                     ->time('H:i A'),
                 Tables\Columns\TextColumn::make('modality')
-                    ->label('Modalidad'),                    
+                    ->label('Modalidad'),
                 Tables\Columns\TextColumn::make('monthlyPeriod')
                     ->label('Mes')
                     ->getStateUsing(function (Workshop $record) {
@@ -746,7 +761,12 @@ class WorkshopResource extends Resource
 
         // Fechas de todas las clases
         foreach ($scheduleData as $class) {
-            $html .= '<div class="p-3 text-sm">'.$class['date'].'</div>';
+            $isCancelled = isset($class['status']) && $class['status'] === 'cancelled';
+            $classStyle = $isCancelled ? 'text-red-500 line-through' : '';
+            $statusText = $isCancelled ? ' (Cancelada)' : '';
+
+            // $html .= '<div class="p-3 text-sm">'.$class['date'].'</div>';
+            $html .= '<div class="p-3 text-sm ' . $classStyle . '">' . $class['date'] . $statusText . '</div>';
         }
 
         $html .= '</div>';
@@ -828,6 +848,7 @@ class WorkshopResource extends Resource
                     'class_date' => $classData['raw_date'],
                     'start_time' => $workshop->start_time,
                     'end_time' => $workshop->end_time,
+                    'status' => $classData['status'],
                 ]);
             }
         }

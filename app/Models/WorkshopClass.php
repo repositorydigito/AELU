@@ -43,6 +43,16 @@ class WorkshopClass extends Model
         return $this->hasMany(ClassAttendance::class);
     }
 
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', ['scheduled', 'completed']);
+    }
+
+    public function scopeCancelled($query)
+    {
+        return $query->where('status', 'cancelled');
+    }
+
     // Relación indirecta al instructor y workshop
     public function instructor()
     {

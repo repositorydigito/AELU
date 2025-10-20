@@ -235,13 +235,13 @@ class EnrollmentResource extends Resource
                                                 $query = \App\Models\StudentEnrollment::where('student_id', $studentId)
                                                     ->where('monthly_period_id', $selectedMonthlyPeriodId)
                                                     ->whereNotIn('payment_status', ['refunded']);
-                                                
+
                                                 // Excluir el batch actual si estamos editando
                                                 $editingBatchId = $get('editing_batch_id');
                                                 if ($editingBatchId) {
                                                     $query->where('enrollment_batch_id', '!=', $editingBatchId);
                                                 }
-                                                
+
                                                 $currentEnrolledWorkshopIds = $query->pluck('instructor_workshop_id')
                                                     ->toArray();
                                             }
@@ -566,6 +566,7 @@ class EnrollmentResource extends Resource
                                             // Obtener las clases del taller para el período seleccionado
                                             $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $instructorWorkshop->workshop->id)
                                                 ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                                                ->where('status', '!=', 'cancelled')
                                                 ->orderBy('class_date', 'asc')
                                                 ->get();
 
@@ -741,7 +742,7 @@ class EnrollmentResource extends Resource
                                                 }
 
                                                 $modality = $instructorWorkshop->workshop->modality ?? 'No especificada';
-                                                
+
                                                 $html .= "
                                                     <div class='bg-green-50 border border-green-200 rounded-lg p-4'>
                                                         <div class='flex justify-between items-start'>
