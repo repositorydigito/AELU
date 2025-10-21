@@ -75,8 +75,10 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
                     ->label('Período Mensual (Opcional)')
                     ->placeholder('Selecciona un período (opcional)...')
                     ->options(
-                        MonthlyPeriod::orderBy('year', 'desc')
-                            ->orderBy('month', 'desc')
+                        MonthlyPeriod::where('year', '>=', now()->year - 2)
+                            ->where('year', '<=', now()->year + 1)
+                            ->orderBy('year', 'asc')
+                            ->orderBy('month', 'asc')
                             ->get()
                             ->mapWithKeys(function ($period) {
                                 return [
