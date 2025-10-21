@@ -51,7 +51,7 @@
             border-color: #f59e0b !important;
             opacity: 0.7 !important;
             cursor: not-allowed !important;
-        }        
+        }
         .workshop-card-enrolled:hover {
             transform: none !important;
             box-shadow: none !important;
@@ -62,11 +62,38 @@
             border-width: 2px !important;
             opacity: 0.75 !important;
             cursor: not-allowed !important;
-        }        
+        }
         .workshop-card-full:hover {
             transform: none !important;
             box-shadow: none !important;
             border-color: #dc2626 !important;
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* Asegurar que el grid funcione */
+        .workshop-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+        }
+        @media (min-width: 768px) {
+            .workshop-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+        @media (min-width: 1024px) {
+            .workshop-grid {
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+            }
+        }
+        @media (min-width: 1280px) {
+            .workshop-grid {
+                grid-template-columns: repeat(8, minmax(0, 1fr));
+            }
         }
         input[type="text"]:focus {
             transform: scale(1.02);
@@ -239,7 +266,59 @@
 
             <div class="flex items-center justify-between mb-4">
                 <div class="text-sm text-gray-500">
-                    <span x-text="selectedCount"></span> talleres seleccionados
+                    {{-- <span x-text="selectedCount"></span> talleres seleccionados --}}
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span x-text="selectedCount"></span> talleres seleccionados
+                            <button
+                                x-show="selectedCount > 0"
+                                @click="showSelectedDetails = !showSelectedDetails"
+                                class="text-sm text-blue-600 hover:text-blue-800 underline"
+                                type="button"
+                            >
+                                <span x-text="showSelectedDetails ? 'Ocultar' : 'Ver detalles'"></span>
+                            </button>
+                        </div>
+
+                        <!-- Lista detallada de talleres seleccionados -->
+                        <div x-show="showSelectedDetails" x-collapse class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
+                            <h4 class="text-sm font-medium text-blue-800 mb-3">Talleres en esta inscripción:</h4>
+                            <div class="workshop-grid">
+                                <template x-for="workshop in getSelectedWorkshopsDetails()" :key="workshop.id">
+                                    <div class="bg-white rounded-lg p-2 border border-blue-100 text-xs">
+                                        <div class="space-y-1">
+                                            <div class="font-medium text-blue-900 leading-tight line-clamp-2" x-text="workshop.name"></div>
+
+                                            <div class="flex items-center text-blue-700">
+                                                <svg class="w-3 h-3 mr-1 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                </svg>
+                                                <span x-text="workshop.day"></span>
+                                            </div>
+
+                                            <div class="flex items-center text-blue-700">
+                                                <svg class="w-3 h-3 mr-1 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span x-text="workshop.start_time + ' - ' + workshop.end_time"></span>
+                                            </div>
+
+                                            <div x-show="workshop.modality && workshop.modality !== 'No especificada'" class="flex items-center text-blue-600">
+                                                <svg class="w-3 h-3 mr-1 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                                </svg>
+                                                <span x-text="workshop.modality"></span>
+                                            </div>
+
+                                            <div class="text-blue-800 font-semibold border-t border-blue-100 pt-1">
+                                                <span x-text="'S/ ' + parseFloat(workshop.price).toFixed(2)"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
                     <span x-cloak x-show="previousWorkshops.length > 0" class="text-blue-600">
                         (<span x-text="previousWorkshops.length"></span> del mes anterior)
                     </span>
@@ -508,6 +587,7 @@
     <script>
     function workshopSelector() {
         return {
+            showSelectedDetails: false,
             allWorkshops: @json($workshopsForJs),
             selectedWorkshops: @json($selectedWorkshopsForJs),
             previousWorkshopIds: [],
@@ -571,6 +651,12 @@
                 return this.filteredWorkshops.slice(start, end);
             },
 
+            getSelectedWorkshopsDetails() {
+                return this.allWorkshops.filter(workshop =>
+                    this.selectedWorkshops.includes(workshop.id)
+                ).sort((a, b) => a.name.localeCompare(b.name));
+            },
+
             init() {
                 this.initializePreSelectedWorkshops();
                 this.updatePreviousWorkshops();
@@ -582,7 +668,7 @@
                 observer.observe(this.$el, {
                     attributes: true,
                     attributeFilter: ['data-previous-workshops', 'data-current-enrolled-workshops', 'data-student-id', 'data-workshops']
-                });                
+                });
             },
 
             // Inicializar talleres pre-seleccionados
@@ -599,7 +685,7 @@
                         console.log('No se pudieron cargar talleres pre-seleccionados:', e);
                     }
                 }
-                
+
                 // También verificar el atributo data-workshops del elemento principal
                 const mainElement = this.$el;
                 if (mainElement) {
@@ -675,7 +761,7 @@
 
             toggleWorkshop(workshopId) {
                 const workshop = this.allWorkshops.find(w => w.id === workshopId);
-                
+
                 // Verificar si está lleno
                 if (workshop && workshop.is_full) {
                     this.showCapacityAlert(workshop.name);
@@ -689,7 +775,7 @@
                 }
 
                 const index = this.selectedWorkshops.indexOf(workshopId);
-                
+
                 if (index > -1) {
                     // Si está seleccionado, removerlo
                     const newArray = this.selectedWorkshops.filter(id => id !== workshopId);
@@ -697,7 +783,7 @@
                 } else {
                     // Si no está seleccionado, agregarlo
                     this.selectedWorkshops = [...this.selectedWorkshops, workshopId];
-                }                
+                }
 
                 // FORZAR RE-RENDER del componente
                 this.$nextTick(() => {
@@ -707,7 +793,7 @@
                         namedInput.dispatchEvent(new Event('input', { bubbles: true }));
                         namedInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
-                    
+
                     // Forzar Alpine a re-evaluar todas las directivas x-bind
                     Alpine.nextTick(() => {});
                 });

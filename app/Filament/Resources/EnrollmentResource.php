@@ -321,6 +321,9 @@ class EnrollmentResource extends Resource
                                                             $query->where('monthly_period_id', $selectedMonthlyPeriodId);
                                                         })
                                                         ->where('is_active', true)
+                                                        ->join('workshops', 'instructor_workshops.workshop_id', '=', 'workshops.id')
+                                                        ->orderBy('workshops.name', 'asc')
+                                                        ->select('instructor_workshops.*')
                                                         ->get();
 
                                                     foreach ($instructorWorkshops as $instructorWorkshop) {
@@ -336,6 +339,9 @@ class EnrollmentResource extends Resource
                                                 if (! empty($previousWorkshopIds)) {
                                                     $previousInstructorWorkshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                         ->whereIn('id', $previousWorkshopIds)
+                                                        ->join('workshops', 'instructor_workshops.workshop_id', '=', 'workshops.id')
+                                                        ->orderBy('workshops.name', 'asc')
+                                                        ->select('instructor_workshops.*')
                                                         ->get();
 
                                                     foreach ($previousInstructorWorkshops as $instructorWorkshop) {

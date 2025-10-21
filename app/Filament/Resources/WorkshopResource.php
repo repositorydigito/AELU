@@ -703,6 +703,7 @@ class WorkshopResource extends Resource
                 'raw_date' => $current->format('Y-m-d'),
                 'day' => $dayOfWeek,
                 'is_holiday' => false,
+                'status' => 'scheduled',
             ];
             $current->addWeek();
         }
