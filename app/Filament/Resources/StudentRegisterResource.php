@@ -142,6 +142,7 @@ class StudentRegisterResource extends Resource
                                                     'Transitorio Mayor de 75' => 'Transitorio Mayor de 75',
                                                     'Individual' => 'Individual',
                                                     'Transitorio Mayor' => 'Transitorio Mayor',
+                                                    'Familiar - Titular' => 'Familiar - Titular',
                                                     'Familiar - Dependiente' => 'Familiar - Dependiente',
                                                     // PRE PAMA
                                                     'PRE PAMA 55+' => 'PRE PAMA 55+ (50% adicional)',
@@ -629,7 +630,7 @@ class StudentRegisterResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'PRE PAMA 50+', 'PRE PAMA 55+' => 'warning',
-                        'Individual', 'Transitorio Mayor', 'Familiar - Dependiente' => 'info',
+                        'Individual', 'Transitorio Mayor', 'Familiar - Dependiente', 'Familiar - Titular' => 'info',
                         'Transitorio Mayor de 75', 'Hijo de Fundador', 'Vitalicios' => 'success',
                         default => 'gray',
                     })
@@ -639,6 +640,7 @@ class StudentRegisterResource extends Resource
                         'Transitorio Mayor de 75' => 'Trans. >75',
                         'Transitorio Mayor' => 'Trans. Mayor',
                         'Familiar - Dependiente' => 'Familiar-Dep.',
+                        'Familiar - Titular' => 'Familiar-Titular',
                         'Hijo de Fundador' => 'H. Fundador',
                         default => $state,
                     }),
@@ -667,6 +669,7 @@ class StudentRegisterResource extends Resource
                         'Individual' => 'Individual',
                         'Transitorio Mayor' => 'Transitorio Mayor',
                         'Familiar - Dependiente' => 'Familiar - Dependiente',
+                        'Familiar - Titular' => 'Familiar - Titular',
                         // PRE PAMA
                         'PRE PAMA 55+' => 'PRE PAMA 55+ (50% adicional)',
                         'PRE PAMA 50+' => 'PRE PAMA 50+ (100% adicional)',
