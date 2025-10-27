@@ -621,7 +621,13 @@
             get filteredWorkshops() {
                 const baseWorkshops = this.allWorkshops.filter(workshop =>
                     !this.previousWorkshopIds.includes(workshop.id)
-                );
+                ).map(workshop => ({
+                    ...workshop,
+                    name: workshop.name.toUpperCase(),
+                    instructor: workshop.instructor.toUpperCase(),
+                    day: workshop.day.toUpperCase(),
+                    modality: workshop.modality.toUpperCase()
+                }));
 
                 if (this.searchQuery.trim() === '') {
                     return baseWorkshops;
@@ -636,9 +642,15 @@
             },
 
             get previousWorkshops() {
-                return this.allWorkshops.filter(workshop =>
-                    this.previousWorkshopIds.includes(workshop.id)
-                );
+                return this.allWorkshops
+                    .filter(workshop => this.previousWorkshopIds.includes(workshop.id))
+                    .map(workshop => ({
+                        ...workshop,
+                        name: workshop.name.toUpperCase(),
+                        instructor: workshop.instructor.toUpperCase(),
+                        day: workshop.day.toUpperCase(),
+                        modality: workshop.modality.toUpperCase()
+                    }));
             },
 
             get totalPages() {
