@@ -1,7 +1,5 @@
 <?php
 
-// App/Filament/Pages/AllUsersEnrollmentReport.php
-
 namespace App\Filament\Pages;
 
 use App\Models\User;
@@ -35,17 +33,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
     public $selectedDateTo = null;
 
-    public $usersEnrollments = [];
-
-    public $overallSummary = [
-        'total_enrollments' => 0,
-        'total_users' => 0,
-        'cash_count' => 0,
-        'cash_amount' => 0,
-        'link_count' => 0,
-        'link_amount' => 0,
-        'total_amount' => 0,
-    ];
+    public $allEnrollments = [];
 
     public function mount(): void
     {
@@ -85,15 +73,14 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
     public function loadAllUsersEnrollments(): void
     {
         if (!$this->selectedDateFrom || !$this->selectedDateTo) {
-            $this->usersEnrollments = [];
-            $this->resetOverallSummary();
+            $this->allEnrollments = [];
             return;
         }
 
         $dateFromForQuery = \Carbon\Carbon::parse($this->selectedDateFrom)->format('Y-m-d');
         $dateToForQuery = \Carbon\Carbon::parse($this->selectedDateTo)->format('Y-m-d');
 
-        // Obtener todos los EnrollmentBatch agrupados por usuario
+        // Obtener todos los EnrollmentBatch
         $enrollmentBatches = \App\Models\EnrollmentBatch::with([
             'student',
             'paymentRegisteredByUser',
@@ -110,82 +97,30 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             ->get();
 
         if ($enrollmentBatches->isEmpty()) {
-            $this->usersEnrollments = [];
-            $this->resetOverallSummary();
+            $this->allEnrollments = [];
             return;
         }
 
-        // Agrupar por usuario
-        $groupedByUser = $enrollmentBatches->groupBy('payment_registered_by_user_id');
-
-        $this->usersEnrollments = $groupedByUser->map(function ($batches, $userId) {
-            $user = $batches->first()->paymentRegisteredByUser;
-
-            // Filtrar inscripciones activas (no anuladas) para cálculos
-            $activeBatches = $batches->where('payment_status', '!=', 'refunded');
-
-            $enrollments = $batches->map(function ($batch) {
-                $student = $batch->student;
-
-                return [
-                    'id' => $batch->id,
-                    'student_name' => $student ? ($student->first_names . ' ' . $student->last_names) : 'N/A',
-                    'student_code' => $student->student_code ?? 'N/A',
-                    'payment_registered_time' => $batch->payment_registered_at ? $batch->payment_registered_at->format('d/m/Y H:i') : 'N/A',
-                    'enrollment_date' => $batch->enrollment_date ? $batch->enrollment_date->format('d/m/Y') : 'N/A',
-                    'workshops_count' => $batch->enrollments->count(),
-                    'workshops_list' => $batch->enrollments->pluck('instructorWorkshop.workshop.name')->join(', '),
-                    'total_amount' => $batch->total_amount,
-                    'payment_method' => $this->getPaymentMethodText($batch->payment_method),
-                    'batch_code' => $batch->batch_code ?? 'Sin código',
-                    'payment_status' => $this->getPaymentStatusText($batch->payment_status),
-                ];
-            });
+        // Crear un array plano con todas las inscripciones
+        $this->allEnrollments = $enrollmentBatches->map(function ($batch) {
+            $student = $batch->student;
+            $user = $batch->paymentRegisteredByUser;
 
             return [
-                'user_id' => $userId,
+                'id' => $batch->id,
                 'user_name' => $user ? $user->name : 'N/A',
-                'enrollments' => $enrollments->toArray(),
-                'summary' => [
-                    'total_count' => $batches->count(),
-                    'cash_count' => $activeBatches->where('payment_method', 'cash')->count(),
-                    'cash_amount' => $activeBatches->where('payment_method', 'cash')->sum('total_amount'),
-                    'link_count' => $activeBatches->where('payment_method', 'link')->count(),
-                    'link_amount' => $activeBatches->where('payment_method', 'link')->sum('total_amount'),
-                    'total_amount' => $activeBatches->sum('total_amount'),
-                ],
+                'student_name' => $student ? ($student->first_names . ' ' . $student->last_names) : 'N/A',
+                'student_code' => $student->student_code ?? 'N/A',
+                'payment_registered_time' => $batch->payment_registered_at ? $batch->payment_registered_at->format('d/m/Y H:i') : 'N/A',
+                'enrollment_date' => $batch->enrollment_date ? $batch->enrollment_date->format('d/m/Y') : 'N/A',
+                'workshops_count' => $batch->enrollments->count(),
+                'workshops_list' => $batch->enrollments->pluck('instructorWorkshop.workshop.name')->join(', '),
+                'total_amount' => $batch->total_amount,
+                'payment_method' => $this->getPaymentMethodText($batch->payment_method),
+                'batch_code' => $batch->batch_code ?? 'Sin código',
+                'payment_status' => $this->getPaymentStatusText($batch->payment_status),
             ];
-        })->sortByDesc(function ($userData) {
-            return $userData['summary']['total_amount'];
-        })->values()->toArray();
-
-        $this->calculateOverallSummary();
-    }
-
-    private function resetOverallSummary(): void
-    {
-        $this->overallSummary = [
-            'total_enrollments' => 0,
-            'total_users' => 0,
-            'cash_count' => 0,
-            'cash_amount' => 0,
-            'link_count' => 0,
-            'link_amount' => 0,
-            'total_amount' => 0,
-        ];
-    }
-
-    private function calculateOverallSummary(): void
-    {
-        $this->overallSummary = [
-            'total_enrollments' => collect($this->usersEnrollments)->sum(fn($user) => $user['summary']['total_count']),
-            'total_users' => count($this->usersEnrollments),
-            'cash_count' => collect($this->usersEnrollments)->sum(fn($user) => $user['summary']['cash_count']),
-            'cash_amount' => collect($this->usersEnrollments)->sum(fn($user) => $user['summary']['cash_amount']),
-            'link_count' => collect($this->usersEnrollments)->sum(fn($user) => $user['summary']['link_count']),
-            'link_amount' => collect($this->usersEnrollments)->sum(fn($user) => $user['summary']['link_amount']),
-            'total_amount' => collect($this->usersEnrollments)->sum(fn($user) => $user['summary']['total_amount']),
-        ];
+        })->toArray();
     }
 
     private function getPaymentStatusText($status): string
@@ -215,7 +150,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             ->label('Generar PDF')
             ->color('primary')
             ->icon('heroicon-o-document-arrow-down')
-            ->visible(fn() => !empty($this->usersEnrollments))
+            ->visible(fn() => !empty($this->allEnrollments))
             ->action(function () {
                 try {
                     return $this->generatePDF();
@@ -231,7 +166,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
     public function generatePDF()
     {
-        if (empty($this->usersEnrollments)) {
+        if (empty($this->allEnrollments)) {
             Notification::make()
                 ->title('Error')
                 ->body('No hay registros para generar el reporte')
@@ -243,8 +178,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
         try {
             $html = View::make('reports.all-users-enrollment', [
-                'users_enrollments' => $this->usersEnrollments,
-                'overall_summary' => $this->overallSummary,
+                'all_enrollments' => $this->allEnrollments,
                 'date_from' => \Carbon\Carbon::parse($this->selectedDateFrom)->format('d/m/Y'),
                 'date_to' => \Carbon\Carbon::parse($this->selectedDateTo)->format('d/m/Y'),
                 'generated_at' => now()->format('d/m/Y H:i'),
