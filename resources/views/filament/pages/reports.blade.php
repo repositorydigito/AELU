@@ -8,6 +8,7 @@
             <ul class="space-y-3 text-gray-700 dark:text-gray-300">
                 <li><a href="{{ url('/admin/enrollments-report1') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Inscripciones por alumno</a></li>
                 <li><a href="{{ url('/admin/enrollments-report2') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Inscripciones por mes</a></li>
+                <li><a href="{{ url('/admin/schedule-enrollment-report') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Inscripciones por horario</a></li>
             </ul>
         </x-filament::section>
 
