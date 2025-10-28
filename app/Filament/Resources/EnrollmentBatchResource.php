@@ -172,8 +172,8 @@ class EnrollmentBatchResource extends Resource
 
                 Tables\Columns\TextColumn::make('paidBy.name')
                     ->label('Pagado por')
-                    ->placeholder('Pendiente')                    
-                    ->toggleable(isToggledHiddenByDefault: true),                    
+                    ->placeholder('Pendiente')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('workshops_list')
                     ->label('Talleres')
@@ -272,25 +272,36 @@ class EnrollmentBatchResource extends Resource
                         'link' => 'Link',
                     ]),
 
-                Tables\Filters\Filter::make('enrollment_date')
-                    ->label('Fecha de Inscripción')
-                    ->form([
-                        Forms\Components\DatePicker::make('enrollment_from')
-                            ->label('Desde'),
-                        Forms\Components\DatePicker::make('enrollment_until')
-                            ->label('Hasta'),
-                    ])
+                Tables\Filters\SelectFilter::make('monthly_period')
+                    ->label('Mes de Inscripción')
+                    ->options(function () {
+                        $currentYear = now()->year;
+                        $previousYear = $currentYear - 1;
+
+                        return \App\Models\MonthlyPeriod::query()
+                            ->whereIn('year', [$previousYear, $currentYear])
+                            ->orderBy('year', 'desc')
+                            ->orderBy('month', 'desc')
+                            ->get()
+                            ->mapWithKeys(function ($period) {
+                                $monthName = ucfirst(\Carbon\Carbon::createFromDate(
+                                    $period->year,
+                                    $period->month
+                                )->translatedFormat('F Y'));
+                                return [$period->id => $monthName];
+                            })
+                            ->toArray();
+                    })
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['enrollment_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('enrollment_date', '>=', $date),
-                            )
-                            ->when(
-                                $data['enrollment_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('enrollment_date', '<=', $date),
-                            );
-                    }),
+                        if (isset($data['value'])) {
+                            return $query->whereHas('enrollments', function (Builder $enrollmentQuery) use ($data) {
+                                $enrollmentQuery->where('monthly_period_id', $data['value']);
+                            });
+                        }
+                        return $query;
+                    })
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\Action::make('download_ticket')
@@ -434,14 +445,14 @@ class EnrollmentBatchResource extends Resource
                         if ($record->payment_method === 'cash') {
                             $userId = $record->created_by ?? auth()->id();
                             $user = \App\Models\User::find($userId);
-                            
+
                             if ($user && !empty($user->enrollment_code)) {
                                 $userPaidEnrollmentCount = \App\Models\EnrollmentBatch::where('created_by', $userId)
                                     ->where('payment_method', 'cash')
                                     ->where('payment_status', 'completed')
                                     ->whereNotNull('batch_code')
                                     ->count();
-                                
+
                                 $nextNumber = $userPaidEnrollmentCount + 1;
                                 $batchCode = $user->enrollment_code . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
                             }
