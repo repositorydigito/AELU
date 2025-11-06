@@ -762,6 +762,20 @@ class EnrollmentBatchResource extends Resource
                     )
                     ->color('success')
                     ->modalWidth('4xl'),
+                Tables\Actions\Action::make('manage_enrollments')
+                    ->label('Inscripciones')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->modalHeading(fn (EnrollmentBatch $record) => 'Gestionar Inscripciones')
+                    ->modalDescription(fn (EnrollmentBatch $record) =>
+                        'Estudiante: ' . ($record->student->full_name ?? 'N/A') . ' | Total inscripciones: ' . $record->enrollments()->count()
+                    )
+                    ->modalContent(fn (EnrollmentBatch $record) => view('filament.modals.manage-enrollments-wrapper', [
+                        'batch' => $record,
+                    ]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->modalWidth('5xl')
+                    ->color('warning'),
                 Tables\Actions\Action::make('cancel_enrollment')
                     ->label('Anular')
                     ->icon('heroicon-o-x-circle')
@@ -814,10 +828,12 @@ class EnrollmentBatchResource extends Resource
                                             ":\nMotivo: ".$data['cancellation_reason'],
                                 ]);
 
-                                // Actualizar cada enrollment individualmente para disparar observers de pago de profesores
+                                // Actualizar cada inscripción individualmente (estado y fecha de anulación)
                                 foreach ($record->enrollments as $enrollment) {
                                     $enrollment->update([
                                         'payment_status' => 'refunded',
+                                        'cancelled_at' => now(),
+                                        'cancellation_reason' => $data['cancellation_reason'] ?? null,
                                     ]);
                                 }
                             });
