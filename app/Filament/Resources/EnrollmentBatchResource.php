@@ -310,9 +310,12 @@ class EnrollmentBatchResource extends Resource
                     ->url(fn (EnrollmentBatch $record): string => route('enrollment.batch.ticket', ['batchId' => $record->id]))
                     ->openUrlInNewTab()
                     ->visible(fn (EnrollmentBatch $record): bool =>
-                        // Mostrar para inscripciones completadas con efectivo O anuladas que tengan batch_code
-                        ($record->payment_status === 'completed' && $record->payment_method === 'cash') ||
-                        ($record->payment_status === 'refunded' && $record->payment_method === 'cash' && !empty($record->batch_code) && $record->batch_code !== 'Sin código')
+                        // Mostrar para inscripciones completadas con efectivo O anuladas que tengan batch_code Y al menos una inscripción pagada
+                        /* ($record->payment_status === 'completed' && $record->payment_method === 'cash') ||
+                        ($record->payment_status === 'refunded' && $record->payment_method === 'cash' && !empty($record->batch_code) && $record->batch_code !== 'Sin código') */
+                        !empty($record->batch_code) &&
+                        $record->batch_code !== 'Sin código' &&
+                        $record->enrollments()->where('payment_status', 'completed')->exists()
                     )
                     ->color('success'),
                 Tables\Actions\Action::make('view_cancellation_reason')
@@ -347,6 +350,375 @@ class EnrollmentBatchResource extends Resource
                     ->modalCancelActionLabel('Cerrar')
                     ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'refunded'),
                 Tables\Actions\Action::make('register_payment')
+                    ->label('Pago')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->form(function (EnrollmentBatch $record) {
+                        $paymentService = app(\App\Services\EnrollmentPaymentService::class);
+                        $pendingEnrollments = $paymentService->getPendingEnrollments($record);
+                        $paidEnrollments = $record->enrollments()
+                            ->with(['instructorWorkshop.workshop', 'instructorWorkshop.instructor'])
+                            ->where('payment_status', 'completed')
+                            ->get();
+
+                        if ($pendingEnrollments->isEmpty()) {
+                            return [
+                                Forms\Components\Placeholder::make('no_pending')
+                                    ->label('')
+                                    ->content(new \Illuminate\Support\HtmlString('
+                                        <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p class="text-sm text-blue-700">
+                                                No hay inscripciones pendientes de pago en este lote.
+                                            </p>
+                                        </div>
+                                    ')),
+                            ];
+                        }
+
+                        // Información del batch
+                        $batchInfo = [
+                            Forms\Components\Placeholder::make('batch_info')
+                                ->label('')
+                                ->content(new \Illuminate\Support\HtmlString('
+                                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+                                        <div class="grid grid-cols-2 gap-2 text-sm">
+                                            <div><span class="font-medium">N° Ticket:</span> '.$record->batch_code.'</div>
+                                            <div><span class="font-medium">Estudiante:</span> '.($record->student->full_name ?? 'N/A').'</div>
+                                            <div><span class="font-medium">Total Inscripción:</span> S/ '.number_format($record->total_amount, 2).'</div>
+                                            <div><span class="font-medium">Total Pagado:</span> S/ '.number_format($record->total_paid, 2).'</div>
+                                            <div class="col-span-2">
+                                                <span class="font-medium">Saldo Pendiente:</span>
+                                                <span class="text-red-600 font-bold">S/ '.number_format($record->balance_pending, 2).'</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ')),
+                        ];
+
+                        $paidEnrollmentsSection = [
+                            Forms\Components\Section::make('Inscripciones Pagadas')
+                                ->description('Talleres que ya han sido pagados en este lote')
+                                ->schema([
+                                    Forms\Components\Placeholder::make('paid_enrollments_list')
+                                        ->label('')
+                                        ->content(new \Illuminate\Support\HtmlString('
+                                            <div class="space-y-2">
+                                                ' . $paidEnrollments->map(function ($enrollment) {
+                                                    $workshop = $enrollment->instructorWorkshop->workshop->name ?? 'N/A';
+                                                    $instructor = $enrollment->instructorWorkshop->instructor
+                                                        ? $enrollment->instructorWorkshop->instructor->full_name
+                                                        : 'N/A';
+
+                                                    // Día de la semana
+                                                    $dayNames = [
+                                                        0 => 'Dom', 1 => 'Lun', 2 => 'Mar', 3 => 'Mié',
+                                                        4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom',
+                                                    ];
+                                                    $dayName = $dayNames[$enrollment->instructorWorkshop->day_of_week] ?? 'N/A';
+
+                                                    // Horario
+                                                    $startTime = $enrollment->instructorWorkshop->start_time
+                                                        ? \Carbon\Carbon::parse($enrollment->instructorWorkshop->start_time)->format('H:i')
+                                                        : 'N/A';
+                                                    $endTime = $enrollment->instructorWorkshop->end_time
+                                                        ? \Carbon\Carbon::parse($enrollment->instructorWorkshop->end_time)->format('H:i')
+                                                        : 'N/A';
+
+                                                    // Modalidad
+                                                    $modality = $enrollment->instructorWorkshop->workshop->modality ?? 'N/A';
+                                                    $modalityText = match($modality) {
+                                                        'voluntary' => 'Voluntario',
+                                                        'hourly' => 'Por Horas',
+                                                        default => ucfirst($modality)
+                                                    };
+
+                                                    $amount = number_format($enrollment->total_amount, 2);
+                                                    $paymentDate = $enrollment->payment_date ? $enrollment->payment_date->format('d/m/Y') : 'N/A';
+
+                                                    return '
+                                                        <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                                                            <div class="flex-1">
+                                                                <div class="font-medium text-green-900">' . $workshop . '</div>
+                                                                <div class="text-sm text-green-700">Instructor: ' . $instructor . '</div>
+                                                                <div class="text-xs text-green-600">' . $dayName . ' ' . $startTime . '-' . $endTime . ' | ' . $modalityText . ' | Clases: ' . $enrollment->number_of_classes . '</div>
+                                                                <div class="text-xs text-green-600">Pagado: ' . $paymentDate . '</div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="font-bold text-green-900">S/ ' . $amount . '</div>
+                                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
+                                                                    ✓ Pagado
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ';
+                                                })->join('') . '
+                                            </div>
+                                        ')),
+                                ])
+                                ->collapsible()
+                                ->collapsed(true),
+                        ];
+
+                        // Selección de inscripciones
+                        $enrollmentSelection = [
+                            Forms\Components\CheckboxList::make('selected_enrollments')
+                                ->label('Seleccionar Inscripciones a Pagar')
+                                ->options(
+                                    $pendingEnrollments->mapWithKeys(function ($enrollment) {
+                                        $workshop = $enrollment->instructorWorkshop->workshop->name ?? 'N/A';
+                                        $instructor = $enrollment->instructorWorkshop->instructor ? $enrollment->instructorWorkshop->instructor->full_name : 'N/A';
+                                        $amount = number_format($enrollment->total_amount, 2);
+
+                                        return [
+                                            $enrollment->id => "{$workshop} - {$instructor} - S/ {$amount}"
+                                        ];
+                                    })
+                                )
+                                ->required()
+                                ->columns(1)
+                                ->descriptions(
+                                    $pendingEnrollments->mapWithKeys(function ($enrollment) {
+                                        $instructorWorkshop = $enrollment->instructorWorkshop;
+
+                                        // Obtener día de la semana
+                                        $dayNames = [
+                                            0 => 'Domingo',
+                                            1 => 'Lunes',
+                                            2 => 'Martes',
+                                            3 => 'Miércoles',
+                                            4 => 'Jueves',
+                                            5 => 'Viernes',
+                                            6 => 'Sábado',
+                                            7 => 'Domingo',
+                                        ];
+                                        $dayName = $dayNames[$instructorWorkshop->day_of_week] ?? 'N/A';
+
+                                        // Obtener horario
+                                        $startTime = $instructorWorkshop->start_time
+                                            ? \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i')
+                                            : 'N/A';
+                                        $endTime = $instructorWorkshop->end_time
+                                            ? \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i')
+                                            : 'N/A';
+
+                                        // Obtener modalidad del taller
+                                        $modality = $instructorWorkshop->workshop->modality ?? 'N/A';
+                                        $modalityText = match($modality) {
+                                            'voluntary' => 'Voluntario',
+                                            'hourly' => 'Por Horas',
+                                            default => ucfirst($modality)
+                                        };
+
+                                        return [
+                                            $enrollment->id => sprintf(
+                                                'Clases: %d | %s %s-%s | Modalidad: %s',
+                                                $enrollment->number_of_classes,
+                                                $dayName,
+                                                $startTime,
+                                                $endTime,
+                                                $modalityText
+                                            )
+                                        ];
+                                    })
+                                )
+                                ->live()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) use ($pendingEnrollments) {
+                                    if (empty($state)) {
+                                        $set('calculated_total', 0);
+                                        return;
+                                    }
+
+                                    $total = $pendingEnrollments
+                                        ->whereIn('id', $state)
+                                        ->sum('total_amount');
+
+                                    $set('calculated_total', $total);
+                                    $set('amount_paid', $total);
+                                }),
+
+                            Forms\Components\TextInput::make('calculated_total')
+                                ->label('Total Seleccionado')
+                                ->prefix('S/')
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->default(0)
+                                ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2)),
+                        ];
+
+                        // Campos de pago según método
+                        if ($record->payment_method === 'link') {
+                            $paymentFields = [
+                                Forms\Components\TextInput::make('batch_code')
+                                    ->label('Código de Voucher/Boleta')
+                                    ->required()
+                                    ->maxLength(50)
+                                    ->helperText('Ingresa el código del voucher/boleta/ticket de pago por link'),
+
+                                Forms\Components\DatePicker::make('payment_date')
+                                    ->label('Fecha de Pago')
+                                    ->required()
+                                    ->default(now()),
+
+                                Forms\Components\Textarea::make('payment_notes')
+                                    ->label('Observaciones del Pago')
+                                    ->rows(3)
+                                    ->placeholder('Observaciones adicionales sobre el pago (opcional)'),
+                            ];
+                        } else {
+                            $paymentFields = [
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('amount_paid')
+                                            ->label('Monto Recibido')
+                                            ->numeric()
+                                            ->prefix('S/')
+                                            ->required()
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                                $amountPaid = (float) $state;
+                                                $calculatedTotal = (float) ($get('calculated_total') ?? 0);
+                                                $change = $amountPaid - $calculatedTotal;
+                                                $set('change_amount', max(0, $change));
+                                            })
+                                            ->helperText('Ingresa el monto que recibiste del estudiante'),
+
+                                        /* Forms\Components\TextInput::make('change_amount')
+                                            ->label('Vuelto')
+                                            ->numeric()
+                                            ->prefix('S/')
+                                            ->disabled()
+                                            ->default(0)
+                                            ->dehydrated(true)
+                                            ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2))
+                                            ->helperText('Se calcula automáticamente'), */
+                                    ]),
+
+                                Forms\Components\DatePicker::make('payment_date')
+                                    ->label('Fecha de Pago')
+                                    ->required()
+                                    ->default(now()),
+
+                                Forms\Components\Textarea::make('payment_notes')
+                                    ->label('Observaciones del Pago')
+                                    ->rows(3)
+                                    ->placeholder('Observaciones adicionales sobre el pago (opcional)'),
+                            ];
+                        }
+
+                        return array_merge($batchInfo, $paidEnrollmentsSection, $enrollmentSelection, $paymentFields);
+                    })
+                    ->action(function (EnrollmentBatch $record, array $data): void {
+                        $paymentService = app(\App\Services\EnrollmentPaymentService::class);
+
+                        // Validar que se hayan seleccionado inscripciones
+                        if (empty($data['selected_enrollments'])) {
+                            Notification::make()
+                                ->title('Error')
+                                ->body('Debe seleccionar al menos una inscripción para pagar.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
+                        // Obtener inscripciones seleccionadas
+                        $enrollments = \App\Models\StudentEnrollment::whereIn('id', $data['selected_enrollments'])->get();
+                        $totalAmount = $enrollments->sum('total_amount');
+
+                        // Validar monto para efectivo
+                        if ($record->payment_method === 'cash') {
+                            $amountPaid = (float) ($data['amount_paid'] ?? 0);
+
+                            if ($amountPaid < $totalAmount) {
+                                Notification::make()
+                                    ->title('Monto Insuficiente')
+                                    ->body("El monto recibido (S/ ".number_format($amountPaid, 2).") es menor al total seleccionado (S/ ".number_format($totalAmount, 2)."). Por favor, verifique.")
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                        }
+
+                        try {
+                            // Procesar el pago usando el servicio
+                            $payment = $paymentService->processPayment(
+                                $record,
+                                $data['selected_enrollments'],
+                                $record->payment_method,
+                                $data['payment_date'] ?? now(),
+                                $data['payment_notes'] ?? null
+                            );
+
+                            // Si es efectivo, actualizar monto pagado y vuelto en el pago
+                            if ($record->payment_method === 'cash') {
+                                $payment->update([
+                                    'amount' => $data['amount_paid'] ?? $totalAmount,
+                                ]);
+
+                                // Guardar el vuelto en las notas si hay
+                                if (isset($data['change_amount']) && $data['change_amount'] > 0) {
+                                    $changeNote = "\nVuelto: S/ ".number_format($data['change_amount'], 2);
+                                    $payment->update([
+                                        'notes' => ($payment->notes ?? '') . $changeNote
+                                    ]);
+                                }
+                            }
+
+                            // Generar o actualizar batch_code si es necesario
+                            if ($record->payment_method === 'cash' && empty($record->batch_code)) {
+                                $userId = $record->created_by ?? auth()->id();
+                                $user = \App\Models\User::find($userId);
+
+                                if ($user && !empty($user->enrollment_code)) {
+                                    $userPaidEnrollmentCount = \App\Models\EnrollmentBatch::where('created_by', $userId)
+                                        ->where('payment_method', 'cash')
+                                        ->whereNotNull('batch_code')
+                                        ->count();
+
+                                    $nextNumber = $userPaidEnrollmentCount + 1;
+                                    $batchCode = $user->enrollment_code . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+                                    $record->update(['batch_code' => $batchCode]);
+                                }
+                            } elseif ($record->payment_method === 'link' && isset($data['batch_code'])) {
+                                $record->update(['batch_code' => $data['batch_code']]);
+                            }
+
+                            // Refrescar el batch para obtener datos actualizados
+                            $record->refresh();
+
+                            $enrollmentsPaid = count($data['selected_enrollments']);
+                            $totalEnrollments = $record->enrollments()->whereNull('cancelled_at')->count();
+                            $statusMessage = $record->payment_status === 'completed'
+                                ? 'Todas las inscripciones han sido pagadas.'
+                                : "Pago parcial registrado ({$enrollmentsPaid} de {$totalEnrollments} inscripciones).";
+
+                            Notification::make()
+                                ->title('Pago Registrado Exitosamente')
+                                ->body($statusMessage)
+                                ->success()
+                                ->send();
+
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Error al Procesar el Pago')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    })
+                    ->modalHeading('Registrar Pago')
+                    ->modalDescription(function (EnrollmentBatch $record) {
+                        $method = $record->payment_method === 'link' ? 'Link de Pago' : 'Efectivo';
+                        return "Método de pago: {$method} | Seleccione las inscripciones que desea pagar";
+                    })
+                    ->modalSubmitActionLabel('Registrar Pago')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->visible(fn (EnrollmentBatch $record): bool =>
+                        $record->payment_status !== 'completed' &&
+                        $record->enrollments()->where('payment_status', 'pending')->exists()
+                    )
+                    ->color('success')
+                    ->modalWidth('4xl'),
+                /* Tables\Actions\Action::make('register_payment')
                     ->label('Pago')
                     ->icon('heroicon-o-currency-dollar')
                     ->form(function (EnrollmentBatch $record) {
@@ -522,7 +894,7 @@ class EnrollmentBatchResource extends Resource
                     ->modalCancelActionLabel('Cancelar')
                     ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'pending'
                     )
-                    ->color('success'),
+                    ->color('success'), */
                 Tables\Actions\Action::make('cancel_enrollment')
                     ->label('Anular')
                     ->icon('heroicon-o-x-circle')

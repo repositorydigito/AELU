@@ -166,10 +166,16 @@
                     <th class="clases-col">N° CLASES</th>
                     <th class="fechas-col">FECHAS</th>
                     <th class="importe-col">IMPORTE</th>
+                    <th style="width: 12%;">ESTADO</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach($enrollmentBatch->enrollments as $enrollment)
+                @foreach($enrollmentBatch->enrollments->sortBy(function($e) {
+                    // Ordenar: pagados primero, luego pendientes, luego cancelados
+                    if ($e->payment_status === 'completed') return 0;
+                    if ($e->cancelled_at) return 2;
+                    return 1;
+                }) as $enrollment)
                     @php
                         $workshop = $enrollment->instructorWorkshop;
                         $dayNames = [
@@ -181,7 +187,6 @@
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
                         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
 
-                        // Obtener las fechas de las clases específicas
                         $enrollmentClasses = $enrollment->enrollmentClasses()
                             ->with('workshopClass')
                             ->orderBy('created_at', 'asc')
@@ -195,7 +200,6 @@
                             }
                         }
 
-                        // Si no hay clases específicas, mostrar las del taller
                         if (empty($classDates) && $workshop->workshop) {
                             $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $workshop->workshop->id)
                                 ->where('monthly_period_id', $enrollment->monthly_period_id)
@@ -208,10 +212,24 @@
                                 $classDates[] = $classDate->format('d/m');
                             }
                         }
+
+                        // Determinar el estado y estilo
+                        $statusText = '';
+                        $statusStyle = '';
+                        if ($enrollment->cancelled_at) {
+                            $statusText = 'CANCELADO';
+                            $statusStyle = 'font-weight: bold;';
+                        } elseif ($enrollment->payment_status === 'completed') {
+                            $statusText = 'PAGADO';
+                            $statusStyle = 'font-weight: bold;';
+                        } else {
+                            $statusText = 'PENDIENTE';
+                            $statusStyle = 'font-weight: bold;';
+                        }
                     @endphp
-                    <tr>
-                        <td style="text-align: left; font-size: 9px; padding-left: 6px;">{{ strtoupper($workshop->workshop->name) }}</td>
-                        <td class="compact-text" style="text-align: center;">{{ $dayInSpanish }}<br>{{ $startTime }}-{{ $endTime }}</td>
+                    <tr @if($enrollment->cancelled_at) style="background-color: #ffe6e6; text-decoration: line-through;" @endif>
+                        <td style="text-align: left; font-weight: bold; padding-left: 6px;">{{ strtoupper($workshop->workshop->name) }}</td>
+                        <td class="compact-text" style="text-align: center; font-weight: bold;">{{ $dayInSpanish }}<br>{{ $startTime }}-{{ $endTime }}</td>
                         <td style="text-align: center; font-weight: bold;">{{ $enrollment->number_of_classes }}</td>
                         <td style="text-align: center;">
                             <div class="class-dates">
@@ -223,12 +241,13 @@
                             </div>
                         </td>
                         <td style="text-align: center; font-weight: bold;">{{ number_format($enrollment->total_amount, 2) }}</td>
+                        <td style="text-align: center; {{ $statusStyle }}">{{ $statusText }}</td>
                     </tr>
                 @endforeach
 
-                <!-- Fila del total optimizada -->
+                <!-- Fila del total -->
                 <tr class="total-row">
-                    <td colspan="4" style="text-align: right; padding-right: 6px;">TOTAL:</td>
+                    <td colspan="5" style="text-align: right; padding-right: 6px;">TOTAL:</td>
                     <td><strong>S/ {{ number_format($enrollmentBatch->total_amount, 2) }}</strong></td>
                 </tr>
             </tbody>

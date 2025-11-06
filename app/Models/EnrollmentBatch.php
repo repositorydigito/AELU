@@ -51,7 +51,7 @@ class EnrollmentBatch extends Model
             if (Auth::check() && empty($batch->created_by)) {
                 $batch->created_by = Auth::id();
             }
-            
+
         });
     }
 
@@ -83,6 +83,10 @@ class EnrollmentBatch extends Model
     public function cancelledBy()
     {
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
+    }
+    public function payments()
+    {
+        return $this->hasMany(EnrollmentPayment::class);
     }
 
     // Métodos auxiliares
@@ -142,5 +146,17 @@ class EnrollmentBatch extends Model
     public function getPaymentRegisteredByNameAttribute(): ?string
     {
         return $this->paymentRegisteredByUser ? $this->paymentRegisteredByUser->name : null;
+    }
+    public function getTotalPaidAttribute()
+    {
+        return $this->payments()->sum('amount');
+    }
+    public function getBalancePendingAttribute()
+    {
+        return $this->total_amount - $this->total_paid;
+    }
+    public function hasPartialPayments()
+    {
+        return $this->payments()->count() > 0 && $this->payment_status !== 'completed';
     }
 }

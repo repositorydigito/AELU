@@ -91,6 +91,24 @@ class StudentEnrollment extends Model
     {
         return $this->belongsTo(EnrollmentBatch::class);
     }
+    public function paymentItems()
+    {
+        return $this->hasMany(EnrollmentPaymentItem::class);
+    }
+    public function payments()
+    {
+        return $this->belongsToMany(
+            EnrollmentPayment::class,
+            'enrollment_payment_items',
+            'student_enrollment_id',
+            'enrollment_payment_id'
+        )->withPivot('amount')->withTimestamps();
+    }
+
+    public function isPaid()
+    {
+        return $this->payment_status === 'completed';
+    }
     public function getCreatedByNameAttribute()
     {
         if ($this->creator) {
@@ -99,7 +117,6 @@ class StudentEnrollment extends Model
 
         return 'Sistema';
     }
-
     // Accessor para obtener el código de pago a través de la relación
     public function getBatchCodeAttribute(): ?string
     {

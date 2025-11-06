@@ -16,11 +16,12 @@ class StudentEnrollmentController extends Controller
         // 1. Cargar el lote de inscripciones con todas las relaciones necesarias
         $enrollmentBatch = \App\Models\EnrollmentBatch::with([
             'student',
-            'creator', 
+            'creator',
             'enrollments.instructorWorkshop.workshop',
             'enrollments.instructorWorkshop.instructor',
             'enrollments.monthlyPeriod',
             'enrollments.enrollmentClasses.workshopClass',
+            'payments.registeredByUser',
         ])->findOrFail($batchId);
 
         // 2. Preparar datos generales del alumno
