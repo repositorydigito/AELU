@@ -104,6 +104,15 @@ class StudentEnrollment extends Model
             'enrollment_payment_id'
         )->withPivot('amount')->withTimestamps();
     }
+    public function tickets()
+    {
+        return $this->belongsToMany(
+            Ticket::class,
+            'ticket_student_enrollment',
+            'student_enrollment_id',
+            'ticket_id'
+        )->withTimestamps();
+    }
 
     public function isPaid()
     {

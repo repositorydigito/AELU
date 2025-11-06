@@ -14,3 +14,4 @@ Route::get('/generate-affidavit-instructor/{instructor}', [AffidavitController::
 Route::get('/instructors/download-template', [InstructorController::class, 'downloadInstructorsTemplate'])->name('instructors.download-template');
 Route::get('/inscription/{enrollmentId}/ticket', [StudentEnrollmentController::class, 'generateTicket'])->name('enrollment.ticket');
 Route::get('/inscription-batch/{batchId}/ticket', [StudentEnrollmentController::class, 'generateBatchTicket'])->name('enrollment.batch.ticket');
+Route::get('/ticket/{ticket}/pdf', [App\Http\Controllers\StudentEnrollmentController::class, 'generateTicketPdf'])->name('ticket.pdf')->middleware('auth');

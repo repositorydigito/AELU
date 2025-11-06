@@ -52,6 +52,10 @@ class EnrollmentPayment extends Model
     {
         return $this->hasMany(EnrollmentPaymentItem::class);
     }
+    public function ticket()
+    {
+        return $this->hasOne(Ticket::class);
+    }
 
     public function studentEnrollments()
     {

@@ -38,30 +38,29 @@ class Student extends Model
     {
         return $this->hasOne(MedicalRecord::class);
     }
-
     public function maintenancePeriod()
     {
         return $this->belongsTo(MaintenancePeriod::class);
     }
-
     public function medications()
     {
         return $this->hasManyThrough(StudentMedication::class, MedicalRecord::class);
     }
-
     public function affidavit()
     {
         return $this->hasOne(Affidavit::class);
     }
-
     public function studentEnrollments()
     {
         return $this->hasMany(StudentEnrollment::class);
     }
-
     public function workshops(): BelongsToMany
     {
         return $this->belongsToMany(Workshop::class, 'student_enrollments', 'student_id', 'workshop_id');
+    }
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
     }
 
     public function getFullNameAttribute(): string

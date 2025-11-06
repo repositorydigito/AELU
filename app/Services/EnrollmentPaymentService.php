@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\EnrollmentBatch;
 use App\Models\EnrollmentPayment;
 use App\Models\StudentEnrollment;
+use App\Models\Ticket;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -62,7 +63,27 @@ class EnrollmentPaymentService
                 ]);
             }
 
-            // 6. Actualizar el batch
+            // 6. Crear el ticket para este pago
+            if (!Auth::check()) {
+                throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
+            }
+
+            $ticketCode = $this->generateTicketCode(Auth::id());
+
+            $ticket = \App\Models\Ticket::create([
+                'ticket_code' => $ticketCode,
+                'enrollment_batch_id' => $batch->id,
+                'enrollment_payment_id' => $payment->id,
+                'student_id' => $batch->student_id,
+                'total_amount' => $totalAmount,
+                'ticket_type' => 'enrollment',
+                'status' => 'active',
+            ]);
+
+            // 7. Relacionar el ticket con las inscripciones pagadas
+            $ticket->studentEnrollments()->attach($enrollments->pluck('id'));
+
+            // 8. Actualizar el batch
             $this->updateBatchStatus($batch);
 
             return $payment;
@@ -114,5 +135,20 @@ class EnrollmentPaymentService
             ->sum('total_amount');
 
         return abs($totalAmount - $expectedAmount) < 0.01;
+    }
+    private function generateTicketCode(int $userId): string
+    {
+        $user = \App\Models\User::find($userId);
+
+        if (!$user || empty($user->enrollment_code)) {
+            throw new \Exception('El usuario no tiene código de inscripción configurado.');
+        }
+
+        // Contar todos los tickets emitidos por este usuario
+        $userTicketCount = \App\Models\Ticket::where('issued_by_user_id', $userId)->count();
+
+        $nextNumber = $userTicketCount + 1;
+
+        return $user->enrollment_code . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
 }

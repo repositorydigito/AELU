@@ -88,6 +88,10 @@ class EnrollmentBatch extends Model
     {
         return $this->hasMany(EnrollmentPayment::class);
     }
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
 
     // Métodos auxiliares
     public function getWorkshopsCountAttribute()
