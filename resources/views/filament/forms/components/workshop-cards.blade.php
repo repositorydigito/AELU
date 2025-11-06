@@ -331,7 +331,7 @@
                     x-model="searchQuery"
                     type="text"
                     class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Buscar talleres por nombre, instructor o día de la semana..."
+                    placeholder="Buscar talleres por nombre..."
                 />
             </div>
 
@@ -632,13 +632,17 @@
                 if (this.searchQuery.trim() === '') {
                     return baseWorkshops;
                 } else {
-                    const query = this.searchQuery.toLowerCase().trim();
+                    const query = this.removeAccents(this.searchQuery.toLowerCase().trim());
                     return baseWorkshops.filter(workshop => {
-                        return workshop.name.toLowerCase().includes(query) ||
-                            workshop.instructor.toLowerCase().includes(query) ||
-                            workshop.day.toLowerCase().includes(query);
+                        const workshopName = this.removeAccents(workshop.name.toLowerCase());
+                        return workshopName.includes(query);
                     });
                 }
+            },
+
+            // Función para eliminar tildes y caracteres especiales
+            removeAccents(str) {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             },
 
             get previousWorkshops() {
