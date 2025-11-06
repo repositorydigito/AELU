@@ -46,6 +46,7 @@
             padding: 5px 4px;
             font-size: 9px;
             vertical-align: top;
+            font-size: 10px;
         }
         .table tr:nth-child(even) {
             background-color: #f5f5f5;
@@ -73,7 +74,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>REPORTE DE INSCRIPCIONES POR CAJERO - GENERAL</h1>
+        <h1>INSCRIPCIONES - REPORTE GENERAL</h1>
         <p><strong>Período:</strong> {{ $date_from }} - {{ $date_to }}</p>
         <p><strong>Generado:</strong> {{ $generated_at }}</p>
     </div>

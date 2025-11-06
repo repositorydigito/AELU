@@ -23,7 +23,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static string $view = 'filament.pages.all-users-enrollment-report';
-    protected static ?string $title = 'Inscripciones por cajero - General';
+    protected static ?string $title = 'Inscripciones - Reporte General';
 
     protected static bool $shouldRegisterNavigation = false;
 
