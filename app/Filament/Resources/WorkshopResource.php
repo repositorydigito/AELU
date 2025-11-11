@@ -157,6 +157,7 @@ class WorkshopResource extends Resource
                             ->prefix('S/.')
                             ->numeric()
                             ->minValue(0)
+                            ->live()
                             ->required(),
                         Forms\Components\TextInput::make('place')
                             ->label('Localización')
@@ -448,7 +449,10 @@ class WorkshopResource extends Resource
         // Generar tarifas para voluntarios
         $volunteerPricings = [];
         for ($i = 1; $i < $numberOfClasses; $i++) {
-            $volunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+            // Calcular precio con recargo
+            $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
+            // Asegurar que nunca supere la tarifa completa
+            $volunteerPricings[$i] = min($priceWithSurcharge, $standardFee);
         }
         $volunteerPricings[$numberOfClasses] = $standardFee; // Tarifa completa sin recargo
 
@@ -460,7 +464,10 @@ class WorkshopResource extends Resource
         // Generar tarifas para no voluntarios
         $nonVolunteerPricings = [];
         for ($i = 1; $i < $numberOfClasses; $i++) {
-            $nonVolunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+            // Calcular precio con recargo
+            $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
+            // Asegurar que nunca supere la tarifa completa
+            $nonVolunteerPricings[$i] = min($priceWithSurcharge, $standardFee);
         }
         $nonVolunteerPricings[$numberOfClasses] = $standardFee; // Tarifa completa
 

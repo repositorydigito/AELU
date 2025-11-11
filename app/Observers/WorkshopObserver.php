@@ -64,7 +64,8 @@ class WorkshopObserver
             // Tarifas voluntarios
             $volunteerPricings = [];
             for ($i = 1; $i < $numberOfClasses; $i++) {
-                $volunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+                $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
+                $volunteerPricings[$i] = min($priceWithSurcharge, $standardMonthlyFee);
             }
             $volunteerPricings[$numberOfClasses] = $standardMonthlyFee;
 
@@ -85,7 +86,8 @@ class WorkshopObserver
             // Tarifas no voluntarios
             $nonVolunteerPricings = [];
             for ($i = 1; $i < $numberOfClasses; $i++) {
-                $nonVolunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+                $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
+                $nonVolunteerPricings[$i] = min($priceWithSurcharge, $standardMonthlyFee);
             }
             $nonVolunteerPricings[$numberOfClasses] = $standardMonthlyFee;
 
