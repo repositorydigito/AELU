@@ -340,7 +340,8 @@ class InstructorResource extends Resource
                                                                     return Workshop::all()->mapWithKeys(function ($workshop) {
                                                                         $start = $workshop->start_time ? \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
                                                                         $end = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
-                                                                        $day = $workshop->day_of_week ?? 'N/A';
+                                                                        $daysOfWeek = $workshop->day_of_week;
+                                                                        $day = is_array($daysOfWeek) ? implode('/', $daysOfWeek) : ($daysOfWeek ?? 'N/A');
                                                                         $period = 'Sin periodo';
                                                                         $modality = $workshop->modality ?? 'Sin modalidad';
                                                                         if ($workshop->monthly_period_id) {
@@ -378,7 +379,8 @@ class InstructorResource extends Resource
                                                                     }
                                                                     $startTime = $workshop->start_time ? \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
                                                                     $endTime = $workshop->end_time ? \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
-                                                                    $day = $workshop->day_of_week ?? 'N/A';
+                                                                    $daysOfWeek = $workshop->day_of_week;
+                                                                    $day = is_array($daysOfWeek) ? implode('/', $daysOfWeek) : ($daysOfWeek ?? 'N/A');
                                                                     $period = 'Sin periodo';
                                                                     if ($workshop->monthly_period_id) {
                                                                         $mp = \App\Models\MonthlyPeriod::find($workshop->monthly_period_id);
@@ -651,7 +653,8 @@ class InstructorResource extends Resource
                                         \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
                                     $endTime = $workshop->end_time ?
                                         \Carbon\Carbon::parse($workshop->end_time)->format('H:i') : 'N/A';
-                                    $day = $workshop->day_of_week ?? 'N/A';
+                                    $daysOfWeek = $workshop->day_of_week;
+                                    $day = is_array($daysOfWeek) ? implode('/', $daysOfWeek) : ($daysOfWeek ?? 'N/A');
 
                                     return "{$day} {$startTime}-{$endTime}";
                                 })->unique()->implode(', ');
@@ -678,7 +681,7 @@ class InstructorResource extends Resource
                             $count <= 3 => 'warning',
                             default => 'danger'
                         };
-                    }),                    
+                    }),
             ])
             ->filters([
 
