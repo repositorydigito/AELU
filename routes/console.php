@@ -13,7 +13,7 @@ Schedule::command('enrollments:auto-cancel')
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command('enrollments:auto-generate')
+/* Schedule::command('enrollments:auto-generate')
     ->everyMinute()
     ->withoutOverlapping()
-    ->runInBackground();
+    ->runInBackground(); */
