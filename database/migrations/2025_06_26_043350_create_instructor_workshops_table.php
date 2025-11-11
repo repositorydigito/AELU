@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('instructor_id')->constrained()->onDelete('cascade');
             $table->foreignId('workshop_id')->constrained()->onDelete('cascade');
             $table->foreignId('initial_monthly_period_id')->nullable()->constrained('monthly_periods')->onDelete('set null');
-            $table->tinyInteger('day_of_week')->nullable();
+            $table->json('day_of_week')->nullable();
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->integer('max_capacity')->nullable();
@@ -24,8 +24,6 @@ return new class extends Migration
             $table->decimal('duration_hours', 4, 2)->nullable();
             $table->decimal('custom_volunteer_percentage', 5, 2)->nullable();
             $table->timestamps();
-
-            $table->unique(['instructor_id', 'workshop_id', 'day_of_week', 'start_time', 'initial_monthly_period_id'], 'unique_schedule');
         });
     }
 

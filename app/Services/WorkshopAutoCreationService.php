@@ -26,11 +26,11 @@ class WorkshopAutoCreationService
         $currentDate = $startDate->copy();
         // USAR InstructorWorkshop.day_of_week (numérico) en lugar de Workshop.day_of_week (string)
         $dayOfWeek = $instructorWorkshop->day_of_week;
-        
+
         // Ajustar el día de la semana (Laravel usa 0=Domingo, 1=Lunes, etc.)
         // Si day_of_week es 7 (Domingo), convertir a 0
         $targetDayOfWeek = $dayOfWeek === 7 ? 0 : $dayOfWeek;
-        
+
         // Encontrar el primer día que coincida
         while ($currentDate->dayOfWeek !== $targetDayOfWeek && $currentDate->lte($endDate)) {
             $currentDate->addDay();
@@ -38,7 +38,7 @@ class WorkshopAutoCreationService
 
         $classDates = [];
         $classCount = 0;
-        
+
         // Generar exactamente 4 clases (siempre habrá al menos 4 ocurrencias en cualquier mes)
         for ($i = 0; $i < 4; $i++) {
             $classDates[] = $currentDate->copy();
@@ -148,7 +148,7 @@ class WorkshopAutoCreationService
         ]);
 
         // Copiar workshop_pricings
-        $originalPricings = $previousWorkshop->workshopPricings;
+        /* $originalPricings = $previousWorkshop->workshopPricings;
         foreach ($originalPricings as $pricing) {
             \App\Models\WorkshopPricing::create([
                 'workshop_id' => $newWorkshop->id,
@@ -158,7 +158,7 @@ class WorkshopAutoCreationService
                 'base_amount' => $pricing->base_amount,
                 'surcharge_amount' => $pricing->surcharge_amount,
             ]);
-        }
+        } */
 
         $this->generateWorkshopClasses($newWorkshop, $newInstructorWorkshop, $targetMonthlyPeriodId);
 

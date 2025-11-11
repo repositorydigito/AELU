@@ -181,12 +181,12 @@
                 }) as $enrollment)
                     @php
                         $workshop = $enrollment->instructorWorkshop;
-                        $dayNames = [
-                            1 => 'LUNES', 2 => 'MARTES', 3 => 'MIÉRCOLES',
-                            4 => 'JUEVES', 5 => 'VIERNES', 6 => 'SÁBADO',
-                            7 => 'DOMINGO', 0 => 'DOMINGO'
-                        ];
-                        $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'N/A';
+                        $daysOfWeek = $workshop->day_of_week;
+                        if (is_array($daysOfWeek)) {
+                            $dayInSpanish = implode('/', array_map('strtoupper', $daysOfWeek));
+                        } else {
+                            $dayInSpanish = strtoupper($daysOfWeek ?? 'N/A');
+                        }
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
                         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
 

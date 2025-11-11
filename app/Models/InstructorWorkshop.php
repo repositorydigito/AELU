@@ -23,7 +23,7 @@ class InstructorWorkshop extends Model
     ];
 
     protected $casts = [
-        'day_of_week' => 'integer',
+        'day_of_week' => 'array',
         'start_time' => 'datetime:H:i:s',
         'end_time' => 'datetime:H:i:s',
         'is_volunteer' => 'boolean',

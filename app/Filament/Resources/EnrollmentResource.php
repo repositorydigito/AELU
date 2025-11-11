@@ -279,13 +279,12 @@ class EnrollmentResource extends Resource
                                                             : max(0, $capacity - $currentEnrollments);
                                                     }
 
-                                                    // Convertir día de la semana
-                                                    $dayNames = [
-                                                        1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                                        4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                                        7 => 'Domingo', 0 => 'Domingo',
-                                                    ];
-                                                    $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día '.$instructorWorkshop->day_of_week;
+                                                    $daysOfWeek = $instructorWorkshop->day_of_week;
+                                                    if (is_array($daysOfWeek)) {
+                                                        $dayInSpanish = implode('/', $daysOfWeek);
+                                                    } else {
+                                                        $dayInSpanish = $daysOfWeek ?? 'N/A';
+                                                    }
 
                                                     return [
                                                         'id' => $instructorWorkshop->id,
@@ -448,12 +447,12 @@ class EnrollmentResource extends Resource
                                             }
 
                                             // Convertir día de la semana
-                                            $dayNames = [
-                                                1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                                4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                                7 => 'Domingo', 0 => 'Domingo',
-                                            ];
-                                            $dayInSpanish = $dayNames[$workshop->day_of_week] ?? 'Día '.$workshop->day_of_week;
+                                            $daysOfWeek = $workshop->day_of_week;
+                                            if (is_array($daysOfWeek)) {
+                                                $dayInSpanish = implode('/', $daysOfWeek);
+                                            } else {
+                                                $dayInSpanish = $daysOfWeek ?? 'N/A';
+                                            }
                                             $modality = $workshop->workshop->modality ?? 'No especificada';
 
                                             return new \Illuminate\Support\HtmlString("
@@ -714,12 +713,12 @@ class EnrollmentResource extends Resource
                                                 $prepamaTotal += $prepamaCharge;
 
                                                 // Convertir día de la semana
-                                                $dayNames = [
-                                                    1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                                    4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                                    7 => 'Domingo', 0 => 'Domingo',
-                                                ];
-                                                $dayInSpanish = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día '.$instructorWorkshop->day_of_week;
+                                                $daysOfWeek = $instructorWorkshop->day_of_week;
+                                                if (is_array($daysOfWeek)) {
+                                                    $dayInSpanish = implode('/', $daysOfWeek);
+                                                } else {
+                                                    $dayInSpanish = $daysOfWeek ?? 'N/A';
+                                                }
                                                 $classesLabel = $numberOfClasses.($numberOfClasses === 1 ? ' clase' : ' clases');
 
                                                 // Obtener las fechas de las clases específicas

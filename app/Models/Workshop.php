@@ -32,6 +32,7 @@ class Workshop extends Model
         'duration' => 'integer',
         'capacity' => 'integer',
         'number_of_classes' => 'integer',
+        'day_of_week' => 'array',
     ];
 
     public function instructorWorkshops()

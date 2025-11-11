@@ -50,14 +50,8 @@ class InstructorWorkshopObserver
             return;
         }
 
-        $dayMapping = [
-            'Lunes' => 1, 'Martes' => 2, 'Miércoles' => 3, 'Jueves' => 4,
-            'Viernes' => 5, 'Sábado' => 6, 'Domingo' => 0,
-        ];
-
-        // Solo llenar campos si están vacíos/nulos
         if (is_null($instructorWorkshop->day_of_week)) {
-            $instructorWorkshop->day_of_week = $dayMapping[$workshop->day_of_week] ?? 1;
+            $instructorWorkshop->day_of_week = $workshop->day_of_week ?? ['Lunes'];
         }
 
         if (is_null($instructorWorkshop->start_time)) {
@@ -91,13 +85,8 @@ class InstructorWorkshopObserver
             return;
         }
 
-        $dayMapping = [
-            'Lunes' => 1, 'Martes' => 2, 'Miércoles' => 3, 'Jueves' => 4,
-            'Viernes' => 5, 'Sábado' => 6, 'Domingo' => 0,
-        ];
-
         // Forzar actualización de todos los campos
-        $instructorWorkshop->day_of_week = $dayMapping[$workshop->day_of_week] ?? 1;
+        $instructorWorkshop->day_of_week = $workshop->day_of_week ?? ['Lunes'];
         $instructorWorkshop->start_time = $workshop->start_time;
         $instructorWorkshop->max_capacity = $workshop->capacity;
         $instructorWorkshop->place = $workshop->place;

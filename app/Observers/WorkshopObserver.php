@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 class WorkshopObserver
 {
+    // Bandera para evitar ejecuciones recursivas
+    private static $syncing = false;
+
     public function created(Workshop $workshop): void
     {
         $this->syncPricing($workshop);
@@ -16,8 +19,27 @@ class WorkshopObserver
 
     public function updated(Workshop $workshop): void
     {
-        // Regenerar tarifas si cambia la tarifa mensual o el porcentaje de recargo
-        if ($workshop->isDirty(['standard_monthly_fee', 'pricing_surcharge_percentage'])) {
+        // DEBUG: Ver qué está cambiando
+        \Log::info('Workshop updated', [
+            'id' => $workshop->id,
+            'exists' => $workshop->exists,
+            'dirty' => $workshop->getDirty(),
+            'original' => $workshop->getOriginal(),
+        ]);
+
+        // Evitar ejecuciones recursivas
+        if (self::$syncing) {
+            return;
+        }
+
+        // Verificar que el workshop EXISTE en BD antes de continuar
+        if (!$workshop->exists) {
+            \Log::warning('Intentando actualizar un workshop que no existe en BD', ['id' => $workshop->id]);
+            return;
+        }
+
+        // Regenerar tarifas si cambia la tarifa mensual, porcentaje de recargo o número de clases
+        if ($workshop->isDirty(['standard_monthly_fee', 'pricing_surcharge_percentage', 'number_of_classes'])) {
             $this->syncPricing($workshop);
         }
 
@@ -29,8 +51,8 @@ class WorkshopObserver
 
     protected function syncPricing(Workshop $workshop): void
     {
-        // Tu código existente...
         DB::transaction(function () use ($workshop) {
+            // Eliminar todas las tarifas existentes para este taller
             WorkshopPricing::where('workshop_id', $workshop->id)->delete();
 
             $standardMonthlyFee = $workshop->standard_monthly_fee;
@@ -44,9 +66,8 @@ class WorkshopObserver
             for ($i = 1; $i < $numberOfClasses; $i++) {
                 $volunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
             }
-            $volunteerPricings[$numberOfClasses] = $standardMonthlyFee; // Tarifa completa sin recargo
+            $volunteerPricings[$numberOfClasses] = $standardMonthlyFee;
 
-            // Solo agregar opción de 5 clases si el taller tiene 4 clases base
             if ($numberOfClasses == 4) {
                 $volunteerPricings[5] = round($standardMonthlyFee * 1.25, 2);
             }
@@ -56,7 +77,7 @@ class WorkshopObserver
                     'workshop_id' => $workshop->id,
                     'number_of_classes' => $numClasses,
                     'price' => $price,
-                    'is_default' => ($numClasses === 4),
+                    'is_default' => ($numClasses === $numberOfClasses),
                     'for_volunteer_workshop' => true,
                 ]);
             }
@@ -66,9 +87,8 @@ class WorkshopObserver
             for ($i = 1; $i < $numberOfClasses; $i++) {
                 $nonVolunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
             }
-            $nonVolunteerPricings[$numberOfClasses] = $standardMonthlyFee; // Tarifa completa
+            $nonVolunteerPricings[$numberOfClasses] = $standardMonthlyFee;
 
-            // Solo agregar opción de 5 clases si el taller tiene 4 clases base
             if ($numberOfClasses == 4) {
                 $nonVolunteerPricings[5] = $standardMonthlyFee;
             }
@@ -78,7 +98,7 @@ class WorkshopObserver
                     'workshop_id' => $workshop->id,
                     'number_of_classes' => $numClasses,
                     'price' => $price,
-                    'is_default' => ($numClasses === 4),
+                    'is_default' => ($numClasses === $numberOfClasses),
                     'for_volunteer_workshop' => false,
                 ]);
             }
@@ -87,19 +107,9 @@ class WorkshopObserver
 
     protected function createInstructorWorkshop(Workshop $workshop): void
     {
-        // Tu código existente...
+        // Solo crear si no existe ya y tiene instructor asignado
         if ($workshop->instructorWorkshops()->count() === 0 && $workshop->instructor_id) {
-            $dayMapping = [
-                'Lunes' => 1,
-                'Martes' => 2,
-                'Miércoles' => 3,
-                'Jueves' => 4,
-                'Viernes' => 5,
-                'Sábado' => 6,
-                'Domingo' => 0,
-            ];
-
-            $dayOfWeekNumber = $dayMapping[$workshop->day_of_week] ?? 1;
+            $daysOfWeek = $workshop->day_of_week;
             $endTime = null;
 
             if ($workshop->start_time && $workshop->duration) {
@@ -114,7 +124,7 @@ class WorkshopObserver
             \App\Models\InstructorWorkshop::create([
                 'workshop_id' => $workshop->id,
                 'instructor_id' => $workshop->instructor_id,
-                'day_of_week' => $dayOfWeekNumber,
+                'day_of_week' => $daysOfWeek,
                 'start_time' => $workshop->start_time,
                 'end_time' => $endTime,
                 'max_capacity' => $workshop->capacity,
@@ -125,40 +135,40 @@ class WorkshopObserver
         }
     }
 
-    /**
-     * Actualizar InstructorWorkshops existentes cuando cambie el Workshop
-     */
     protected function updateInstructorWorkshops(Workshop $workshop): void
     {
-        $dayMapping = [
-            'Lunes' => 1,
-            'Martes' => 2,
-            'Miércoles' => 3,
-            'Jueves' => 4,
-            'Viernes' => 5,
-            'Sábado' => 6,
-            'Domingo' => 0,
-        ];
+        // Activar bandera para evitar recursión
+        self::$syncing = true;
 
-        $dayOfWeekNumber = $dayMapping[$workshop->day_of_week] ?? 1;
-        $endTime = null;
+        try {
+            $daysOfWeek = $workshop->day_of_week ?? ['Lunes'];
+            $endTime = null;
 
-        if ($workshop->start_time && $workshop->duration) {
-            try {
-                $startTime = \Carbon\Carbon::parse($workshop->start_time);
-                $endTime = $startTime->addMinutes($workshop->duration)->format('H:i:s');
-            } catch (\Exception $e) {
-                $endTime = $workshop->start_time;
+            if ($workshop->start_time && $workshop->duration) {
+                try {
+                    $startTime = \Carbon\Carbon::parse($workshop->start_time);
+                    $endTime = $startTime->addMinutes($workshop->duration)->format('H:i:s');
+                } catch (\Exception $e) {
+                    $endTime = $workshop->start_time;
+                }
             }
-        }
 
-        // Actualizar todos los InstructorWorkshops asociados
-        $workshop->instructorWorkshops()->update([
-            'day_of_week' => $dayOfWeekNumber,
-            'start_time' => $workshop->start_time,
-            'end_time' => $endTime,
-            'max_capacity' => $workshop->capacity,
-            'place' => $workshop->place,
-        ]);
+            // Actualizar todos los InstructorWorkshops asociados
+            // Usar withoutEvents para evitar disparar observers en cascade
+            $workshop->instructorWorkshops()->each(function($instructorWorkshop) use ($daysOfWeek, $workshop, $endTime) {
+                $instructorWorkshop->withoutEvents(function() use ($instructorWorkshop, $daysOfWeek, $workshop, $endTime) {
+                    $instructorWorkshop->update([
+                        'day_of_week' => $daysOfWeek,
+                        'start_time' => $workshop->start_time,
+                        'end_time' => $endTime,
+                        'max_capacity' => $workshop->capacity,
+                        'place' => $workshop->place,
+                    ]);
+                });
+            });
+        } finally {
+            // Desactivar bandera
+            self::$syncing = false;
+        }
     }
 }

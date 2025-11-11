@@ -118,6 +118,7 @@ class WorkshopResource extends Resource
                             ->nullable(),
                         Forms\Components\Select::make('day_of_week')
                             ->label('Día del taller')
+                            ->multiple()
                             ->options([
                                 'Lunes' => 'Lunes',
                                 'Martes' => 'Martes',
@@ -677,10 +678,14 @@ class WorkshopResource extends Resource
     private static function calculateScheduleDates(Get $get, Set $set): void
     {
         $startDate = $get('temp_start_date');
-        $dayOfWeek = $get('day_of_week');
-        $numberOfClasses = (int) $get('number_of_classes'); // Convertir a entero
+        $daysOfWeek = $get('day_of_week');
+        $numberOfClasses = (int) $get('number_of_classes');
 
-        if (! $startDate || ! $dayOfWeek || ! $numberOfClasses) {
+        if (! $startDate || ! $daysOfWeek || ! $numberOfClasses || ! is_array($daysOfWeek)) {
+            return;
+        }
+
+        if (empty($daysOfWeek)) {
             return;
         }
 
@@ -697,25 +702,45 @@ class WorkshopResource extends Resource
         $dates = [];
         $start = \Carbon\Carbon::parse($startDate);
 
-        // Ajustar al primer día correcto
-        $targetDayOfWeek = $dias[$dayOfWeek];
-        if ($start->dayOfWeek !== $targetDayOfWeek) {
-            $start->next($targetDayOfWeek);
+        // Ordenar los días de la semana seleccionados
+        $targetDays = array_map(fn($day) => $dias[$day], $daysOfWeek);
+        sort($targetDays);
+
+        // Ajustar al primer día válido
+        $firstTargetDay = $targetDays[0];
+        if ($start->dayOfWeek !== $firstTargetDay) {
+            $start->next($firstTargetDay);
         }
 
         $current = $start->copy();
+        $classCount = 0;
 
         // Generar las fechas basándose en el número de clases
-        for ($i = 0; $i < $numberOfClasses; $i++) {
-            $dates[] = [
-                'class_number' => $i + 1,
-                'date' => $current->format('d/m/Y'),
-                'raw_date' => $current->format('Y-m-d'),
-                'day' => $dayOfWeek,
-                'is_holiday' => false,
-                'status' => 'scheduled',
-            ];
-            $current->addWeek();
+        while ($classCount < $numberOfClasses) {
+            foreach ($targetDays as $targetDay) {
+                if ($classCount >= $numberOfClasses) {
+                    break;
+                }
+
+                // Ajustar a este día de la semana si no estamos ya en él
+                if ($current->dayOfWeek !== $targetDay) {
+                    $current->next($targetDay);
+                }
+
+                $dayName = array_search($targetDay, $dias);
+
+                $dates[] = [
+                    'class_number' => $classCount + 1,
+                    'date' => $current->format('d/m/Y'),
+                    'raw_date' => $current->format('Y-m-d'),
+                    'day' => $dayName,
+                    'is_holiday' => false,
+                    'status' => 'scheduled',
+                ];
+
+                $classCount++;
+                $current->addDay();
+            }
         }
 
         // Actualizar el campo schedule_data
@@ -725,7 +750,8 @@ class WorkshopResource extends Resource
     private static function generateScheduleTable(Get $get): string
     {
         $scheduleData = $get('schedule_data') ?? [];
-        $dayOfWeek = $get('day_of_week') ?? 'Lunes';
+        $daysOfWeek = $get('day_of_week') ?? 'Lunes';
+        $dayOfWeekDisplay = is_array($daysOfWeek) ? implode('/', $daysOfWeek) : $daysOfWeek;
 
         if (empty($scheduleData)) {
             return '<div class="text-gray-500 italic p-4">Configure la fecha de inicio para generar el horario automáticamente</div>';
@@ -755,7 +781,7 @@ class WorkshopResource extends Resource
         $html .= '<div class="grid gap-px border-b" style="grid-template-columns: repeat('.$totalColumns.', minmax(0, 1fr));">';
 
         // Día
-        $html .= '<div class="p-3 text-sm">'.$dayOfWeek.'</div>';
+        $html .= '<div class="p-3 text-sm">'.$dayOfWeekDisplay.'</div>';
 
         // Número de clases (con botón de ajustes)
         $html .= '<div class="p-3 text-sm">';

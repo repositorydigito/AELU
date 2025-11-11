@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
             MaintenancePeriodsSeeder::class,
             // StudentSeeder::class,
             InstructorSeeder::class,
-            WorkshopSeeder::class,
+            // WorkshopSeeder::class,
             // InstructorWorkshopSeeder::class,
         ]);
     }
