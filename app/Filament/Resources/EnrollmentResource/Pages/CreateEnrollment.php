@@ -27,7 +27,7 @@ class CreateEnrollment extends CreateRecord
         if ($editBatchId) {
             $this->editingBatchId = $editBatchId;
             $this->editingBatch = \App\Models\EnrollmentBatch::with(['enrollments.instructorWorkshop.workshop','enrollments.enrollmentClasses'])
-                ->find($editBatchId);                 
+                ->find($editBatchId);
 
             if ($this->editingBatch) {
                 $this->fillFormFromExistingBatch();
@@ -59,7 +59,7 @@ class CreateEnrollment extends CreateRecord
 
         // Pre-poblar talleres previos si existen
         $previousWorkshops = static::findPreviousWorkshops(
-            $this->editingBatch->student_id, 
+            $this->editingBatch->student_id,
             $firstEnrollment->monthly_period_id
         );
         $formData['previous_workshops'] = json_encode($previousWorkshops);
@@ -69,7 +69,7 @@ class CreateEnrollment extends CreateRecord
         foreach ($this->editingBatch->enrollments as $enrollment) {
             // Obtener las clases específicas de enrollment_classes
             $selectedClasses = $enrollment->enrollmentClasses->pluck('workshop_class_id')->toArray();
-            
+
             $workshopDetails[] = [
                 'instructor_workshop_id' => $enrollment->instructor_workshop_id,
                 'enrollment_type' => $enrollment->enrollment_type ?? 'full_month',
@@ -82,7 +82,7 @@ class CreateEnrollment extends CreateRecord
         $formData['workshop_details'] = $workshopDetails;
 
         // Aplicar todos los datos al formulario
-        $this->form->fill($formData);        
+        $this->form->fill($formData);
     }
 
     public function getTitle(): string
@@ -99,7 +99,7 @@ class CreateEnrollment extends CreateRecord
     }
 
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
-    {        
+    {
         // Detectar si estamos editando usando el campo oculto
         $isEditing = !empty($data['editing_batch_id']);
 
@@ -107,7 +107,7 @@ class CreateEnrollment extends CreateRecord
             // Recargar el batch para la edición
             $this->editingBatch = \App\Models\EnrollmentBatch::with(['enrollments.instructorWorkshop.workshop','enrollments.enrollmentClasses'])
                 ->find($data['editing_batch_id']);
-            
+
             return $this->handleRecordUpdate($data);
         }
 
@@ -455,11 +455,11 @@ class CreateEnrollment extends CreateRecord
             }
         }
 
-        $selectedWorkshops = array_values($workshopIdMapping);        
+        $selectedWorkshops = array_values($workshopIdMapping);
 
         // PASO 2: VALIDACIÓN MEJORADA DE DUPLICADOS
         $duplicateErrors = [];
-        
+
         // Obtener TODAS las inscripciones activas del estudiante para el período (excluyendo el batch actual)
         $existingEnrollments = \App\Models\StudentEnrollment::where('student_id', $data['student_id'])
             ->where('monthly_period_id', $selectedMonthlyPeriodId)
@@ -473,7 +473,7 @@ class CreateEnrollment extends CreateRecord
         foreach ($selectedWorkshops as $workshopId) {
             // Verificar si existe una inscripción activa para este taller (que NO sea del batch actual)
             if ($existingEnrollments->has($workshopId)) {
-                $existingEnrollment = $existingEnrollments[$workshopId];                                
+                $existingEnrollment = $existingEnrollments[$workshopId];
 
                 $instructorWorkshop = $existingEnrollment->instructorWorkshop;
                 if ($instructorWorkshop && $instructorWorkshop->workshop) {
@@ -494,7 +494,7 @@ class CreateEnrollment extends CreateRecord
         // Si hay duplicados REALES, detener el proceso
         if (!empty($duplicateErrors)) {
             $monthName = \Carbon\Carbon::create($monthlyPeriod->year, $monthlyPeriod->month, 1)->translatedFormat('F Y');
-            $duplicateList = implode(', ', $duplicateErrors);            
+            $duplicateList = implode(', ', $duplicateErrors);
 
             Notification::make()
                 ->title('Inscripciones duplicadas detectadas')
@@ -776,14 +776,20 @@ class CreateEnrollment extends CreateRecord
 
     private function ensureWorkshopExistsForPeriod($originalWorkshopId, $monthlyPeriodId)
     {
-        $workshopService = new \App\Services\WorkshopAutoCreationService;
-        $instructorWorkshop = $workshopService->findOrCreateInstructorWorkshopForPeriod($originalWorkshopId, $monthlyPeriodId);
+        // Buscar si el InstructorWorkshop ya existe para este período
+        $instructorWorkshop = \App\Models\InstructorWorkshop::whereHas('workshop', function ($query) use ($monthlyPeriodId) {
+            $query->where('monthly_period_id', $monthlyPeriodId);
+        })
+        ->where('id', $originalWorkshopId)
+        ->first();
 
-        if (! $instructorWorkshop) {
-            throw new \Exception("No se pudo crear el taller para el período: {$monthlyPeriodId}");
+        // Si el workshop ya es del período correcto, retornarlo
+        if ($instructorWorkshop) {
+            return $instructorWorkshop->id;
         }
 
-        return $instructorWorkshop->id;
+        // Si no existe, lanzar error explicativo
+        throw new \Exception("El taller seleccionado no está disponible para el período elegido. Por favor, selecciona un taller del período correcto.");
     }
 
     protected function getRedirectUrl(): string

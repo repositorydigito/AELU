@@ -110,12 +110,12 @@ class EnrollmentBatchResource extends Resource
                                     ->label('Taller')
                                     ->relationship('instructorWorkshop', 'id')
                                     ->getOptionLabelFromRecordUsing(function ($record) {
-                                        $dayNames = [
-                                            1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                            7 => 'Domingo', 0 => 'Domingo',
-                                        ];
-                                        $dayInSpanish = $dayNames[$record->day_of_week] ?? 'Día '.$record->day_of_week;
+                                        $daysOfWeek = $record->day_of_week;
+                                        if (is_array($daysOfWeek)) {
+                                            $dayInSpanish = implode('/', $daysOfWeek);
+                                        } else {
+                                            $dayInSpanish = $daysOfWeek ?? 'N/A';
+                                        }
                                         $startTime = \Carbon\Carbon::parse($record->start_time)->format('H:i');
 
                                         return "{$record->workshop->name} - {$dayInSpanish} {$startTime}";
@@ -455,11 +455,16 @@ class EnrollmentBatchResource extends Resource
                                                             ? $enrollment->instructorWorkshop->instructor->full_name
                                                             : 'N/A';
 
-                                                        $dayNames = [
-                                                            0 => 'Dom', 1 => 'Lun', 2 => 'Mar', 3 => 'Mié',
-                                                            4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom',
-                                                        ];
-                                                        $dayName = $dayNames[$enrollment->instructorWorkshop->day_of_week] ?? 'N/A';
+                                                        $daysOfWeek = $enrollment->instructorWorkshop->day_of_week;
+                                                        if (is_array($daysOfWeek)) {
+                                                            $dayAbbreviations = [
+                                                                'Lunes' => 'Lun', 'Martes' => 'Mar', 'Miércoles' => 'Mié',
+                                                                'Jueves' => 'Jue', 'Viernes' => 'Vie', 'Sábado' => 'Sáb', 'Domingo' => 'Dom',
+                                                            ];
+                                                            $dayName = implode('/', array_map(fn($day) => $dayAbbreviations[$day] ?? $day, $daysOfWeek));
+                                                        } else {
+                                                            $dayName = $daysOfWeek ?? 'N/A';
+                                                        }
 
                                                         $startTime = $enrollment->instructorWorkshop->start_time
                                                             ? \Carbon\Carbon::parse($enrollment->instructorWorkshop->start_time)->format('H:i')
@@ -526,11 +531,12 @@ class EnrollmentBatchResource extends Resource
                                     $pendingEnrollments->mapWithKeys(function ($enrollment) {
                                         $instructorWorkshop = $enrollment->instructorWorkshop;
 
-                                        $dayNames = [
-                                            0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo',
-                                        ];
-                                        $dayName = $dayNames[$instructorWorkshop->day_of_week] ?? 'N/A';
+                                        $daysOfWeek = $instructorWorkshop->day_of_week;
+                                        if (is_array($daysOfWeek)) {
+                                            $dayName = implode('/', $daysOfWeek);
+                                        } else {
+                                            $dayName = $daysOfWeek ?? 'N/A';
+                                        }
 
                                         $startTime = $instructorWorkshop->start_time
                                             ? \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i')
