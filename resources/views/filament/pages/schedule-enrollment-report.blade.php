@@ -25,18 +25,13 @@
                     </h3>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         @php
-                            $dayNames = [
-                                'Lunes' => 'Lunes',
-                                'Martes' => 'Martes',
-                                'Miércoles' => 'Miércoles',
-                                'Miercoles' => 'Miércoles',
-                                'Jueves' => 'Jueves',
-                                'Viernes' => 'Viernes',
-                                'Sábado' => 'Sábado',
-                                'Sabado' => 'Sábado',
-                                'Domingo' => 'Domingo'
-                            ];
-                            $dayName = $dayNames[$workshopData->day_of_week] ?? $workshopData->day_of_week ?? 'N/A';
+                            // Manejar day_of_week como array
+                            $daysOfWeek = $workshopData->day_of_week;
+                            if (is_array($daysOfWeek)) {
+                                $dayName = implode('/', $daysOfWeek);
+                            } else {
+                                $dayName = $daysOfWeek ?? 'N/A';
+                            }
                             $startTime = $workshopData->start_time ? \Carbon\Carbon::parse($workshopData->start_time)->format('H:i') : 'N/A';
                             $endTime = $workshopData->end_time ?? 'N/A';
                         @endphp

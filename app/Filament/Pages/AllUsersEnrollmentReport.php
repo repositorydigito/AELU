@@ -24,15 +24,11 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static string $view = 'filament.pages.all-users-enrollment-report';
     protected static ?string $title = 'Inscripciones - Reporte General';
-
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
-
     public $selectedDateFrom = null;
-
     public $selectedDateTo = null;
-
     public $allEnrollments = [];
 
     public function mount(): void
@@ -117,7 +113,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
                 'workshops_list' => $batch->enrollments->pluck('instructorWorkshop.workshop.name')->join(', '),
                 'total_amount' => $batch->total_amount,
                 'payment_method' => $this->getPaymentMethodText($batch->payment_method),
-                'batch_code' => $batch->batch_code ?? 'Sin código',
+                'batch_code' => $this->getTicketCode($batch) ?? $batch->batch_code ?? 'Sin código',
                 'payment_status' => $this->getPaymentStatusText($batch->payment_status),
             ];
         })->toArray();
@@ -219,5 +215,12 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
         return [
             $this->generatePDFAction(),
         ];
+    }
+
+    private function getTicketCode($batch): ?string
+    {
+        // Buscar el ticket asociado a este batch
+        $ticket = \App\Models\Ticket::where('enrollment_batch_id', $batch->id)->first();
+        return $ticket ? $ticket->ticket_code : null;
     }
 }

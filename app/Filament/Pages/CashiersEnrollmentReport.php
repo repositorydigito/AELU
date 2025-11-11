@@ -25,21 +25,14 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-
     protected static string $view = 'filament.pages.cashiers-enrollment-report';
-
     protected static ?string $title = 'Inscripciones por Cajero';
-
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
-
     public $selectedCashier = null;
-
     public $selectedDateFrom = null;
-
     public $selectedDateTo = null;
-
     public $cashierEnrollments = [];
 
     public $paymentSummary = [
@@ -144,7 +137,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
                 'total_amount' => $batch->total_amount,
                 'amount_paid' => $batch->amount_paid,
                 'payment_method' => $this->getPaymentMethodText($batch->payment_method),
-                'batch_code' => $batch->batch_code ?? 'Sin código',
+                'batch_code' => $this->getTicketCode($batch) ?? $batch->batch_code ?? 'Sin código',
                 'payment_status' => $this->getPaymentStatusText($batch->payment_status),
             ];
         })->toArray();
@@ -281,5 +274,12 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         return [
             $this->generatePDFAction(),
         ];
+    }
+
+    private function getTicketCode($batch): ?string
+    {
+        // Buscar el ticket asociado a este batch
+        $ticket = \App\Models\Ticket::where('enrollment_batch_id', $batch->id)->first();
+        return $ticket ? $ticket->ticket_code : null;
     }
 }

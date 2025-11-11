@@ -26,19 +26,13 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
     protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static string $view = 'filament.pages.schedule-enrollment-report';
     protected static ?string $title = 'Inscripciones por Horario';
-
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
-
     public $selectedPeriod = null;
-
     public $selectedWorkshop = null;
-
     public $scheduleEnrollments = [];
-
     public $periodData = null;
-
     public $workshopData = null;
 
     public function mount(): void
@@ -56,7 +50,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                     ->options(function () {
                         // Obtener todos los periodos hasta 2 meses adelante del mes actual
                         $twoMonthsAhead = now()->addMonths(2)->endOfMonth();
-                        
+
                         return MonthlyPeriod::where('start_date', '<=', $twoMonthsAhead)
                             ->orderBy('start_date', 'desc')
                             ->get()
@@ -64,7 +58,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                                 // Formatear como "Octubre 2025"
                                 $startDate = \Carbon\Carbon::parse($period->start_date);
                                 $monthName = ucfirst($startDate->locale('es')->isoFormat('MMMM YYYY'));
-                                
+
                                 return [
                                     $period->id => $monthName,
                                 ];
@@ -99,28 +93,25 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                             ->where('monthly_period_id', $period->id)
                             ->get()
                             ->mapWithKeys(function ($workshop) {
-                                $instructorName = $workshop->instructor 
-                                    ? ($workshop->instructor->first_names . ' ' . $workshop->instructor->last_names) 
+                                $instructorName = $workshop->instructor
+                                    ? ($workshop->instructor->first_names . ' ' . $workshop->instructor->last_names)
                                     : 'Sin profesor';
-                                
-                                // Formatear día de la semana - el campo guarda strings como 'Lunes', 'Martes', etc.
-                                $dayNames = [
-                                    'Lunes' => 'Lun',
-                                    'Martes' => 'Mar',
-                                    'Miércoles' => 'Mié',
-                                    'Miercoles' => 'Mié', // Sin tilde por si acaso
-                                    'Jueves' => 'Jue',
-                                    'Viernes' => 'Vie',
-                                    'Sábado' => 'Sáb',
-                                    'Sabado' => 'Sáb', // Sin tilde por si acaso
-                                    'Domingo' => 'Dom'
-                                ];
-                                
-                                $dayName = $dayNames[$workshop->day_of_week] ?? $workshop->day_of_week ?? 'N/A';
-                                
+
+                                // Manejar day_of_week como array
+                                $daysOfWeek = $workshop->day_of_week;
+                                if (is_array($daysOfWeek)) {
+                                    $dayAbbreviations = [
+                                        'Lunes' => 'Lun', 'Martes' => 'Mar', 'Miércoles' => 'Mié',
+                                        'Jueves' => 'Jue', 'Viernes' => 'Vie', 'Sábado' => 'Sáb', 'Domingo' => 'Dom'
+                                    ];
+                                    $dayName = implode('/', array_map(fn($day) => $dayAbbreviations[$day] ?? $day, $daysOfWeek));
+                                } else {
+                                    $dayName = $daysOfWeek ?? 'N/A';
+                                }
+
                                 $startTime = $workshop->start_time ? \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
                                 $endTime = $workshop->end_time ?? 'N/A';
-                                
+
                                 $scheduleInfo = $dayName . ' | ' . $startTime . '-' . $endTime;
                                 $modality = $workshop->modality ?? 'Sin modalidad';
 
@@ -195,7 +186,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                     'total_amount' => $batch->total_amount,
                     'payment_method' => $this->getPaymentMethodText($batch->payment_method),
                     'payment_status' => $this->getPaymentStatusText($batch->payment_status),
-                    'batch_code' => $batch->batch_code ?? 'Sin código',
+                    'batch_code' => $this->getTicketCode($enrollment) ?? $batch->batch_code ?? 'Sin código',
                     'user_name' => $user ? $user->name : 'N/A',
                     'number_of_classes' => $enrollment->number_of_classes ?? 0,
                 ];
@@ -213,24 +204,21 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
 
     private function formatWorkshopSchedule($workshop): string
     {
-        // Formatear día de la semana - el campo guarda strings como 'Lunes', 'Martes', etc.
-        $dayNames = [
-            'Lunes' => 'Lun',
-            'Martes' => 'Mar',
-            'Miércoles' => 'Mié',
-            'Miercoles' => 'Mié', // Sin tilde por si acaso
-            'Jueves' => 'Jue',
-            'Viernes' => 'Vie',
-            'Sábado' => 'Sáb',
-            'Sabado' => 'Sáb', // Sin tilde por si acaso
-            'Domingo' => 'Dom'
-        ];
-        
-        $dayName = $dayNames[$workshop->day_of_week] ?? $workshop->day_of_week ?? 'N/A';
-        
+        // Manejar day_of_week como array
+        $daysOfWeek = $workshop->day_of_week;
+        if (is_array($daysOfWeek)) {
+            $dayAbbreviations = [
+                'Lunes' => 'Lun', 'Martes' => 'Mar', 'Miércoles' => 'Mié',
+                'Jueves' => 'Jue', 'Viernes' => 'Vie', 'Sábado' => 'Sáb', 'Domingo' => 'Dom'
+            ];
+            $dayName = implode('/', array_map(fn($day) => $dayAbbreviations[$day] ?? $day, $daysOfWeek));
+        } else {
+            $dayName = $daysOfWeek ?? 'N/A';
+        }
+
         $startTime = $workshop->start_time ? \Carbon\Carbon::parse($workshop->start_time)->format('H:i') : 'N/A';
         $endTime = $workshop->end_time ?? 'N/A';
-        
+
         return $dayName . ' | ' . $startTime . '-' . $endTime;
     }
 
@@ -246,10 +234,10 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
         if ($schedule->sunday) $days[] = 'Dom';
 
         $daysStr = implode(', ', $days);
-        
+
         $startTime = $schedule->start_time ? \Carbon\Carbon::parse($schedule->start_time)->format('H:i') : '';
         $endTime = $schedule->end_time ? \Carbon\Carbon::parse($schedule->end_time)->format('H:i') : '';
-        
+
         return $daysStr . ' | ' . $startTime . ' - ' . $endTime;
     }
 
@@ -316,7 +304,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
             $instructor = $this->workshopData->instructor;
             $instructorName = $instructor ? ($instructor->first_names . ' ' . $instructor->last_names) : 'Sin profesor';
             $modality = $this->workshopData->modality ?? 'Sin modalidad';
-            
+
             // Formatear periodo como "Octubre 2025"
             $startDate = \Carbon\Carbon::parse($this->periodData->start_date);
             $periodName = ucfirst($startDate->locale('es')->isoFormat('MMMM YYYY'));
@@ -324,7 +312,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
             $html = View::make('reports.schedule-enrollment', [
                 'enrollments' => $this->scheduleEnrollments,
                 'period_name' => $periodName,
-                'period_dates' => \Carbon\Carbon::parse($this->periodData->start_date)->format('d/m/Y') . ' - ' . 
+                'period_dates' => \Carbon\Carbon::parse($this->periodData->start_date)->format('d/m/Y') . ' - ' .
                                  \Carbon\Carbon::parse($this->periodData->end_date)->format('d/m/Y'),
                 'workshop_name' => $workshopName,
                 'schedule_info' => $scheduleInfo,
@@ -382,5 +370,14 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
             $this->selectedWorkshop = $value;
             $this->loadScheduleEnrollments();
         }
+    }
+
+    private function getTicketCode($enrollment): ?string
+    {
+        $ticket = \App\Models\Ticket::whereHas('studentEnrollments', function($query) use ($enrollment) {
+            $query->where('student_enrollments.id', $enrollment->id);
+        })->first();
+
+        return $ticket ? $ticket->ticket_code : null;
     }
 }

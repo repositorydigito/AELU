@@ -23,21 +23,14 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-
     protected static string $view = 'filament.pages.enrollments-report2';
-
     protected static ?string $title = 'Inscripciones por Mes';
-
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
-
     public $selectedPeriod = null;
-
     public $monthlyEnrollments = [];
-
     public $periodData = null;
-
     public $summaryData = [];
 
     public function mount(): void
@@ -121,7 +114,7 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
                 'total_amount' => $enrollment->total_amount,
                 'payment_method' => $enrollment->payment_method === 'cash' ? 'Efectivo' : ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method)),
                 'modality' => $workshop->modality ?? '',
-                'payment_document' => $batch ? $batch->batch_code : '',
+                'payment_document' => $batch ? ($this->getTicketCode($batch) ?? $batch->batch_code) : '',
                 'cashier_name' => $cashier ? $cashier->name : 'N/A',
             ];
         })->toArray();
@@ -237,5 +230,12 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
         $monthName = $monthNames[$month] ?? 'Mes '.$month;
 
         return $monthName.' '.$year;
+    }
+
+    private function getTicketCode($batch): ?string
+    {
+        // Buscar el ticket asociado a este batch
+        $ticket = \App\Models\Ticket::where('enrollment_batch_id', $batch->id)->first();
+        return $ticket ? $ticket->ticket_code : null;
     }
 }

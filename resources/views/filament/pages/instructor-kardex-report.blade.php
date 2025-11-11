@@ -33,12 +33,13 @@
                         <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Horario</p>
                         <p class="text-lg font-semibold text-blue-900 dark:text-blue-100">
                             @php
-                                $dayNames = [
-                                    1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                    4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                    7 => 'Domingo', 0 => 'Domingo'
-                                ];
-                                $dayName = $dayNames[$workshopData->day_of_week] ?? 'Día ' . $workshopData->day_of_week;
+                                // Manejar day_of_week como array
+                                $daysOfWeek = $workshopData->day_of_week;
+                                if (is_array($daysOfWeek)) {
+                                    $dayName = implode('/', $daysOfWeek);
+                                } else {
+                                    $dayName = $daysOfWeek ?? 'N/A';
+                                }
                                 $startTime = \Carbon\Carbon::parse($workshopData->start_time)->format('H:i');
                                 $endTime = \Carbon\Carbon::parse($workshopData->end_time)->format('H:i');
                             @endphp

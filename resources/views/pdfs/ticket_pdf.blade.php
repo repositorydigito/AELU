@@ -182,11 +182,28 @@
                     @php
                         $workshop = $enrollment->instructorWorkshop;
                         $daysOfWeek = $workshop->day_of_week;
-                        if (is_array($daysOfWeek)) {
-                            $dayInSpanish = implode('/', array_map('strtoupper', $daysOfWeek));
+                        // Abreviaciones de 3 letras sin tildes
+                        $dayAbbreviations = [
+                            'Lunes' => 'LUN',
+                            'Martes' => 'MAR',
+                            'Miércoles' => 'MIE',
+                            'Jueves' => 'JUE',
+                            'Viernes' => 'VIE',
+                            'Sábado' => 'SAB',
+                            'Domingo' => 'DOM'
+                        ];
+
+                        if (is_array($daysOfWeek) && count($daysOfWeek) > 1) {
+                            // Múltiples días: usar abreviaciones de 3 letras
+                            $dayInSpanish = implode('/', array_map(function($day) use ($dayAbbreviations) {
+                                return $dayAbbreviations[$day] ?? strtoupper(substr($day, 0, 3));
+                            }, $daysOfWeek));
                         } else {
-                            $dayInSpanish = strtoupper($daysOfWeek ?? 'N/A');
+                            // Un solo día: mostrar nombre completo en mayúsculas
+                            $singleDay = is_array($daysOfWeek) ? $daysOfWeek[0] : $daysOfWeek;
+                            $dayInSpanish = strtoupper($singleDay ?? 'N/A');
                         }
+
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
                         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
 

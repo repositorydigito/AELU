@@ -24,21 +24,14 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-
     protected static string $view = 'filament.pages.enrollments-report1';
-
     protected static ?string $title = 'Inscripciones por Alumno';
-
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
-
     public $selectedStudent = null;
-
     public $selectedPeriod = null;
-
     public $studentEnrollments = [];
-
     public $studentData = null;
 
     public function mount(): void
@@ -149,7 +142,7 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
                     'total_amount' => $enrollment->total_amount,
                     'payment_method' => $enrollment->payment_method === 'cash' ? 'Efectivo' : ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method)),
                     'modality' => $workshop->modality ?? '',
-                    'payment_document' => $batch ? $batch->batch_code : '',
+                    'payment_document' => $batch ? ($this->getTicketCode($batch) ?? $batch->batch_code) : '',
                     'cashier_name' => $cashier ? $cashier->name : 'N/A',
                 ];
             })
@@ -284,5 +277,12 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         }
 
         return $description;
+    }
+
+    private function getTicketCode($batch): ?string
+    {
+        // Buscar el ticket asociado a este batch
+        $ticket = \App\Models\Ticket::where('enrollment_batch_id', $batch->id)->first();
+        return $ticket ? $ticket->ticket_code : null;
     }
 }

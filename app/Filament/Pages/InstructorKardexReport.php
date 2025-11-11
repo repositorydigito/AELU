@@ -90,13 +90,12 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                                 return $instructorWorkshop->workshop !== null;
                             })
                             ->mapWithKeys(function ($instructorWorkshop) {
-                                $dayNames = [
-                                    1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                    4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                    7 => 'Domingo', 0 => 'Domingo',
-                                ];
-
-                                $dayName = $dayNames[$instructorWorkshop->day_of_week] ?? 'Día '.$instructorWorkshop->day_of_week;
+                                $daysOfWeek = $instructorWorkshop->day_of_week;
+                                if (is_array($daysOfWeek)) {
+                                    $dayName = implode('/', $daysOfWeek);
+                                } else {
+                                    $dayName = $daysOfWeek ?? 'N/A';
+                                }
                                 $startTime = \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i');
                                 $endTime = \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i');
                                 $modality = $instructorWorkshop->workshop->modality ?? '';
@@ -235,13 +234,12 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
 
             $instructorName = $this->instructorData->first_names.' '.$this->instructorData->last_names;
 
-            $dayNames = [
-                1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                7 => 'Domingo', 0 => 'Domingo',
-            ];
-
-            $dayName = $dayNames[$this->workshopData->day_of_week] ?? 'Día '.$this->workshopData->day_of_week;
+            $daysOfWeek = $this->workshopData->day_of_week;
+            if (is_array($daysOfWeek)) {
+                $dayName = implode('/', $daysOfWeek);
+            } else {
+                $dayName = $daysOfWeek ?? 'N/A';
+            }
             $startTime = \Carbon\Carbon::parse($this->workshopData->start_time)->format('H:i');
             $endTime = \Carbon\Carbon::parse($this->workshopData->end_time)->format('H:i');
 
