@@ -116,7 +116,7 @@
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
-                                        {{ $workshop['day_of_week'] }}
+                                        {{ is_array($workshop['day_of_week']) ? implode('/', $workshop['day_of_week']) : ($workshop['day_of_week'] ?? 'N/A') }}
                                     </div>
 
                                     {{-- Hora --}}
@@ -153,7 +153,7 @@
                         <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mt-2 text-sm text-gray-600 dark:text-gray-400 gap-1 md:gap-0">
                             <span>{{ $selectedWorkshopData['instructor_name'] ?? 'Sin instructor' }}</span>
                             <span class="hidden md:inline">•</span>
-                            <span>{{ $selectedWorkshopData['day_of_week'] ?? '' }}</span>
+                            <span>{{ is_array($selectedWorkshopData['day_of_week'] ?? null) ? implode('/', $selectedWorkshopData['day_of_week']) : ($selectedWorkshopData['day_of_week'] ?? 'N/A') }}</span>
                             <span class="hidden md:inline">•</span>
                             <span>{{ $selectedWorkshopData['start_time'] ?? '' }} - {{ $selectedWorkshopData['end_time'] ?? '' }}</span>
                             <span class="hidden md:inline">•</span>
