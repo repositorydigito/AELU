@@ -435,29 +435,38 @@ class WorkshopResource extends Resource
     {
         $standardFee = $get('standard_monthly_fee');
         $surchargePercentage = $get('pricing_surcharge_percentage');
+        $numberOfClasses = $get('number_of_classes') ?? 4;
 
-        if (! $standardFee || ! $surchargePercentage) {
+        if (! $standardFee || $surchargePercentage === null || $surchargePercentage === '') {
             return '<p class="text-gray-500 italic">Ingresa la tarifa mensual y el porcentaje de recargo para ver la vista previa</p>';
         }
 
-        $basePerClass = $standardFee / 4;
+        $basePerClass = $standardFee / $numberOfClasses;
         $surchargeMultiplier = 1 + ($surchargePercentage / 100);
 
-        $volunteerPricings = [
-            1 => round($basePerClass * $surchargeMultiplier, 2),
-            2 => round($basePerClass * $surchargeMultiplier * 2, 2),
-            3 => round($basePerClass * $surchargeMultiplier * 3, 2),
-            4 => $standardFee,
-            5 => round($standardFee * 1.25, 2),  // 25% adicional para 5ta clase
-        ];
+        // Generar tarifas para voluntarios
+        $volunteerPricings = [];
+        for ($i = 1; $i < $numberOfClasses; $i++) {
+            $volunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+        }
+        $volunteerPricings[$numberOfClasses] = $standardFee; // Tarifa completa sin recargo
 
-        $nonVolunteerPricings = [
-            1 => round($basePerClass * $surchargeMultiplier, 2),
-            2 => round($basePerClass * $surchargeMultiplier * 2, 2),
-            3 => round($basePerClass * $surchargeMultiplier * 3, 2),
-            4 => $standardFee,
-            // 5 => $standardFee,  // Mismo precio que 4 clases
-        ];
+        // Solo agregar opción de 5 clases si el taller tiene 4 clases base
+        if ($numberOfClasses == 4) {
+            $volunteerPricings[5] = round($standardFee * 1.25, 2);
+        }
+
+        // Generar tarifas para no voluntarios
+        $nonVolunteerPricings = [];
+        for ($i = 1; $i < $numberOfClasses; $i++) {
+            $nonVolunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+        }
+        $nonVolunteerPricings[$numberOfClasses] = $standardFee; // Tarifa completa
+
+        // Solo agregar opción de 5 clases si el taller tiene 4 clases base
+        if ($numberOfClasses == 4) {
+            $nonVolunteerPricings[5] = $standardFee;
+        }
 
         $html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
 
@@ -466,11 +475,11 @@ class WorkshopResource extends Resource
         $html .= '<h4 class="font-semibold text-green-800 mb-3">Instructores Voluntarios</h4>';
         $html .= '<div class="space-y-2">';
         foreach ($volunteerPricings as $classes => $price) {
-            $isDefault = $classes === 4;
-            $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Estándar</span>' : '';
+            $isDefault = $classes === $numberOfClasses;
+            $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded ml-2">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
             $html .= "<span>{$classes} ".($classes === 1 ? 'clase' : 'clases').':</span>';
-            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).' </span>';
+            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).$badge.'</span>';
             $html .= '</div>';
         }
         $html .= '</div></div>';
@@ -480,13 +489,14 @@ class WorkshopResource extends Resource
         $html .= '<h4 class="font-semibold text-blue-800 mb-3">Instructores No Voluntarios</h4>';
         $html .= '<div class="space-y-2">';
         foreach ($nonVolunteerPricings as $classes => $price) {
-            $isDefault = $classes === 4;
-            $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Estándar</span>' : '';
+            $isDefault = $classes === $numberOfClasses;
+            $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded ml-2">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
             $html .= "<span>{$classes} ".($classes === 1 ? 'clase' : 'clases').':</span>';
-            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).' </span>';
+            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).$badge.'</span>';
             $html .= '</div>';
         }
+        $html .= '</div></div>';
 
         return $html;
     }

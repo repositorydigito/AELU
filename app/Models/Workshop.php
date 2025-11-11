@@ -82,7 +82,8 @@ class Workshop extends Model
      */
     public function getBasePerClassAttribute(): float
     {
-        return $this->standard_monthly_fee / 4;
+        $numberOfClasses = $this->number_of_classes ?? 4;
+        return $this->standard_monthly_fee / $numberOfClasses;
     }
 
     /**

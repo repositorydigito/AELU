@@ -36,16 +36,20 @@ class WorkshopObserver
             $standardMonthlyFee = $workshop->standard_monthly_fee;
             $surchargePercentage = $workshop->pricing_surcharge_percentage ?? 20.00;
             $surchargeMultiplier = 1 + ($surchargePercentage / 100);
-            $basePerClass = $standardMonthlyFee / 4;
+            $numberOfClasses = $workshop->number_of_classes ?? 4;
+            $basePerClass = $standardMonthlyFee / $numberOfClasses;
 
             // Tarifas voluntarios
-            $volunteerPricings = [
-                1 => round($basePerClass * $surchargeMultiplier, 2),
-                2 => round($basePerClass * $surchargeMultiplier * 2, 2),
-                3 => round($basePerClass * $surchargeMultiplier * 3, 2),
-                4 => $standardMonthlyFee,
-                5 => round($standardMonthlyFee * 1.25, 2),
-            ];
+            $volunteerPricings = [];
+            for ($i = 1; $i < $numberOfClasses; $i++) {
+                $volunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+            }
+            $volunteerPricings[$numberOfClasses] = $standardMonthlyFee; // Tarifa completa sin recargo
+
+            // Solo agregar opción de 5 clases si el taller tiene 4 clases base
+            if ($numberOfClasses == 4) {
+                $volunteerPricings[5] = round($standardMonthlyFee * 1.25, 2);
+            }
 
             foreach ($volunteerPricings as $numClasses => $price) {
                 WorkshopPricing::create([
@@ -58,13 +62,16 @@ class WorkshopObserver
             }
 
             // Tarifas no voluntarios
-            $nonVolunteerPricings = [
-                1 => round($basePerClass * $surchargeMultiplier, 2),
-                2 => round($basePerClass * $surchargeMultiplier * 2, 2),
-                3 => round($basePerClass * $surchargeMultiplier * 3, 2),
-                4 => $standardMonthlyFee,
-                5 => $standardMonthlyFee,
-            ];
+            $nonVolunteerPricings = [];
+            for ($i = 1; $i < $numberOfClasses; $i++) {
+                $nonVolunteerPricings[$i] = round($basePerClass * $surchargeMultiplier * $i, 2);
+            }
+            $nonVolunteerPricings[$numberOfClasses] = $standardMonthlyFee; // Tarifa completa
+
+            // Solo agregar opción de 5 clases si el taller tiene 4 clases base
+            if ($numberOfClasses == 4) {
+                $nonVolunteerPricings[5] = $standardMonthlyFee;
+            }
 
             foreach ($nonVolunteerPricings as $numClasses => $price) {
                 WorkshopPricing::create([
