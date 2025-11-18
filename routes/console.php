@@ -13,6 +13,11 @@ Schedule::command('enrollments:auto-cancel')
     ->withoutOverlapping()
     ->runInBackground();
 
+Schedule::command('workshops:auto-replicate')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 /* Schedule::command('enrollments:auto-generate')
     ->everyMinute()
     ->withoutOverlapping()
