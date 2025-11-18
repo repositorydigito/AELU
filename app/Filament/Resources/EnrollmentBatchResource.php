@@ -165,14 +165,18 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('created_by_name')
                     ->label('Usuario'),
 
-                Tables\Columns\TextColumn::make('updatedBy.name')
+                /* Tables\Columns\TextColumn::make('updatedBy.name')
                     ->label('Editado por')
                     ->placeholder('Sin ediciones')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true), */
 
-                Tables\Columns\TextColumn::make('paidBy.name')
+                /* Tables\Columns\TextColumn::make('paidBy.name')
                     ->label('Pagado por')
                     ->placeholder('Pendiente')
+                    ->toggleable(isToggledHiddenByDefault: true), */
+
+                Tables\Columns\TextColumn::make('cancelledBy.name')
+                    ->label('Anulado Por')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('workshops_list')
@@ -828,6 +832,16 @@ class EnrollmentBatchResource extends Resource
                                         'cancellation_reason' => $data['cancellation_reason'] ?? null,
                                     ]);
                                 }
+
+                                // Anular tickets asociados al lote
+                                $record->tickets()
+                                    ->where('status', 'active')
+                                    ->update([
+                                        'status' => 'cancelled',
+                                        'cancelled_at' => now(),
+                                        'cancelled_by_user_id' => auth()->id(),
+                                        'cancellation_reason' => $data['cancellation_reason'] ?? 'Anulación de inscripción',
+                                    ]);
                             });
 
                             Notification::make()
