@@ -58,12 +58,12 @@ class AutoCancelPendingEnrollments extends Command
             return;
         }
 
-        // Buscar lotes de inscripciones pendientes
+        // Buscar lotes de inscripciones en proceso (pending)
         $pendingBatches = EnrollmentBatch::where('payment_status', 'pending')
             ->whereHas('enrollments', function ($query) use ($currentPeriod) {
                 $query->where('monthly_period_id', $currentPeriod->id);
             })
-            ->with(['enrollments', 'student'])
+            ->with(['enrollments', 'student', 'tickets'])
             ->get();
 
         if ($pendingBatches->isEmpty()) {
@@ -80,14 +80,14 @@ class AutoCancelPendingEnrollments extends Command
         try {
             foreach ($pendingBatches as $batch) {
                 try {
-                    // Actualizar el lote
+                    // Actualizar el lote (marcar como anulado por el sistema)
                     $batch->update([
                         'payment_status' => 'refunded',
                         'cancelled_at' => now(),
-                        'cancelled_automatically' => true,
+                        'cancelled_by_user_id' => null,
                         'cancellation_reason' => 'Anulación automática - No se completó el pago antes del día límite',
-                        'notes' => ($batch->notes ? $batch->notes . "\n\n" : '') . 
-                                  'Anulación automática el ' . now()->format('d/m/Y H:i:s') . 
+                        'notes' => ($batch->notes ? $batch->notes . "\n\n" : '') .
+                                  'Anulación automática el ' . now()->format('d/m/Y H:i:s') .
                                   ': No se completó el pago antes del día límite'
                     ]);
 
@@ -95,9 +95,20 @@ class AutoCancelPendingEnrollments extends Command
                     foreach ($batch->enrollments as $enrollment) {
                         $enrollment->update([
                             'payment_status' => 'refunded',
+                            'cancelled_at' => now(),
+                            'cancelled_by_user_id' => null,
+                            'cancellation_reason' => 'Anulación automática - No se completó el pago antes del día límite',
                         ]);
                         $cancelledEnrollments++;
                     }
+
+                    // Anular TODOS los tickets asociados al lote (incluidos los ya pagados)
+                    $batch->tickets()->update([
+                        'status' => 'cancelled',
+                        'cancelled_at' => now(),
+                        'cancelled_by_user_id' => null,
+                        'cancellation_reason' => 'Anulación automática de inscripción',
+                    ]);
 
                     $cancelledBatches++;
                     

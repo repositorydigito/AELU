@@ -177,6 +177,13 @@ class EnrollmentBatchResource extends Resource
 
                 Tables\Columns\TextColumn::make('cancelledBy.name')
                     ->label('Anulado Por')
+                    ->formatStateUsing(function ($state, \App\Models\EnrollmentBatch $record) {
+                        // Si se anuló y no hay usuario asociado, fue el sistema
+                        if ($record->cancelled_at && empty($record->cancelled_by_user_id)) {
+                            return 'Sistema';
+                        }
+                        return $record->cancelledBy?->name;
+                    })
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('workshops_list')
@@ -335,7 +342,9 @@ class EnrollmentBatchResource extends Resource
                     ->color('gray')
                     ->modalHeading('Motivo de Anulación')
                     ->modalContent(function (EnrollmentBatch $record) {
-                        $cancelledBy = $record->cancelledBy ? $record->cancelledBy->name : 'Usuario no disponible';
+                        $cancelledBy = $record->cancelled_by_user_id
+                            ? ($record->cancelledBy->name ?? 'Usuario eliminado')
+                            : 'Sistema';
                         $cancelledAt = $record->cancelled_at ? $record->cancelled_at->format('d/m/Y H:i') : 'Fecha no disponible';
                         $reason = $record->cancellation_reason ?: 'No se especificó motivo';
 

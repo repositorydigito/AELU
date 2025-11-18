@@ -193,6 +193,8 @@
                             'Domingo' => 'DOM'
                         ];
 
+                        $modality = ($workshop->workshop->modality === 'Presencial') ? 'P' : 'V';
+
                         if (is_array($daysOfWeek) && count($daysOfWeek) > 1) {
                             // Múltiples días: usar abreviaciones de 3 letras
                             $dayInSpanish = implode('/', array_map(function($day) use ($dayAbbreviations) {
@@ -234,7 +236,7 @@
                         }
                     @endphp
                     <tr @if($enrollment->cancelled_at) style="background-color: #ffe6e6; text-decoration: line-through;" @endif>
-                        <td style="text-align: left; font-weight: bold; padding-left: 6px;">{{ strtoupper($workshop->workshop->name) }}</td>
+                        <td style="text-align: left; font-weight: bold; padding-left: 6px;">{{ strtoupper($workshop->workshop->name) }} ({{ $modality }})</td>
                         <td class="compact-text" style="text-align: center; font-weight: bold;">{{ $dayInSpanish }}<br>{{ $startTime }}-{{ $endTime }}</td>
                         <td style="text-align: center; font-weight: bold;">{{ $enrollment->number_of_classes }}</td>
                         <td style="text-align: center;">
