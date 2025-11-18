@@ -13,7 +13,7 @@ use App\Services\WorkshopReplicationService;
 
 class ReplicateWorkshopsForNextMonth extends Command
 {
-    protected $signature = 'workshops:auto-replicate';
+    protected $signature = 'workshops:auto-replicate {--force : Ejecuta aunque ya se haya replicado este período}';
 
     protected $description = 'Replica los talleres del período actual al siguiente y genera sus clases según configuración';
 
@@ -65,6 +65,14 @@ class ReplicateWorkshopsForNextMonth extends Command
             ]
         );
 
+        // Idempotencia: si ya replicamos para este período, no repetir
+        $replicationMarkerKey = 'workshops_replicated_' . $nextMonth->format('Y_m');
+        $alreadyReplicated = SystemSetting::get($replicationMarkerKey, null);
+        if ($alreadyReplicated && ! $this->option('force')) {
+            $this->info("Ya se replicaron talleres para el período {$nextMonth->format('Y-m')}. Saliendo...");
+            return Command::SUCCESS;
+        }
+
         $service = app(WorkshopReplicationService::class);
 
         DB::beginTransaction();
@@ -76,6 +84,9 @@ class ReplicateWorkshopsForNextMonth extends Command
             $this->info('Replicación completa');
             $this->info("- Talleres replicados: {$replicated['workshops']}");
             $this->info("- Clases generadas: {$replicated['classes']}");
+
+            // Marcar período como replicado
+            SystemSetting::set($replicationMarkerKey, Carbon::now()->toDateTimeString(), 'string', 'Marcador de replicación de talleres para el período');
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
