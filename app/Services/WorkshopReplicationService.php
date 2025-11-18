@@ -22,14 +22,6 @@ class WorkshopReplicationService
         $workshops = Workshop::where('monthly_period_id', $current->id)->get();
 
         foreach ($workshops as $workshop) {
-            $exists = Workshop::where('monthly_period_id', $next->id)
-                ->where('name', $workshop->name)
-                ->where('instructor_id', $workshop->instructor_id)
-                ->exists();
-
-            if ($exists) {
-                continue;
-            }
 
             $newWorkshop = $workshop->replicate();
             $newWorkshop->monthly_period_id = $next->id;
