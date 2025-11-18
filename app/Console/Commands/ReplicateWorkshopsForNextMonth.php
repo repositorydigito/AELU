@@ -33,15 +33,22 @@ class ReplicateWorkshopsForNextMonth extends Command
 
         $now = Carbon::now();
         $targetTime = Carbon::today()->setTimeFromTimeString($generateTime);
+        $targetMinute = $targetTime->format('H:i');
+        $nowMinute = $now->format('H:i');
 
-        if ($now->day !== $generateDay) {
-            $this->info("Hoy es día {$now->day}, esperando día {$generateDay}");
-            return Command::SUCCESS;
-        }
+        // Validar día/hora exactos cuando no es forzado
+        if (! $this->option('force')) {
+            if ($now->day !== $generateDay) {
+                $this->info("Hoy es día {$now->day}, esperando día {$generateDay}");
+                return Command::SUCCESS;
+            }
 
-        if ($now->lt($targetTime)) {
-            $this->info("Hora actual {$now->format('H:i:s')} antes de hora objetivo {$generateTime}");
-            return Command::SUCCESS;
+            if ($nowMinute !== $targetMinute) {
+                $this->info("Hora actual {$nowMinute} distinta de hora objetivo {$targetMinute}. Saliendo...");
+                return Command::SUCCESS;
+            }
+        } else {
+            $this->info('Ejecución forzada: omitiendo validación de día/hora.');
         }
 
         $currentPeriod = MonthlyPeriod::where('year', $now->year)
@@ -65,14 +72,6 @@ class ReplicateWorkshopsForNextMonth extends Command
             ]
         );
 
-        // Idempotencia: si ya replicamos para este período, no repetir
-        $replicationMarkerKey = 'workshops_replicated_' . $nextMonth->format('Y_m');
-        $alreadyReplicated = SystemSetting::get($replicationMarkerKey, null);
-        if ($alreadyReplicated && ! $this->option('force')) {
-            $this->info("Ya se replicaron talleres para el período {$nextMonth->format('Y-m')}. Saliendo...");
-            return Command::SUCCESS;
-        }
-
         $service = app(WorkshopReplicationService::class);
 
         DB::beginTransaction();
@@ -84,9 +83,6 @@ class ReplicateWorkshopsForNextMonth extends Command
             $this->info('Replicación completa');
             $this->info("- Talleres replicados: {$replicated['workshops']}");
             $this->info("- Clases generadas: {$replicated['classes']}");
-
-            // Marcar período como replicado
-            SystemSetting::set($replicationMarkerKey, Carbon::now()->toDateTimeString(), 'string', 'Marcador de replicación de talleres para el período');
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
