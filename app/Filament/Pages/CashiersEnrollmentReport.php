@@ -103,42 +103,58 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         $dateFromForQuery = \Carbon\Carbon::parse($this->selectedDateFrom)->format('Y-m-d');
         $dateToForQuery = \Carbon\Carbon::parse($this->selectedDateTo)->format('Y-m-d');
 
-        // Obtener EnrollmentBatch en lugar de StudentEnrollments individuales
-        $enrollmentBatches = \App\Models\EnrollmentBatch::with([
+        // Obtener tickets en lugar de EnrollmentBatch
+        $tickets = \App\Models\Ticket::with([
             'student',
-            'paymentRegisteredByUser',
-            'enrollments.instructorWorkshop.workshop'  // Para contar talleres
+            'issuedByUser',
+            'enrollmentBatch.paymentRegisteredByUser',
+            'studentEnrollments.instructorWorkshop.workshop'
         ])
-            ->where('payment_registered_by_user_id', $this->selectedCashier)
-            ->whereDate('payment_registered_at', '>=', $dateFromForQuery)
-            ->whereDate('payment_registered_at', '<=', $dateToForQuery)
-            ->orderBy('payment_registered_at', 'desc')
+            ->where(function ($query) {
+                // Buscar por quien emitió el ticket O por quien registró el pago del batch
+                $query->where('issued_by_user_id', $this->selectedCashier)
+                      ->orWhereHas('enrollmentBatch', function ($subQuery) {
+                          $subQuery->where('payment_registered_by_user_id', $this->selectedCashier);
+                      });
+            })
+            ->whereDate('issued_at', '>=', $dateFromForQuery)
+            ->whereDate('issued_at', '<=', $dateToForQuery)
+            ->orderBy('issued_at', 'desc')
             ->get();
 
-        if ($enrollmentBatches->isEmpty()) {
+        if ($tickets->isEmpty()) {
             $this->cashierEnrollments = [];
             $this->resetPaymentSummary();
             return;
         }
 
-        $this->cashierEnrollments = $enrollmentBatches->map(function ($batch) {
-            $student = $batch->student;
-            $cashier = $batch->paymentRegisteredByUser;
+        $this->cashierEnrollments = $tickets->map(function ($ticket) {
+            $student = $ticket->student;
+            $cashier = $ticket->enrollmentBatch->paymentRegisteredByUser ?? $ticket->issuedByUser;
+
+            // Calcular totales del ticket
+            $totalAmount = $ticket->studentEnrollments->sum('total_amount');
+            $workshopsCount = $ticket->studentEnrollments->count();
+            $workshopsList = $ticket->studentEnrollments->pluck('instructorWorkshop.workshop.name')->filter()->join(', ');
+
+            // Obtener fecha de inscripción de la primera enrollment
+            $firstEnrollment = $ticket->studentEnrollments->first();
+            $enrollmentDate = $firstEnrollment ? $firstEnrollment->enrollment_date : $ticket->issued_at;
 
             return [
-                'id' => $batch->id,
+                'id' => $ticket->id,
                 'student_name' => $student ? ($student->first_names.' '.$student->last_names) : 'N/A',
                 'student_code' => $student->student_code ?? 'N/A',
                 'cashier_name' => $cashier ? $cashier->name : 'N/A',
-                'payment_registered_time' => $batch->payment_registered_at ? $batch->payment_registered_at->format('d/m/Y H:i') : 'N/A',
-                'enrollment_date' => $batch->enrollment_date ? $batch->enrollment_date->format('d/m/Y') : 'N/A',
-                'workshops_count' => $batch->enrollments->count(), // Número de talleres
-                'workshops_list' => $batch->enrollments->pluck('instructorWorkshop.workshop.name')->join(', '), // Lista de talleres
-                'total_amount' => $batch->total_amount,
-                'amount_paid' => $batch->amount_paid,
-                'payment_method' => $this->getPaymentMethodText($batch->payment_method),
-                'batch_code' => $this->getTicketCode($batch) ?? $batch->batch_code ?? 'Sin código',
-                'payment_status' => $this->getPaymentStatusText($batch->payment_status),
+                'payment_registered_time' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A',
+                'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
+                'workshops_count' => $workshopsCount,
+                'workshops_list' => $workshopsList ?: 'N/A',
+                'total_amount' => $totalAmount,
+                'amount_paid' => $totalAmount, // En tickets, el monto pagado es igual al total
+                'payment_method' => $this->getPaymentMethodText($firstEnrollment->payment_method ?? 'cash'),
+                'ticket_code' => $ticket->ticket_code,
+                'payment_status' => $this->getTicketStatusText($ticket->status),
             ];
         })->toArray();
 
@@ -172,6 +188,16 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             'link_amount' => $activeEnrollments->where('payment_method', 'Link')->sum('total_amount'),
             'total_amount' => $activeEnrollments->sum('total_amount'),
         ];
+    }
+
+    private function getTicketStatusText($status): string
+    {
+        return match ($status) {
+            'active' => 'Inscrito',
+            'cancelled' => 'Anulado',
+            'refunded' => 'Reembolsado',
+            default => ucfirst($status),
+        };
     }
 
     private function getPaymentStatusText($status): string
@@ -276,10 +302,4 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         ];
     }
 
-    private function getTicketCode($batch): ?string
-    {
-        // Buscar el ticket asociado a este batch
-        $ticket = \App\Models\Ticket::where('enrollment_batch_id', $batch->id)->first();
-        return $ticket ? $ticket->ticket_code : null;
-    }
 }

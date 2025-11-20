@@ -22,6 +22,9 @@
             margin: 0;
             font-size: 16px;
         }
+        .header p {
+            font-size: 15px;
+        }
         .summary {
             background-color: #f5f5f5;
             padding: 12px;
@@ -37,7 +40,7 @@
         }
         .summary-text {
             flex: 1;
-            font-size: 9px;
+            font-size: 11px;
             color: #333;
         }
         .summary-separator {
@@ -58,13 +61,13 @@
             color: #333;
             padding: 6px 4px;
             text-align: left;
-            font-size: 8px;
+            font-size: 11px;
             border: 1px solid #ddd;
         }
         .table td {
             border: 1px solid #ddd;
             padding: 4px;
-            font-size: 8px;
+            font-size: 11px;
             vertical-align: top;
         }
         .table tr:nth-child(even) {
@@ -77,7 +80,6 @@
         <h1>REPORTE DE INSCRIPCIONES POR CAJERO</h1>
         <p><strong>Cajero:</strong> {{ $cashier_name }}</p>
         <p><strong>Período:</strong> {{ $date_from }} - {{ $date_to }}</p>
-        <p><strong>Generado:</strong> {{ $generated_at }}</p>
     </div>
 
     <div class="summary">
@@ -121,10 +123,10 @@
                 </td>
                 <td style="text-align: right;"><strong>S/ {{ number_format($enrollment['total_amount'], 2) }}</strong></td>
                 <td style="text-align: center;">{{ $enrollment['payment_method'] }}</td>
-                <td style="text-align: center; font-size: 7px;">
+                <td style="text-align: center; font-size: 11px;">
                     {{ $enrollment['payment_status'] }}
                 </td>
-                <td style="text-align: center; font-size: 7px;">{{ $enrollment['batch_code'] }}</td>
+                <td style="text-align: center; font-size: 11px;">{{ $enrollment['ticket_code'] }}</td>
             </tr>
             @endforeach
         </tbody>
