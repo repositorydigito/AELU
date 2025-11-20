@@ -75,7 +75,7 @@
                                 {{ $enrollment['payment_status'] }}
                             </td>
                             <td class="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
-                                {{ $enrollment['batch_code'] }}
+                                {{ $enrollment['ticket_code'] }}
                             </td>
                         </tr>
                         @endforeach

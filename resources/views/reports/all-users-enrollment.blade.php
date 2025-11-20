@@ -37,14 +37,14 @@
             color: #000;
             padding: 6px 4px;
             text-align: left;
-            font-size: 9px;
+            font-size: 10px;
             border: 1px solid #999;
             font-weight: bold;
         }
         .table td {
             border: 1px solid #ccc;
             padding: 5px 4px;
-            font-size: 9px;
+            font-size: 10px;
             vertical-align: top;
             font-size: 10px;
         }
@@ -111,7 +111,7 @@
                 <td class="text-right text-bold">S/ {{ number_format($enrollment['total_amount'], 2) }}</td>
                 <td class="text-center">{{ $enrollment['payment_method'] }}</td>
                 <td class="text-center text-small">{{ $enrollment['payment_status'] }}</td>
-                <td class="text-center text-small">{{ $enrollment['batch_code'] }}</td>
+                <td class="text-center text-small">{{ $enrollment['ticket_code'] }}</td>
             </tr>
             @endforeach
         </tbody>
