@@ -14,17 +14,11 @@ use Filament\Tables\Table;
 class InstructorPaymentResource extends Resource
 {
     protected static ?string $model = InstructorPayment::class;
-
     protected static ?string $navigationLabel = 'Pago de Profesores';
-
     protected static ?string $pluralModelLabel = 'Pagos';
-
     protected static ?string $modelLabel = 'Pago';
-
     protected static ?int $navigationSort = 3;
-
     protected static ?string $navigationGroup = 'Tesorería';
-
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
     public static function form(Form $form): Form
@@ -58,16 +52,16 @@ class InstructorPaymentResource extends Resource
                                         }
 
                                         $workshop = $record->instructorWorkshop;
-                                        $dayNames = [
-                                            0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                                        ];
-
-                                        $dayOfWeek = $dayNames[$workshop->day_of_week] ?? 'Desconocido';
+                                        $daysOfWeek = $workshop->day_of_week;
+                                        if (is_array($daysOfWeek)) {
+                                            $dayName = implode('/', $daysOfWeek);
+                                        } else {
+                                            $dayName = $daysOfWeek ?? 'N/A';
+                                        }
                                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
                                         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
 
-                                        return "{$workshop->workshop->name} ({$dayOfWeek} {$startTime}-{$endTime})";
+                                        return "{$workshop->workshop->name} ({$dayName} {$startTime}-{$endTime})";
                                     }),
                             ]),
 
@@ -201,16 +195,14 @@ class InstructorPaymentResource extends Resource
                         if (! $workshop) {
                             return 'N/A';
                         }
-
-                        $dayNames = [
-                            0 => 'Dom', 1 => 'Lun', 2 => 'Mar', 3 => 'Mié',
-                            4 => 'Jue', 5 => 'Vie', 6 => 'Sáb',
-                        ];
-
-                        $dayOfWeek = $dayNames[$workshop->day_of_week] ?? '?';
+                        $daysOfWeek = $workshop->day_of_week;
+                        if (is_array($daysOfWeek)) {
+                            $dayName = implode('/', $daysOfWeek);
+                        } else {
+                            $dayName = $daysOfWeek ?? 'N/A';
+                        }
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
                         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
-
                         return $workshop->workshop->name;
                     })
                     ->description(function (InstructorPayment $record) {
@@ -218,17 +210,15 @@ class InstructorPaymentResource extends Resource
                         if (! $workshop) {
                             return '';
                         }
-
-                        $dayNames = [
-                            0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-                            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-                        ];
-
-                        $dayOfWeek = $dayNames[$workshop->day_of_week] ?? 'Desconocido';
+                        $daysOfWeek = $workshop->day_of_week;
+                        if (is_array($daysOfWeek)) {
+                            $dayName = implode('/', $daysOfWeek);
+                        } else {
+                            $dayName = $daysOfWeek ?? 'N/A';
+                        }
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
                         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
-
-                        return "{$dayOfWeek} {$startTime}-{$endTime}";
+                        return "{$dayName} {$startTime}-{$endTime}";
                     })
                     ->weight(FontWeight::Medium),
 
@@ -249,21 +239,6 @@ class InstructorPaymentResource extends Resource
                         'volunteer' => 'Voluntario',
                         'hourly' => 'Por Horas',
                         default => $state,
-                    }),
-
-                Tables\Columns\TextColumn::make('rate_or_percentage')
-                    ->label('Tarifa/Porcentaje')
-                    ->getStateUsing(function (InstructorPayment $record) {
-                        if ($record->payment_type === 'volunteer') {
-                            return $record->applied_volunteer_percentage
-                                ? number_format($record->applied_volunteer_percentage * 100) . '%'
-                                : 'N/A';
-                        } elseif ($record->payment_type === 'hourly') {
-                            return $record->applied_hourly_rate
-                                ? 'S/ ' . number_format($record->applied_hourly_rate, 2)
-                                : 'N/A';
-                        }
-                        return 'N/A';
                     }),
 
                 Tables\Columns\TextColumn::make('rate_or_percentage')

@@ -58,12 +58,12 @@ class InstructorPaymentObserver
             ->year($period->year)
             ->translatedFormat('F Y');
 
-        $dayNames = [
-            0 => 'Domingo', 1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles',
-            4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
-        ];
-
-        $dayOfWeek = $dayNames[$workshop->day_of_week] ?? 'Desconocido';
+        $daysOfWeek = $workshop->day_of_week;
+        if (is_array($daysOfWeek)) {
+            $dayName = implode('/', $daysOfWeek);
+        } else {
+            $dayName = $daysOfWeek ?? 'N/A';
+        }
         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
         $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
 
