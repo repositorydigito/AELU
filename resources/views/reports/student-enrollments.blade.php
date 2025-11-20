@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Inscripciones - {{ $student->first_names }} {{ $student->last_names }}</title>
+    <title>Reporte de Tickets - {{ $student->first_names }} {{ $student->last_names }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -74,25 +74,16 @@
 </head>
 <body>
     <div class="header">
-        <h1>REPORTE DE INSCRIPCIONES POR ALUMNO</h1>
-        <p class="subtitle">{{ $student->first_names }} {{ $student->last_names }}</p>
+        <h1>REPORTE DE TICKETS POR ALUMNO</h1>
+        <p class="subtitle">{{ $student->first_names }} {{ $student->last_names }} - {{ $student->student_code}}</p>
         @if(isset($period_filter) && $period_filter)
             <p class="filter-info">Filtrado por período: {{ $period_filter }}</p>
         @else
-            <p class="filter-info">Todas las inscripciones históricas</p>
+            <p class="filter-info">Todos los tickets históricos</p>
         @endif
     </div>
 
-    <div class="summary-info">
-        <div class="total-info"><strong>Total de inscripciones:</strong> {{ count($enrollments) }}</div>
-        @if(count($enrollments) > 0)
-            <div class="total-info"><strong>Monto total:</strong> S/ {{ number_format(collect($enrollments)->sum('total_amount'), 2) }}</div>
-            <div class="total-info"><strong>Total de clases:</strong> {{ collect($enrollments)->sum('number_of_classes') }}</div>
-        @endif
-        <div class="total-info"><strong>Generado el:</strong> {{ $generated_at }}</div>
-    </div>
-
-    @if(count($enrollments) > 0)
+    @if(count($tickets) > 0)
     <table class="table">
         <thead>
             <tr>
@@ -100,44 +91,38 @@
                 <th>Instructor</th>
                 <th>Período</th>
                 <th>Fecha Inscripción</th>
-                <th>N° Clases</th>
                 <th>Monto Total</th>
                 <th>Método de Pago</th>
-                <th>Modalidad</th>
                 <th>N° Ticket</th>
+                <th>Estado</th>
                 <th>Cajero</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($enrollments as $enrollment)
+            @foreach($tickets as $ticket)
             <tr>
-                <td>{{ $enrollment['workshop_name'] }}</td>
-                <td>{{ $enrollment['instructor_name'] }}</td>
-                <td>{{ $enrollment['period_name'] }}</td>
-                <td>{{ $enrollment['enrollment_date'] }}</td>
-                <td>{{ $enrollment['number_of_classes'] }}</td>
-                <td>S/ {{ number_format($enrollment['total_amount'], 2) }}</td>
-                <td>{{ $enrollment['payment_method'] }}</td>
-                <td>{{ $enrollment['modality'] ?? '' }}</td>
-                <td>{{ $enrollment['payment_document'] ?? '' }}</td>
-                <td>{{ $enrollment['cashier_name'] ?? '' }}</td>
+                <td>{{ $ticket['workshop_name'] }}</td>
+                <td>{{ $ticket['instructor_name'] }}</td>
+                <td>{{ $ticket['period_name'] }}</td>
+                <td>{{ $ticket['enrollment_date'] }}</td>
+                <td>S/ {{ number_format($ticket['total_amount'], 2) }}</td>
+                <td>{{ $ticket['payment_method'] }}</td>
+                <td>{{ $ticket['ticket_code'] ?? '' }}</td>
+                <td>{{ $ticket['ticket_status'] ?? '' }}</td>
+                <td>{{ $ticket['cashier_name'] ?? '' }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
     @else
     <div style="text-align: center; padding: 40px; color: #666;">
-        <h3>No hay inscripciones para mostrar</h3>
+        <h3>No hay tickets para mostrar</h3>
         @if(isset($period_filter) && $period_filter)
-            <p>No se encontraron inscripciones para el período {{ $period_filter }}.</p>
+            <p>No se encontraron tickets para el período {{ $period_filter }}.</p>
         @else
-            <p>Este alumno no tiene inscripciones registradas.</p>
+            <p>Este alumno no tiene tickets registrados.</p>
         @endif
     </div>
     @endif
-
-    <div class="footer">
-        <p>Sistema de Gestión de Inscripciones</p>
-    </div>
 </body>
 </html>

@@ -103,50 +103,108 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         // Cargar datos del estudiante
         $this->studentData = Student::find($this->selectedStudent);
 
-        // Construir la consulta base
-        $query = StudentEnrollment::where('student_id', $this->selectedStudent)
-            ->where('payment_status', 'completed')
+        // Construir la consulta base para obtener tickets del estudiante
+        $ticketsQuery = \App\Models\Ticket::where('student_id', $this->selectedStudent)
             ->with([
-                'instructorWorkshop.workshop',
-                'instructorWorkshop.instructor',
-                'monthlyPeriod',
+                'studentEnrollments.instructorWorkshop.workshop',
+                'studentEnrollments.instructorWorkshop.instructor',
+                'studentEnrollments.monthlyPeriod',
+                'studentEnrollments.enrollmentBatch',
                 'enrollmentBatch.paymentRegisteredByUser',
-                'enrollmentBatch',
-                'creator',
+                'issuedByUser'
             ]);
 
         // Aplicar filtro de período si está seleccionado
         if ($this->selectedPeriod) {
-            $query->where('monthly_period_id', $this->selectedPeriod);
+            $ticketsQuery->whereHas('studentEnrollments', function ($query) {
+                $query->where('monthly_period_id', $this->selectedPeriod);
+            });
         }
 
         // Ejecutar consulta y procesar resultados
-        $this->studentEnrollments = $query
-            ->orderBy('enrollment_date', 'desc')
-            ->get()
-            ->map(function ($enrollment) {
+        $tickets = $ticketsQuery
+            ->orderBy('issued_at', 'desc')
+            ->get();
+
+        $this->studentEnrollments = [];
+
+        foreach ($tickets as $ticket) {
+            // Agrupar talleres por período para este ticket
+            $workshopsByPeriod = [];
+            $totalAmount = 0;
+            $paymentMethod = '';
+            $enrollmentDate = null;
+            $cashierName = '';
+
+            foreach ($ticket->studentEnrollments as $enrollment) {
                 $workshop = $enrollment->instructorWorkshop->workshop ?? null;
                 $instructor = $enrollment->instructorWorkshop->instructor ?? null;
                 $period = $enrollment->monthlyPeriod ?? null;
-                $batch = $enrollment->enrollmentBatch ?? null;
-                $cashier = $enrollment->enrollmentBatch->paymentRegisteredByUser ?? null;
 
-                return [
-                    'id' => $enrollment->id,
-                    'workshop_name' => $workshop->name ?? 'N/A',
-                    'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A',
-                    'period_name' => $period ? $this->generatePeriodName($period->month, $period->year) : 'N/A',
-                    'enrollment_date' => $enrollment->enrollment_date->format('d/m/Y'),
-                    'enrollment_type' => $enrollment->enrollment_type,
-                    'number_of_classes' => $enrollment->number_of_classes,
-                    'total_amount' => $enrollment->total_amount,
-                    'payment_method' => $enrollment->payment_method === 'cash' ? 'Efectivo' : ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method)),
-                    'modality' => $workshop->modality ?? '',
-                    'payment_document' => $batch ? ($this->getTicketCode($batch) ?? $batch->batch_code) : '',
-                    'cashier_name' => $cashier ? $cashier->name : 'N/A',
-                ];
-            })
-            ->toArray();
+                if ($period) {
+                    $periodKey = $this->generatePeriodName($period->month, $period->year);
+                    if (!isset($workshopsByPeriod[$periodKey])) {
+                        $workshopsByPeriod[$periodKey] = [];
+                    }
+                    $workshopsByPeriod[$periodKey][] = [
+                        'workshop_name' => $workshop->name ?? 'N/A',
+                        'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A'
+                    ];
+                }
+
+                $totalAmount += $enrollment->total_amount;
+
+                // Tomar los datos de la primera inscripción para los campos comunes
+                if (!$paymentMethod) {
+                    $paymentMethod = $enrollment->payment_method === 'cash' ? 'Efectivo' :
+                                   ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method));
+                }
+
+                if (!$enrollmentDate) {
+                    $enrollmentDate = $enrollment->enrollment_date;
+                }
+
+                if (!$cashierName && $enrollment->enrollmentBatch && $enrollment->enrollmentBatch->paymentRegisteredByUser) {
+                    $cashierName = $enrollment->enrollmentBatch->paymentRegisteredByUser->name;
+                }
+            }
+
+            // Crear una cadena con todos los talleres agrupados por período
+            $workshopsText = '';
+            $periodsText = '';
+            $instructorsText = '';
+
+            foreach ($workshopsByPeriod as $periodName => $workshops) {
+                if ($workshopsText) {
+                    $workshopsText .= ' | ';
+                    $periodsText .= ' | ';
+                    $instructorsText .= ' | ';
+                }
+
+                $periodWorkshops = array_map(function($w) { return $w['workshop_name']; }, $workshops);
+                $periodInstructors = array_map(function($w) { return $w['instructor_name']; }, $workshops);
+
+                $workshopsText .= implode(', ', $periodWorkshops);
+                $periodsText .= $periodName;
+                $instructorsText .= implode(', ', array_unique($periodInstructors));
+            }
+
+            $this->studentEnrollments[] = [
+                'id' => $ticket->id,
+                'workshop_name' => $workshopsText,
+                'instructor_name' => $instructorsText,
+                'period_name' => $periodsText,
+                'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
+                'total_amount' => $totalAmount,
+                'payment_method' => $paymentMethod,
+                'ticket_code' => $ticket->ticket_code,
+                'ticket_status' => $ticket->status === 'active' ? 'Activo' :
+                                ($ticket->status === 'cancelled' ? 'Anulado' :
+                                ($ticket->status === 'refunded' ? 'Reembolsado' : ucfirst($ticket->status))),
+                'cashier_name' => $cashierName ?: ($ticket->issuedByUser ? $ticket->issuedByUser->name : 'N/A'),
+                'issued_at' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A'
+            ];
+        }
     }
 
     public function generatePDFAction(): Action
@@ -174,7 +232,7 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         if (! $this->studentData || empty($this->studentEnrollments)) {
             Notification::make()
                 ->title('Error')
-                ->body('Debe seleccionar un alumno con inscripciones')
+                ->body('Debe seleccionar un alumno con tickets')
                 ->danger()
                 ->send();
 
@@ -194,7 +252,7 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
             // 1. Renderizar la vista Blade a HTML
             $html = View::make('reports.student-enrollments', [
                 'student' => $this->studentData,
-                'enrollments' => $this->studentEnrollments,
+                'tickets' => $this->studentEnrollments, // Ahora son tickets
                 'period_filter' => $periodName,
                 'generated_at' => now()->format('d/m/Y H:i'),
             ])->render();
@@ -214,7 +272,7 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
             $dompdf->render();
 
             // Nombre del archivo con período si aplica
-            $fileName = 'inscripciones-'.str($this->studentData->first_names.'-'.$this->studentData->last_names)->slug();
+            $fileName = 'tickets-'.str($this->studentData->first_names.'-'.$this->studentData->last_names)->slug();
             if ($periodName) {
                 $fileName .= '-'.str($periodName)->slug();
             }
@@ -270,19 +328,12 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
             $period = MonthlyPeriod::find($this->selectedPeriod);
             if ($period) {
                 $periodName = $this->generatePeriodName($period->month, $period->year);
-                $description .= "inscripciones de {$periodName}";
+                $description .= "tickets de {$periodName}";
             }
         } else {
-            $description .= 'todas las inscripciones históricas';
+            $description .= 'todos los tickets históricos';
         }
 
         return $description;
-    }
-
-    private function getTicketCode($batch): ?string
-    {
-        // Buscar el ticket asociado a este batch
-        $ticket = \App\Models\Ticket::where('enrollment_batch_id', $batch->id)->first();
-        return $ticket ? $ticket->ticket_code : null;
     }
 }

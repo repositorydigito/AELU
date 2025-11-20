@@ -27,7 +27,7 @@
         @if(!empty($studentEnrollments))
         <x-filament::section>
             <x-slot name="heading">
-                Historial de Inscripciones - {{ $studentData->first_names }} {{ $studentData->last_names }}
+                Historial de Tickets - {{ $studentData->first_names }} {{ $studentData->last_names }}
                 @if($selectedPeriod)
                     @php
                         $period = \App\Models\MonthlyPeriod::find($selectedPeriod);
@@ -40,7 +40,7 @@
             </x-slot>
 
             <x-slot name="description">
-                Total de inscripciones encontradas: {{ count($studentEnrollments) }}
+                Total de tickets encontrados: {{ count($studentEnrollments) }}
                 @if(count($studentEnrollments) > 0)
                     | Monto total: S/ {{ number_format(collect($studentEnrollments)->sum('total_amount'), 2) }}
                 @endif
@@ -54,11 +54,10 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Instructor</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Período</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Inscripción</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Clases</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto Total</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Método de Pago</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modalidad</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Ticket</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cajero</th>
                         </tr>
                     </thead>
@@ -69,11 +68,20 @@
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['instructor_name'] }}</td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['period_name'] }}</td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['enrollment_date'] }}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['number_of_classes'] }}</td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">S/ {{ number_format($enrollment['total_amount'], 2) }}</td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['payment_method'] }}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['modality'] ?? '' }}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['payment_document'] ?? '' }}</td>
+                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['ticket_code'] ?? '' }}</td>
+                            <td class="px-4 py-4 text-sm">
+                                @if($enrollment['ticket_status'] === 'Activo')
+                                    <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">{{ $enrollment['ticket_status'] }}</span>
+                                @elseif($enrollment['ticket_status'] === 'Anulado')
+                                    <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">{{ $enrollment['ticket_status'] }}</span>
+                                @elseif($enrollment['ticket_status'] === 'Reembolsado')
+                                    <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">{{ $enrollment['ticket_status'] }}</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">{{ $enrollment['ticket_status'] }}</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['cashier_name'] ?? '' }}</td>
                         </tr>
                         @endforeach
@@ -86,18 +94,18 @@
         @if(empty($studentEnrollments) && $selectedStudent)
         <x-filament::section>
             <div class="text-center py-8">
-                <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No hay inscripciones</h3>
+                <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No hay tickets</h3>
                 @if($selectedPeriod)
                     @php
                         $period = \App\Models\MonthlyPeriod::find($selectedPeriod);
                         $periodName = $period ? $this->generatePeriodName($period->month, $period->year) : '';
                     @endphp
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        Este alumno no tiene inscripciones registradas para el período {{ $periodName }}.
+                        Este alumno no tiene tickets registrados para el período {{ $periodName }}.
                     </p>
                 @else
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        Este alumno no tiene inscripciones registradas.
+                        Este alumno no tiene tickets registrados.
                     </p>
                 @endif
             </div>
