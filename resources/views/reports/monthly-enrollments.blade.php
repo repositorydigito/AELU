@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Inscripciones - {{ $period_name }}</title>
+    <title>Reporte de Tickets - {{ $period_name }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -60,16 +60,19 @@
             color: #333;
             padding: 6px 4px;
             text-align: left;
-            font-size: 9px;
+            font-size: 10px;
             border: 1px solid #ddd;
         }
         .table td {
             border: 1px solid #ddd;
             padding: 4px;
-            font-size: 8px;
+            font-size: 10px;
         }
         .table tr:nth-child(even) {
             background-color: #f9f9f9;
+        }
+        p {
+            font-size: 15px;
         }
     </style>
 </head>
@@ -77,39 +80,32 @@
     <div class="header">
         <h1>REPORTE DE INSCRIPCIONES POR MES</h1>
         <p><strong>Período: {{ $period_name }}</strong></p>
-        <p>Generado el {{ $generated_at }}</p>
     </div>
 
     <table class="table">
         <thead>
             <tr>
                 <th>Estudiante</th>
-                <th>Documento</th>
-                <th>Taller</th>
-                <th>Instructor</th>
+                <th>Código</th>
                 <th>Fecha Inscripción</th>
-                <th>N° Clases</th>
                 <th>Monto</th>
                 <th>Método Pago</th>
-                <th>Modalidad</th>
                 <th>N° Ticket</th>
+                <th>Estado</th>
                 <th>Cajero</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($enrollments as $enrollment)
+            @foreach($tickets as $ticket)
             <tr>
-                <td>{{ $enrollment['student_name'] }}</td>
-                <td>{{ $enrollment['student_document'] }}</td>
-                <td>{{ $enrollment['workshop_name'] }}</td>
-                <td>{{ $enrollment['instructor_name'] }}</td>
-                <td>{{ $enrollment['enrollment_date'] }}</td>
-                <td>{{ $enrollment['number_of_classes'] }}</td>
-                <td>S/ {{ number_format($enrollment['total_amount'], 2) }}</td>
-                <td>{{ $enrollment['payment_method'] }}</td>
-                <td>{{ $enrollment['modality'] }}</td>
-                <td>{{ $enrollment['payment_document'] }}</td>
-                <td>{{ $enrollment['cashier_name'] }}</td>
+                <td>{{ $ticket['student_name'] }}</td>
+                <td>{{ $ticket['student_code'] }}</td>
+                <td>{{ $ticket['enrollment_date'] }}</td>
+                <td>S/ {{ number_format($ticket['total_amount'], 2) }}</td>
+                <td>{{ $ticket['payment_method'] }}</td>
+                <td>{{ $ticket['ticket_code'] ?? '' }}</td>
+                <td>{{ $ticket['ticket_status'] ?? '' }}</td>
+                <td>{{ $ticket['cashier_name'] ?? '' }}</td>
             </tr>
             @endforeach
         </tbody>

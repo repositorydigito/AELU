@@ -48,8 +48,8 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
                     ->options(
                         MonthlyPeriod::where('year', '>=', now()->year - 2) // Últimos 2 años
                             ->where('year', '<=', now()->year + 1) // Hasta el próximo año
-                            ->orderBy('year', 'desc')
-                            ->orderBy('month', 'desc')
+                            ->orderBy('year', 'asc')
+                            ->orderBy('month', 'asc')
                             ->get()
                             ->mapWithKeys(function ($period) {
                                 $periodName = $this->generatePeriodName($period->month, $period->year);
@@ -75,49 +75,77 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
             $this->monthlyEnrollments = [];
             $this->periodData = null;
             $this->summaryData = [];
-
             return;
         }
 
         // Cargar datos del período
         $this->periodData = MonthlyPeriod::find($this->selectedPeriod);
 
-        // Cargar todas las inscripciones del período mensual seleccionado
-        $enrollments = StudentEnrollment::where('monthly_period_id', $this->selectedPeriod)
-            ->where('payment_status', 'completed')
+        // Construir la consulta base para obtener tickets del período
+        $tickets = \App\Models\Ticket::whereHas('studentEnrollments', function ($query) {
+                $query->where('monthly_period_id', $this->selectedPeriod);
+            })
             ->with([
                 'student',
-                'instructorWorkshop.workshop',
-                'instructorWorkshop.instructor',
+                'studentEnrollments.instructorWorkshop.workshop',
+                'studentEnrollments.monthlyPeriod',
                 'enrollmentBatch.paymentRegisteredByUser',
-                'enrollmentBatch',
-                'creator',
+                'issuedByUser'
             ])
-            ->orderBy('enrollment_date', 'desc')
+            ->orderBy('issued_at', 'desc')
             ->get();
 
-        $this->monthlyEnrollments = $enrollments->map(function ($enrollment) {
-            $student = $enrollment->student ?? null;
-            $workshop = $enrollment->instructorWorkshop->workshop ?? null;
-            $instructor = $enrollment->instructorWorkshop->instructor ?? null;
-            $batch = $enrollment->enrollmentBatch ?? null;
-            $cashier = $enrollment->enrollmentBatch->paymentRegisteredByUser ?? null;
+        $this->monthlyEnrollments = [];
 
-            return [
-                'id' => $enrollment->id,
-                'student_name' => $student ? ($student->first_names.' '.$student->last_names) : 'N/A',
-                'student_document' => $student ? ($student->document_type.': '.$student->document_number) : 'N/A',
-                'workshop_name' => $workshop->name ?? 'N/A',
-                'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A',
-                'enrollment_date' => $enrollment->enrollment_date->format('d/m/Y'),
-                'number_of_classes' => $enrollment->number_of_classes,
-                'total_amount' => $enrollment->total_amount,
-                'payment_method' => $enrollment->payment_method === 'cash' ? 'Efectivo' : ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method)),
-                'modality' => $workshop->modality ?? '',
-                'payment_document' => $batch ? ($this->getTicketCode($batch) ?? $batch->batch_code) : '',
-                'cashier_name' => $cashier ? $cashier->name : 'N/A',
-            ];
-        })->toArray();
+        foreach ($tickets as $ticket) {
+            $student = $ticket->student ?? null;
+            $totalAmount = 0;
+            $paymentMethod = '';
+            $enrollmentDate = null;
+            $cashierName = '';
+            $totalEnrollments = 0;
+
+            // Filtrar solo las inscripciones de este período
+            $periodEnrollments = $ticket->studentEnrollments->where('monthly_period_id', $this->selectedPeriod);
+
+            foreach ($periodEnrollments as $enrollment) {
+                $totalAmount += $enrollment->total_amount;
+                $totalEnrollments++;
+
+                // Tomar los datos de la primera inscripción para los campos comunes
+                if (!$paymentMethod) {
+                    $paymentMethod = $enrollment->payment_method === 'cash' ? 'Efectivo' :
+                                   ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method));
+                }
+
+                if (!$enrollmentDate) {
+                    $enrollmentDate = $enrollment->enrollment_date;
+                }
+
+                if (!$cashierName && $enrollment->enrollmentBatch && $enrollment->enrollmentBatch->paymentRegisteredByUser) {
+                    $cashierName = $enrollment->enrollmentBatch->paymentRegisteredByUser->name;
+                }
+            }
+
+            // Solo agregar si tiene inscripciones en este período
+            if ($totalEnrollments > 0) {
+                $this->monthlyEnrollments[] = [
+                    'id' => $ticket->id,
+                    'student_name' => $student ? ($student->first_names.' '.$student->last_names) : 'N/A',
+                    'student_code' => $student ? $student->student_code : 'N/A',
+                    'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
+                    'total_amount' => $totalAmount,
+                    'payment_method' => $paymentMethod,
+                    'ticket_code' => $ticket->ticket_code,
+                    'ticket_status' => $ticket->status === 'active' ? 'Activo' :
+                                    ($ticket->status === 'cancelled' ? 'Anulado' :
+                                    ($ticket->status === 'refunded' ? 'Reembolsado' : ucfirst($ticket->status))),
+                    'cashier_name' => $cashierName ?: ($ticket->issuedByUser ? $ticket->issuedByUser->name : 'N/A'),
+                    'issued_at' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A',
+                    'enrollments_count' => $totalEnrollments
+                ];
+            }
+        }
 
         // Calcular datos de resumen
         $this->calculateSummary();
@@ -125,15 +153,17 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
 
     public function calculateSummary(): void
     {
-        $enrollments = collect($this->monthlyEnrollments);
+        $tickets = collect($this->monthlyEnrollments);
 
         $this->summaryData = [
-            'total_enrollments' => $enrollments->count(),
-            'total_students' => $enrollments->pluck('student_name')->unique()->count(),
-            'total_workshops' => $enrollments->pluck('workshop_name')->unique()->count(),
-            'total_amount' => $enrollments->sum('total_amount'),
-            'cash_payments' => $enrollments->where('payment_method', 'Efectivo')->count(),
-            'link_payments' => $enrollments->where('payment_method', 'Link')->count(),
+            'total_tickets' => $tickets->count(),
+            'total_students' => $tickets->pluck('student_name')->unique()->count(),
+            'total_enrollments' => $tickets->sum('enrollments_count'),
+            'total_amount' => $tickets->sum('total_amount'),
+            'cash_payments' => $tickets->where('payment_method', 'Efectivo')->count(),
+            'link_payments' => $tickets->where('payment_method', 'Link')->count(),
+            'active_tickets' => $tickets->where('ticket_status', 'Activo')->count(),
+            'cancelled_tickets' => $tickets->where('ticket_status', 'Anulado')->count(),
         ];
     }
 
@@ -162,7 +192,7 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
         if (! $this->periodData || empty($this->monthlyEnrollments)) {
             Notification::make()
                 ->title('Error')
-                ->body('Debe seleccionar un período con inscripciones')
+                ->body('Debe seleccionar un período con tickets')
                 ->danger()
                 ->send();
 
@@ -174,7 +204,7 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
             $html = View::make('reports.monthly-enrollments', [
                 'period' => $this->periodData,
                 'period_name' => $this->generatePeriodName($this->periodData->month, $this->periodData->year),
-                'enrollments' => $this->monthlyEnrollments,
+                'tickets' => $this->monthlyEnrollments, // Cambiar de enrollments a tickets
                 'summary' => $this->summaryData,
                 'generated_at' => now()->format('d/m/Y H:i'),
             ])->render();
@@ -193,7 +223,7 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
             // 4. Renderizar el PDF
             $dompdf->render();
 
-            $fileName = 'inscripciones-'.$this->periodData->year.'-'.str_pad($this->periodData->month, 2, '0', STR_PAD_LEFT).'.pdf';
+            $fileName = 'tickets-mensual-'.$this->periodData->year.'-'.str_pad($this->periodData->month, 2, '0', STR_PAD_LEFT).'.pdf';
 
             // 5. Descargar el PDF
             return response()->stream(function () use ($dompdf) {
@@ -230,12 +260,5 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
         $monthName = $monthNames[$month] ?? 'Mes '.$month;
 
         return $monthName.' '.$year;
-    }
-
-    private function getTicketCode($batch): ?string
-    {
-        // Buscar el ticket asociado a este batch
-        $ticket = \App\Models\Ticket::where('enrollment_batch_id', $batch->id)->first();
-        return $ticket ? $ticket->ticket_code : null;
     }
 }
