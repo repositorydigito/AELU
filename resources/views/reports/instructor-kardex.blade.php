@@ -39,7 +39,7 @@
             display: table-cell;
             border: 1px solid #333;
             padding: 4px 6px;
-            font-size: 9px;
+            font-size: 10px;
             vertical-align: middle;
         }
         .info-label {
@@ -60,14 +60,14 @@
             color: #333;
             padding: 4px 3px;
             text-align: center;
-            font-size: 8px;
+            font-size: 10px;
             border: 1px solid #333;
             font-weight: bold;
         }
         .table td {
             border: 1px solid #333;
             padding: 3px;
-            font-size: 8px;
+            font-size: 10px;
             text-align: center;
         }
         .table tr:nth-child(even) {
@@ -101,8 +101,8 @@
                 <div class="info-cell info-value">{{ $workshop_name }}</div>
             </div>
             <div class="info-row">
-                <div class="info-cell info-label"></div>
-                <div class="info-cell info-value"></div>
+                <div class="info-cell info-label">Modalidad</div>
+                <div class="info-cell info-value">{{ $workshop_modality }}</div>
                 <div class="info-cell info-label">Horario</div>
                 <div class="info-cell info-value">{{ $workshop_schedule }}</div>
             </div>
@@ -114,8 +114,7 @@
             <tr>
                 <th style="width: 8%;">Fecha</th>
                 <th style="width: 8%;">Hora</th>
-                <th style="width: 10%;">Tipo de Documento</th>
-                <th style="width: 12%;">N° Documento</th>
+                <th style="width: 12%;">N° Ticket</th>
                 <th style="width: 10%;">Código de socio</th>
                 <th style="width: 25%;">Apellidos y nombres alumno</th>
                 <th style="width: 8%;">Condición</th>
@@ -129,14 +128,13 @@
             <tr>
                 <td>{{ $enrollment['fecha'] }}</td>
                 <td>{{ $enrollment['hora'] }}</td>
-                <td>{{ $enrollment['tipo_documento'] }}</td>
                 <td>{{ $enrollment['numero_documento'] }}</td>
                 <td>{{ $enrollment['codigo_socio'] }}</td>
                 <td class="text-left">{{ $enrollment['apellidos_nombres'] }}</td>
                 <td>{{ $enrollment['condicion'] }}</td>
                 <td>{{ $enrollment['moneda'] }}</td>
                 <td class="text-right">{{ number_format($enrollment['importe'], 2) }}</td>
-                <td style="font-size: 7px;">{{ $enrollment['cajero'] }}</td>
+                <td>{{ $enrollment['cajero'] }}</td>
             </tr>
             @endforeach
         </tbody>

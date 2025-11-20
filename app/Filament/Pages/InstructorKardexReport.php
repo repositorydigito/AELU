@@ -1,7 +1,5 @@
 <?php
 
-// App/Filament/Pages/InstructorKardexReport.php
-
 namespace App\Filament\Pages;
 
 use App\Models\Instructor;
@@ -26,28 +24,19 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
     use InteractsWithForms;
 
     protected static string $view = 'filament.pages.instructor-kardex-report';
-
     protected static ?string $title = 'Kardex por Profesor';
-
     protected static bool $shouldRegisterNavigation = false;
-
     public ?array $data = [];
-
     public $selectedInstructor = null;
-
     public $selectedWorkshop = null;
-
     public $kardexEnrollments = [];
-
     public $instructorData = null;
-
     public $workshopData = null;
 
     public function mount(): void
     {
         $this->form->fill();
     }
-
     public function form(Form $form): Form
     {
         return $form
@@ -100,7 +89,7 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                                 $endTime = \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i');
                                 $modality = $instructorWorkshop->workshop->modality ?? '';
 
-                                $label = $instructorWorkshop->workshop->name.' - '.$dayName.' '.$startTime.' - '.$endTime;
+                                $label = $instructorWorkshop->workshop->name.' - '.$dayName.' '.$startTime.' - '.$endTime . ' - ' .$modality;
 
                                 return [
                                     $instructorWorkshop->id => $label,
@@ -119,14 +108,12 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
             ->statePath('data')
             ->columns(2);
     }
-
     public function loadKardexEnrollments(): void
     {
         if (! $this->selectedInstructor || ! $this->selectedWorkshop) {
             $this->kardexEnrollments = [];
             $this->instructorData = null;
             $this->workshopData = null;
-
             return;
         }
 
@@ -138,25 +125,39 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
             // Verificar que se encontraron los datos
             if (! $this->instructorData || ! $this->workshopData || ! $this->workshopData->workshop) {
                 $this->kardexEnrollments = [];
-
                 return;
             }
 
-            // Cargar todas las inscripciones para este taller específico
-            $enrollments = StudentEnrollment::where('instructor_workshop_id', $this->selectedWorkshop)
-                ->where('payment_status', 'completed') // Solo inscripciones pagadas
+            // Cargar todos los tickets que contienen inscripciones para este taller específico
+            $tickets = \App\Models\Ticket::whereHas('studentEnrollments', function ($query) {
+                    $query->where('instructor_workshop_id', $this->selectedWorkshop);
+                })
                 ->with([
                     'student',
+                    'studentEnrollments' => function ($query) {
+                        $query->where('instructor_workshop_id', $this->selectedWorkshop);
+                    },
                     'enrollmentBatch.paymentRegisteredByUser',
-                    'enrollmentBatch',
+                    'issuedByUser'
                 ])
-                ->orderBy('created_at', 'desc') // Ordenar por fecha de creación
+                ->orderBy('issued_at', 'desc')
                 ->get();
 
-            $this->kardexEnrollments = $enrollments->map(function ($enrollment) {
-                $student = $enrollment->student;
-                $batch = $enrollment->enrollmentBatch;
-                $cashier = $batch && $batch->paymentRegisteredByUser ? $batch->paymentRegisteredByUser : null;
+            $this->kardexEnrollments = [];
+
+            foreach ($tickets as $ticket) {
+                $student = $ticket->student;
+                $cashier = $ticket->enrollmentBatch->paymentRegisteredByUser ?? $ticket->issuedByUser;
+
+                // Calcular datos específicos para este taller
+                $relevantEnrollments = $ticket->studentEnrollments;
+                $totalAmount = 0;
+                $totalClasses = 0;
+
+                foreach ($relevantEnrollments as $enrollment) {
+                    $totalAmount += $enrollment->total_amount;
+                    $totalClasses += $enrollment->number_of_classes;
+                }
 
                 // Determinar condición del estudiante
                 $condition = 'N/A';
@@ -168,21 +169,24 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                     }
                 }
 
-                return [
-                    'id' => $enrollment->id,
-                    'fecha' => $enrollment->created_at->format('d/m/Y'),
-                    'hora' => $enrollment->created_at->format('H:i:s'),
-                    'tipo_documento' => 'Recibo', // Como en la imagen
-                    'numero_documento' => $batch ? ($batch->batch_code ?? 'Sin código') : 'Sin lote',
+                $this->kardexEnrollments[] = [
+                    'id' => $ticket->id,
+                    'fecha' => $ticket->issued_at->format('d/m/Y'),
+                    'hora' => $ticket->issued_at->format('H:i:s'),
+                    'tipo_documento' => 'Recibo',
+                    'numero_documento' => $ticket->ticket_code,
                     'codigo_socio' => $student ? $student->student_code : 'N/A',
                     'apellidos_nombres' => $student ? ($student->last_names.', '.$student->first_names) : 'N/A',
                     'condicion' => $condition,
                     'moneda' => 'S/',
-                    'importe' => $enrollment->total_amount,
+                    'importe' => $totalAmount,
                     'cajero' => $cashier ? $cashier->name : 'Sin registrar',
-                    'number_of_classes' => $enrollment->number_of_classes,
+                    'number_of_classes' => $totalClasses,
+                    'ticket_status' => $ticket->status === 'active' ? 'Activo' :
+                                    ($ticket->status === 'cancelled' ? 'Anulado' :
+                                    ($ticket->status === 'refunded' ? 'Reembolsado' : ucfirst($ticket->status))),
                 ];
-            })->toArray();
+            }
 
         } catch (\Exception $e) {
             $this->kardexEnrollments = [];
@@ -193,7 +197,6 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                 ->send();
         }
     }
-
     public function generatePDFAction(): Action
     {
         return Action::make('generatePDF')
@@ -213,7 +216,6 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                 }
             });
     }
-
     public function generatePDF()
     {
         if (empty($this->kardexEnrollments) || ! $this->selectedInstructor || ! $this->selectedWorkshop) {
@@ -244,6 +246,7 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
             $endTime = \Carbon\Carbon::parse($this->workshopData->end_time)->format('H:i');
 
             $workshopInfo = $this->workshopData->workshop->name.' - '.$dayName.' '.$startTime.'-'.$endTime;
+            $modality = $this->workshopData->workshop->modality ?? '';
 
             $html = View::make('reports.instructor-kardex', [
                 'enrollments' => $this->kardexEnrollments,
@@ -251,6 +254,7 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                 'workshop_info' => $workshopInfo,
                 'workshop_name' => $this->workshopData->workshop->name,
                 'workshop_schedule' => $dayName.' '.$startTime.'-'.$endTime,
+                'workshop_modality' => $modality,
                 'generated_at' => now()->format('d/m/Y H:i'),
             ])->render();
 
@@ -281,14 +285,12 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                 ->send();
         }
     }
-
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
         ];
     }
-
     // Método para limpiar el estado cuando sea necesario
     public function updatedData($value, $key)
     {
