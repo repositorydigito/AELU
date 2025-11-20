@@ -25,7 +25,7 @@
         }
         .header p {
             margin: 3px 0;
-            font-size: 9px;
+            font-size: 15px;
         }
         .info-section {
             background-color: #f0f0f0;
@@ -54,14 +54,14 @@
             color: #000;
             padding: 5px 3px;
             text-align: left;
-            font-size: 8px;
+            font-size: 11px;
             border: 1px solid #999;
             font-weight: bold;
         }
         .table td {
             border: 1px solid #ccc;
             padding: 4px 3px;
-            font-size: 8px;
+            font-size: 11px;
             vertical-align: top;
         }
         .table tr:nth-child(even) {
@@ -89,8 +89,7 @@
     <div class="header">
         <h1>REPORTE DE INSCRIPCIONES POR HORARIO</h1>
         <p><strong>Periodo:</strong> {{ $period_name }} ({{ $period_dates }})</p>
-        <p><strong>Generado:</strong> {{ $generated_at }}</p>
-    </div>    
+    </div>
 
     <table class="table">
         <thead>
@@ -103,7 +102,7 @@
                 <th style="width: 9%;">Método</th>
                 <th style="width: 10%;">Estado</th>
                 <th style="width: 13%;">Cajero</th>
-                <th style="width: 10%;">Nº Ticket</th>
+                <th style="width: 10%;">Código Ticket</th>
             </tr>
         </thead>
         <tbody>
@@ -120,7 +119,7 @@
                 <td class="text-center">{{ $enrollment['payment_method'] }}</td>
                 <td class="text-center text-small">{{ $enrollment['payment_status'] }}</td>
                 <td>{{ $enrollment['user_name'] }}</td>
-                <td class="text-center text-small">{{ $enrollment['batch_code'] }}</td>
+                <td class="text-center text-small">{{ $enrollment['ticket_code'] }}</td>
             </tr>
             @endforeach
         </tbody>

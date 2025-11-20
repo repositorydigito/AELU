@@ -57,7 +57,7 @@
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Método</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Estado</th>
                             <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Cajero</th>
-                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Nº Ticket</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Código Ticket</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -89,14 +89,14 @@
                                     {{ $enrollment['payment_method'] }}
                                 </span>
                             </td>
-                            <td class="px-3 py-3 text-xs text-gray-900 dark:text-white">
+                            <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">
                                 {{ $enrollment['payment_status'] }}
                             </td>
                             <td class="px-3 py-3 text-sm text-gray-900 dark:text-white">
                                 {{ $enrollment['user_name'] }}
                             </td>
-                            <td class="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
-                                {{ $enrollment['batch_code'] }}
+                            <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $enrollment['ticket_code'] }}
                             </td>
                         </tr>
                         @endforeach
@@ -111,7 +111,7 @@
             <div class="text-center py-8">
                 <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">No hay registros</h3>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    No se encontraron inscripciones para el taller seleccionado en este periodo.
+                    No se encontraron tickets para el taller seleccionado en este periodo.
                 </p>
             </div>
         </x-filament::section>
@@ -122,7 +122,7 @@
             <div class="text-center py-8">
                 <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Selecciona un periodo y taller</h3>
                 <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Selecciona el periodo mensual y el taller para ver las inscripciones.
+                    Selecciona el periodo mensual y el taller para ver los tickets.
                 </p>
             </div>
         </x-filament::section>

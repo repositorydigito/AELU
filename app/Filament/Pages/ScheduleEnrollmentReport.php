@@ -155,42 +155,67 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 return;
             }
 
-            // Obtener todas las inscripciones para este taller en el periodo
-            // A través de InstructorWorkshop -> StudentEnrollment
-            $enrollments = \App\Models\StudentEnrollment::whereHas('instructorWorkshop', function ($query) {
-                    $query->where('workshop_id', $this->selectedWorkshop);
+            // Obtener todos los tickets que contienen inscripciones para este taller en el periodo
+            $tickets = \App\Models\Ticket::whereHas('studentEnrollments', function ($query) {
+                    $query->whereHas('instructorWorkshop', function ($subQuery) {
+                        $subQuery->where('workshop_id', $this->selectedWorkshop);
+                    })
+                    ->where('monthly_period_id', $this->selectedPeriod);
                 })
-                ->where('monthly_period_id', $this->selectedPeriod)
                 ->with([
-                    'enrollmentBatch.student',
+                    'student',
+                    'studentEnrollments' => function ($query) {
+                        $query->whereHas('instructorWorkshop', function ($subQuery) {
+                            $subQuery->where('workshop_id', $this->selectedWorkshop);
+                        })
+                        ->where('monthly_period_id', $this->selectedPeriod);
+                    },
+                    'studentEnrollments.instructorWorkshop',
                     'enrollmentBatch.paymentRegisteredByUser',
-                    'enrollmentBatch',
-                    'instructorWorkshop'
+                    'issuedByUser'
                 ])
-                ->whereHas('enrollmentBatch', function ($query) {
-                    $query->where('payment_status', '!=', 'refunded'); // Excluir anulados
-                })
-                ->orderBy('created_at', 'desc')
+                ->orderBy('issued_at', 'desc')
                 ->get();
 
-            $this->scheduleEnrollments = $enrollments->map(function ($enrollment) {
-                $batch = $enrollment->enrollmentBatch;
-                $student = $batch->student ?? null;
-                $user = $batch->paymentRegisteredByUser ?? null;
+            $this->scheduleEnrollments = [];
 
-                return [
+            foreach ($tickets as $ticket) {
+                $student = $ticket->student ?? null;
+                $cashier = $ticket->enrollmentBatch->paymentRegisteredByUser ?? $ticket->issuedByUser ?? null;
+
+                // Calcular datos específicos para este taller en este período
+                $relevantEnrollments = $ticket->studentEnrollments;
+                $totalAmount = 0;
+                $totalClasses = 0;
+                $paymentMethod = '';
+                $enrollmentDate = null;
+
+                foreach ($relevantEnrollments as $enrollment) {
+                    $totalAmount += $enrollment->total_amount;
+                    $totalClasses += $enrollment->number_of_classes;
+
+                    if (!$paymentMethod) {
+                        $paymentMethod = $this->getPaymentMethodText($enrollment->payment_method);
+                    }
+
+                    if (!$enrollmentDate) {
+                        $enrollmentDate = $enrollment->enrollment_date;
+                    }
+                }
+
+                $this->scheduleEnrollments[] = [
                     'student_name' => $student ? ($student->first_names . ' ' . $student->last_names) : 'N/A',
                     'student_code' => $student->student_code ?? 'N/A',
-                    'enrollment_date' => $batch->enrollment_date ? $batch->enrollment_date->format('d/m/Y') : 'N/A',
-                    'payment_registered_time' => $batch->payment_registered_at ? $batch->payment_registered_at->format('d/m/Y H:i') : 'N/A',
-                    'total_amount' => $batch->total_amount,
-                    'payment_method' => $this->getPaymentMethodText($batch->payment_method),
-                    'payment_status' => $this->getPaymentStatusText($batch->payment_status),
-                    'batch_code' => $this->getTicketCode($enrollment) ?? $batch->batch_code ?? 'Sin código',
-                    'user_name' => $user ? $user->name : 'N/A',
-                    'number_of_classes' => $enrollment->number_of_classes ?? 0,
+                    'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
+                    'payment_registered_time' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A',
+                    'total_amount' => $totalAmount,
+                    'payment_method' => $paymentMethod,
+                    'payment_status' => $this->getTicketStatusText($ticket->status),
+                    'ticket_code' => $ticket->ticket_code,
+                    'user_name' => $cashier ? $cashier->name : 'N/A',
+                    'number_of_classes' => $totalClasses,
                 ];
-            })->toArray();
+            }
 
         } catch (\Exception $e) {
             $this->scheduleEnrollments = [];
@@ -239,6 +264,16 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
         $endTime = $schedule->end_time ? \Carbon\Carbon::parse($schedule->end_time)->format('H:i') : '';
 
         return $daysStr . ' | ' . $startTime . ' - ' . $endTime;
+    }
+
+    private function getTicketStatusText($status): string
+    {
+        return match ($status) {
+            'active' => 'Activo',
+            'cancelled' => 'Anulado',
+            'refunded' => 'Reembolsado',
+            default => ucfirst($status),
+        };
     }
 
     private function getPaymentStatusText($status): string
@@ -331,7 +366,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
 
             $dompdf->render();
 
-            $fileName = 'inscripciones-horario-' .
+            $fileName = 'tickets-horario-' .
                 str_replace(' ', '-', strtolower($workshopName)) . '-' .
                 str_replace(' ', '-', strtolower($periodName)) . '.pdf';
 
@@ -372,12 +407,4 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
         }
     }
 
-    private function getTicketCode($enrollment): ?string
-    {
-        $ticket = \App\Models\Ticket::whereHas('studentEnrollments', function($query) use ($enrollment) {
-            $query->where('student_enrollments.id', $enrollment->id);
-        })->first();
-
-        return $ticket ? $ticket->ticket_code : null;
-    }
 }
