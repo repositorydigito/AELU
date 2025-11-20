@@ -12,7 +12,7 @@
                         <div class="flex items-center gap-2 mb-1">
                             <span class="font-semibold text-lg">{{ $ticket->ticket_code }}</span>
                             <span class="inline-flex items-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
-                                Activo
+                                {{ $ticket->formatted_status }}
                             </span>
                         </div>
                         <div class="text-sm text-gray-600">

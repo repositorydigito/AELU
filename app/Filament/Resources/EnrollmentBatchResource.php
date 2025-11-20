@@ -252,10 +252,6 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Total')
                     ->prefix('S/'),
-
-                Tables\Columns\TextColumn::make('batch_code')
-                    ->label('Nº Ticket')
-                    ->placeholder('Sin código'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('created_by')
@@ -319,7 +315,7 @@ class EnrollmentBatchResource extends Resource
                     ->label('Ver Tickets')
                     ->icon('heroicon-o-ticket')
                     ->visible(fn (EnrollmentBatch $record): bool =>
-                        $record->tickets()->where('status', 'active')->exists()
+                        $record->tickets()->exists()
                     )
                     ->modalHeading(fn (EnrollmentBatch $record) => 'Tickets de ' . ($record->student->full_name ?? 'N/A'))
                     ->modalDescription(fn (EnrollmentBatch $record) =>
@@ -327,7 +323,7 @@ class EnrollmentBatchResource extends Resource
                     )
                     ->modalContent(fn (EnrollmentBatch $record) => view('filament.modals.tickets-list', [
                         'tickets' => $record->tickets()
-                            ->where('status', 'active')
+                            // ->where('status', 'active')
                             ->with(['studentEnrollments.instructorWorkshop.workshop', 'issuedByUser'])
                             ->orderBy('issued_at', 'asc')
                             ->get()

@@ -41,9 +41,6 @@
 
             <x-slot name="description">
                 Total de tickets encontrados: {{ count($studentEnrollments) }}
-                @if(count($studentEnrollments) > 0)
-                    | Monto total: S/ {{ number_format(collect($studentEnrollments)->sum('total_amount'), 2) }}
-                @endif
             </x-slot>
 
             <div class="overflow-x-auto">
