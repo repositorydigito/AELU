@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EnrollmentResource\Pages;
 use App\Models\StudentEnrollment;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -427,48 +428,9 @@ class EnrollmentResource extends Resource
                         })
                         ->schema([
                             Forms\Components\Repeater::make('workshop_details')
-                                ->label('Detalles de los Talleres Seleccionados')
+                                ->label('')
                                 ->schema([
                                     Forms\Components\Hidden::make('instructor_workshop_id'),
-
-                                    Forms\Components\Placeholder::make('workshop_info')
-                                        ->label('')
-                                        ->content(function (Forms\Get $get, Forms\Set $set) {
-                                            $workshopId = $get('instructor_workshop_id');
-                                            if (! $workshopId) {
-                                                return 'Taller no seleccionado';
-                                            }
-
-                                            $workshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
-                                                ->find($workshopId);
-
-                                            if (! $workshop) {
-                                                return 'Taller no encontrado';
-                                            }
-
-                                            // Convertir día de la semana
-                                            $daysOfWeek = $workshop->day_of_week;
-                                            if (is_array($daysOfWeek)) {
-                                                $dayInSpanish = implode('/', $daysOfWeek);
-                                            } else {
-                                                $dayInSpanish = $daysOfWeek ?? 'N/A';
-                                            }
-                                            $modality = $workshop->workshop->modality ?? 'No especificada';
-
-                                            return new \Illuminate\Support\HtmlString("
-                                                <div class='bg-gray-50 p-4 rounded-lg'>
-                                                    <h3 class='font-semibold text-lg text-gray-900'>{$workshop->workshop->name}</h3>
-                                                    <div class='mt-2 space-y-1 text-sm text-gray-600'>
-                                                        <p><strong>Modalidad:</strong> <span class='text-blue-600 font-medium'>{$modality}</span></p>
-                                                        <p><strong>Profesor:</strong> {$workshop->instructor->first_names} {$workshop->instructor->last_names}</p>
-                                                        <p><strong>Día:</strong> {$dayInSpanish}</p>
-                                                        <p><strong>Hora:</strong> ".\Carbon\Carbon::parse($workshop->start_time)->format('H:i').' - '.\Carbon\Carbon::parse($workshop->end_time ?? $workshop->start_time)->format('H:i')."</p>
-                                                        <p><strong>Precio:</strong> S/ {$workshop->workshop->standard_monthly_fee}</p>
-                                                    </div>
-                                                </div>
-                                            ");
-                                        })
-                                        ->columnSpanFull(),
 
                                     // Comentarios adicionales del workshop
                                     Forms\Components\Placeholder::make('workshop_comments_section')
@@ -511,17 +473,11 @@ class EnrollmentResource extends Resource
                                         })
                                         ->columnSpanFull(),
 
+                                    Forms\Components\Hidden::make('enrollment_type')
+                                        ->default('full_month'),
+
                                     Forms\Components\Grid::make(2)
                                         ->schema([
-                                            Forms\Components\Radio::make('enrollment_type')
-                                                ->label('Tipo de Clase')
-                                                ->options([
-                                                    'full_month' => 'Regular',
-                                                    // 'specific_classes' => 'Recuperación',
-                                                ])
-                                                ->default('full_month')
-                                                ->required(),
-
                                             Forms\Components\Select::make('number_of_classes')
                                                 ->label('Cantidad de Clases')
                                                 ->options(function (Forms\Get $get) {
@@ -550,84 +506,110 @@ class EnrollmentResource extends Resource
                                                     $set('selected_classes', []);
                                                 })
                                                 ->placeholder('Seleccionar cantidad'),
+
+                                            Forms\Components\Select::make('selected_classes')
+                                                ->label('Clases Específicas')
+                                                ->multiple()
+                                                ->options(function (Forms\Get $get) {
+                                                    $workshopId = $get('instructor_workshop_id');
+                                                    $selectedMonthlyPeriodId = $get('../../selected_monthly_period_id');
+
+                                                    if (! $workshopId || ! $selectedMonthlyPeriodId) {
+                                                        return [];
+                                                    }
+
+                                                    $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+                                                    if (! $instructorWorkshop) {
+                                                        return [];
+                                                    }
+
+                                                    // Obtener las clases del taller para el período seleccionado
+                                                    $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $instructorWorkshop->workshop->id)
+                                                        ->where('monthly_period_id', $selectedMonthlyPeriodId)
+                                                        ->where('status', '!=', 'cancelled')
+                                                        ->orderBy('class_date', 'asc')
+                                                        ->get();
+
+                                                    $options = [];
+                                                    foreach ($workshopClasses as $class) {
+                                                        $dayName = \Carbon\Carbon::parse($class->class_date)->translatedFormat('l');
+                                                        $formattedDate = \Carbon\Carbon::parse($class->class_date)->format('d/m/Y');
+                                                        $startTime = \Carbon\Carbon::parse($class->start_time)->format('H:i');
+                                                        $endTime = \Carbon\Carbon::parse($class->end_time)->format('H:i');
+
+                                                        $options[$class->id] = "{$dayName} {$formattedDate} ({$startTime} - {$endTime})";
+                                                    }
+
+                                                    return $options;
+                                                })
+                                                ->placeholder('Seleccionar clases específicas')
+                                                ->helperText(function (Forms\Get $get) {
+                                                    $numberOfClasses = $get('number_of_classes');
+                                                    if (! $numberOfClasses) {
+                                                        return 'Primero selecciona la cantidad de clases';
+                                                    }
+
+                                                    return $numberOfClasses == 1 ? 'Selecciona 1 clase específica' : "Selecciona {$numberOfClasses} clases específicas";
+                                                })
+                                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                                    $numberOfClasses = (int) $get('number_of_classes');
+                                                    $selectedClasses = is_array($state) ? $state : [];
+
+                                                    if ($numberOfClasses && count($selectedClasses) > $numberOfClasses) {
+                                                        $limitedClasses = array_slice($selectedClasses, 0, $numberOfClasses);
+                                                        $set('selected_classes', $limitedClasses);
+
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Límite de clases')
+                                                            ->body("Solo puedes seleccionar {$numberOfClasses} clase".($numberOfClasses > 1 ? 's' : '').'. Se han mantenido las primeras seleccionadas.')
+                                                            ->warning()
+                                                            ->send();
+                                                    }
+                                                })
+                                                ->validationAttribute('clases específicas')
+                                                ->rules(['nullable']),
                                         ]),
-
-                                    Forms\Components\Select::make('selected_classes')
-                                        ->label('Clases Específicas')
-                                        ->multiple()
-                                        ->options(function (Forms\Get $get) {
-                                            $workshopId = $get('instructor_workshop_id');
-                                            $selectedMonthlyPeriodId = $get('../../selected_monthly_period_id');
-
-                                            if (! $workshopId || ! $selectedMonthlyPeriodId) {
-                                                return [];
-                                            }
-
-                                            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
-                                            if (! $instructorWorkshop) {
-                                                return [];
-                                            }
-
-                                            // Obtener las clases del taller para el período seleccionado
-                                            $workshopClasses = \App\Models\WorkshopClass::where('workshop_id', $instructorWorkshop->workshop->id)
-                                                ->where('monthly_period_id', $selectedMonthlyPeriodId)
-                                                ->where('status', '!=', 'cancelled')
-                                                ->orderBy('class_date', 'asc')
-                                                ->get();
-
-                                            $options = [];
-                                            foreach ($workshopClasses as $class) {
-                                                $dayName = \Carbon\Carbon::parse($class->class_date)->translatedFormat('l');
-                                                $formattedDate = \Carbon\Carbon::parse($class->class_date)->format('d/m/Y');
-                                                $startTime = \Carbon\Carbon::parse($class->start_time)->format('H:i');
-                                                $endTime = \Carbon\Carbon::parse($class->end_time)->format('H:i');
-
-                                                $options[$class->id] = "{$dayName} {$formattedDate} ({$startTime} - {$endTime})";
-                                            }
-
-                                            return $options;
-                                        })
-                                        ->placeholder('Seleccionar clases específicas')
-                                        ->helperText(function (Forms\Get $get) {
-                                            $numberOfClasses = $get('number_of_classes');
-                                            if (! $numberOfClasses) {
-                                                return 'Primero selecciona la cantidad de clases';
-                                            }
-
-                                            return $numberOfClasses == 1 ? 'Selecciona 1 clase específica' : "Selecciona {$numberOfClasses} clases específicas";
-                                        })
-                                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                            $numberOfClasses = (int) $get('number_of_classes');
-                                            $selectedClasses = is_array($state) ? $state : [];
-
-                                            if ($numberOfClasses && count($selectedClasses) > $numberOfClasses) {
-                                                $limitedClasses = array_slice($selectedClasses, 0, $numberOfClasses);
-                                                $set('selected_classes', $limitedClasses);
-
-                                                \Filament\Notifications\Notification::make()
-                                                    ->title('Límite de clases')
-                                                    ->body("Solo puedes seleccionar {$numberOfClasses} clase".($numberOfClasses > 1 ? 's' : '').'. Se han mantenido las primeras seleccionadas.')
-                                                    ->warning()
-                                                    ->send();
-                                            }
-                                        })
-                                        ->validationAttribute('clases específicas')
-                                        ->rules(['nullable'])
-                                        ->columnSpanFull(),
 
                                     Forms\Components\Hidden::make('enrollment_date')
                                         ->default(now()->format('Y-m-d')),
                                 ])
                                 ->addable(false)
+                                ->collapsible(true)
                                 ->deletable(true)
                                 ->reorderable(false)
-                                ->columnSpanFull(),
+                                ->itemLabel(function (array $state): ?string {
+                                    $workshopId = $state['instructor_workshop_id'] ?? null;
+                                    if (!$workshopId) {
+                                        return 'Taller';
+                                    }
 
-                            // Notas generales
-                            Forms\Components\Textarea::make('notes')
-                                ->label('Notas Generales')
-                                ->placeholder('Agregar comentarios generales sobre las inscripciones...')
-                                ->rows(3)
+                                    $workshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
+                                    if (!$workshop) {
+                                        return 'Taller';
+                                    }
+
+                                    // Convertir día de la semana
+                                    $daysOfWeek = $workshop->day_of_week;
+                                    if (is_array($daysOfWeek)) {
+                                        $dayInSpanish = implode('/', $daysOfWeek);
+                                    } else {
+                                        $dayInSpanish = $daysOfWeek ?? 'N/A';
+                                    }
+
+                                    $modality = $workshop->workshop->modality ?? 'N/A';
+                                    $price = $workshop->workshop->standard_monthly_fee ?? '0.00';
+                                    $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
+                                    $endTime = \Carbon\Carbon::parse($workshop->end_time ?? $workshop->start_time)->format('H:i');
+
+                                    return "{$workshop->workshop->name} - Modalidad: {$modality} - Profesor: {$workshop->instructor->first_names} {$workshop->instructor->last_names} - Día: {$dayInSpanish} - Hora: {$startTime} - {$endTime} - Precio: S/ {$price}";
+                                })
+                                ->cloneable(false)
+                                ->expandAllAction(
+                                    fn (Action $action) => $action->hidden()
+                                )
+                                ->collapseAllAction(
+                                    fn (Action $action) => $action->hidden()
+                                )
                                 ->columnSpanFull(),
                         ]),
 
