@@ -68,7 +68,11 @@ class EnrollmentPaymentService
                 throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
             }
 
-            $ticketCode = $this->generateTicketCode(Auth::id());
+            if ($paymentMethod === 'link') {
+                $ticketCode = $batch->batch_code;
+            } else {
+                $ticketCode = $this->generateTicketCode(Auth::id());
+            }
 
             $ticket = \App\Models\Ticket::create([
                 'ticket_code' => $ticketCode,
@@ -144,8 +148,12 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
-        // Contar todos los tickets emitidos por este usuario
-        $userTicketCount = \App\Models\Ticket::where('issued_by_user_id', $userId)->count();
+        // Contar solo los tickets que son pago en efectivo
+        $userTicketCount = \App\Models\Ticket::where('issued_by_user_id', $userId)
+            ->whereHas('enrollmentPayment', function ($query) {
+                $query->where('payment_method', 'cash');
+            })
+            ->count();
 
         $nextNumber = $userTicketCount + 1;
 

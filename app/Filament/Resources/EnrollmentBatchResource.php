@@ -660,6 +660,9 @@ class EnrollmentBatchResource extends Resource
                                     return;
                                 }
 
+                                // Actualizar el batch_code
+                                $record->update(['batch_code' => $data['batch_code']]);
+
                                 // Procesar el pago completo
                                 $payment = $paymentService->processPayment(
                                     $record,
@@ -668,9 +671,6 @@ class EnrollmentBatchResource extends Resource
                                     $data['payment_date'] ?? now(),
                                     $data['payment_notes'] ?? null
                                 );
-
-                                // Actualizar el batch_code
-                                $record->update(['batch_code' => $data['batch_code']]);
 
                                 \Filament\Notifications\Notification::make()
                                     ->title('Pago Registrado Exitosamente')
