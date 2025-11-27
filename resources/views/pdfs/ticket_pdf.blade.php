@@ -157,7 +157,11 @@
                 {{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }} - {{ $student->student_code ?? 'N/A' }}
             </div>
             <div class="student-details">
-                <strong>Ticket:</strong> {{ $ticket->ticket_code }} //// <strong>Fecha:</strong> {{ $ticket->issued_at->format('d/m/Y') }}
+                <strong>Ticket:</strong> {{ $ticket->ticket_code }}
+                @if($ticket->status === 'cancelled')
+                    <strong>ANULADO</strong>
+                @endif
+                //// <strong>Fecha:</strong> {{ $ticket->issued_at->format('d/m/Y') }}
             </div>
         </div>
 
