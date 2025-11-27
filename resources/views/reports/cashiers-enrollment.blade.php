@@ -90,6 +90,10 @@
             <span class="summary-separator">|</span>
             <span class="summary-text link-text">{{ $payment_summary['link_count'] }} Link (S/ {{ number_format($payment_summary['link_amount'], 2) }})</span>
             <span class="summary-separator">|</span>
+            <span class="summary-text">{{ $payment_summary['inscribed_count'] }} Inscritos</span>
+            <span class="summary-separator">|</span>
+            <span class="summary-text">{{ $payment_summary['cancelled_count'] }} Anulados</span>
+            <span class="summary-separator">|</span>
             <span class="summary-text total-text"><strong>Total: S/ {{ number_format($payment_summary['total_amount'], 2) }}</strong></span>
         </div>
     </div>

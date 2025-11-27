@@ -42,6 +42,8 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         'link_count' => 0,
         'link_amount' => 0,
         'total_amount' => 0,
+        'inscribed_count' => 0,
+        'cancelled_count' => 0,
     ];
 
     public function mount(): void
@@ -170,6 +172,8 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             'link_count' => 0,
             'link_amount' => 0,
             'total_amount' => 0,
+            'inscribed_count' => 0,
+            'cancelled_count' => 0,
         ];
     }
 
@@ -187,6 +191,8 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             'link_count' => $activeEnrollments->where('payment_method', 'Link')->count(),
             'link_amount' => $activeEnrollments->where('payment_method', 'Link')->sum('total_amount'),
             'total_amount' => $activeEnrollments->sum('total_amount'),
+            'inscribed_count' => $enrollments->where('payment_status', 'Inscrito')->count(),
+            'cancelled_count' => $enrollments->where('payment_status', 'Anulado')->count(),
         ];
     }
 

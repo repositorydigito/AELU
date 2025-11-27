@@ -46,6 +46,16 @@
                         </span>
                     </div>
                     <div class="flex-1">
+                        <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
+                            {{ $paymentSummary['inscribed_count'] }} Inscritos
+                        </span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-sm font-medium text-red-600 dark:text-red-400">
+                            {{ $paymentSummary['cancelled_count'] }} Anulados
+                        </span>
+                    </div>
+                    <div class="flex-1">
                         <span class="text-sm font-bold text-gray-900 dark:text-gray-100">
                             Total: S/ {{ number_format($paymentSummary['total_amount'], 2) }}
                         </span>
