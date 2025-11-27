@@ -149,7 +149,6 @@ class WorkshopResource extends Resource
                             ->label('Número de clases')
                             ->numeric()
                             ->minValue(1)
-                            ->maxValue(8)
                             ->required()
                             ->live(),
                         Forms\Components\TextInput::make('standard_monthly_fee')
