@@ -149,13 +149,20 @@ class EnrollmentPaymentService
         }
 
         // Contar solo los tickets que son pago en efectivo
-        $userTicketCount = \App\Models\Ticket::where('issued_by_user_id', $userId)
-            ->whereHas('enrollmentPayment', function ($query) {
-                $query->where('payment_method', 'cash');
-            })
-            ->count();
+        $lastTicketNumber = \App\Models\Ticket::whereHas('enrollmentPayment', function($query) {
+            $query->where('payment_method', 'cash');
+        })
+        ->where('issued_by_user_id', $userId)
+        ->where('ticket_code', 'LIKE', $user->enrollment_code . '-%')
+        ->get()
+        ->map(function($ticket) use ($user) {
+            // Extraer el número del código (ej: de "002-000019" extraer 19)
+            $parts = explode('-', $ticket->ticket_code);
+            return isset($parts[1]) ? intval($parts[1]) : 0;
+        })
+        ->max();
 
-        $nextNumber = $userTicketCount + 1;
+        $nextNumber = ($lastTicketNumber ?? 0) + 1;
 
         return $user->enrollment_code . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
