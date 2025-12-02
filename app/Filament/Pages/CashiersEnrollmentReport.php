@@ -145,7 +145,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
 
             return [
                 'id' => $ticket->id,
-                'student_name' => $student ? ($student->first_names.' '.$student->last_names) : 'N/A',
+                'student_name' => $student ? ($student->last_names.' '.$student->first_names) : 'N/A',
                 'student_code' => $student->student_code ?? 'N/A',
                 'cashier_name' => $cashier ? $cashier->name : 'N/A',
                 'payment_registered_time' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A',

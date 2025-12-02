@@ -204,7 +204,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 }
 
                 $this->scheduleEnrollments[] = [
-                    'student_name' => $student ? ($student->first_names . ' ' . $student->last_names) : 'N/A',
+                    'student_name' => $student ? ($student->last_names . ' ' . $student->first_names) : 'N/A',
                     'student_code' => $student->student_code ?? 'N/A',
                     'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
                     'payment_registered_time' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A',

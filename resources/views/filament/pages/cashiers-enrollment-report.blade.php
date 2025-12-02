@@ -110,17 +110,17 @@
                                 S/ {{ number_format($enrollment['total_amount'], 2) }}
                             </td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium
                                     {{ $enrollment['payment_method'] === 'Efectivo'
                                         ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
                                         : 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' }}">
                                     {{ $enrollment['payment_method'] }}
                                 </span>
                             </td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+                            <td class="px-4 py-4 text-gray-900 dark:text-white">
                                 {{ $enrollment['payment_status'] }}
                             </td>
-                            <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            <td class="px-4 py-4 text-gray-500 dark:text-gray-400">
                                 {{ $enrollment['ticket_code'] }}
                             </td>
                         </tr>
