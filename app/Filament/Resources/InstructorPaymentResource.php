@@ -241,6 +241,33 @@ class InstructorPaymentResource extends Resource
                         default => $state,
                     }),
 
+                Tables\Columns\TextColumn::make('monthly_fee')
+                    ->label('Tarifa Mensual')
+                    ->getStateUsing(function (InstructorPayment $record) {
+                        $workshop = $record->instructorWorkshop?->workshop;
+                        return $workshop
+                            ? 'S/ ' . number_format($workshop->standard_monthly_fee, 2)
+                            : 'N/A';
+                    })
+                    ->sortable(false),
+
+                Tables\Columns\TextColumn::make('enrolled_students')
+                    ->label('Inscritos')
+                    ->getStateUsing(function (InstructorPayment $record) {
+                        if ($record->payment_type === 'volunteer') {
+                            return $record->total_students ?? 0;
+                        } else {
+                            // Para instructores por hora, también mostrar el número de estudiantes
+                            return $record->instructorWorkshop
+                                ->studentEnrollments()
+                                ->where('monthly_period_id', $record->monthly_period_id)
+                                ->distinct('student_id')
+                                ->count('student_id');
+                        }
+                    })
+                    ->numeric()
+                    ->sortable(false),
+
                 Tables\Columns\TextColumn::make('rate_or_percentage')
                     ->label('Tarifa/Porcentaje')
                     ->getStateUsing(function (InstructorPayment $record) {
@@ -257,7 +284,7 @@ class InstructorPaymentResource extends Resource
                     }),
 
                 Tables\Columns\TextColumn::make('base_amount')
-                    ->label('Monto Base')
+                    ->label('Ingresos')
                     ->getStateUsing(function (InstructorPayment $record) {
                         if ($record->payment_type === 'volunteer' && $record->applied_volunteer_percentage && $record->calculated_amount > 0) {
                             $baseAmount = $record->calculated_amount / $record->applied_volunteer_percentage;
@@ -358,7 +385,7 @@ class InstructorPaymentResource extends Resource
                     ->modalSubmitActionLabel('Confirmar Pago')
                     ->modalCancelActionLabel('Cancelar'),
 
-                Tables\Actions\EditAction::make(),
+                // Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
 

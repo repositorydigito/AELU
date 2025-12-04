@@ -70,7 +70,7 @@ class InstructorPaymentObserver
         $notes = "Pago a instructor: {$instructor->first_names} {$instructor->last_names}\n";
         $notes .= "Período: {$periodName}\n";
         $notes .= "Taller: {$workshop->workshop->name}\n";
-        $notes .= "Horario: {$dayOfWeek} {$startTime}-{$endTime}\n";
+        $notes .= "Horario: {$dayName} {$startTime}-{$endTime}\n";
         $notes .= 'Tipo de pago: '.($instructorPayment->payment_type === 'volunteer' ? 'Voluntario (% de ingresos)' : 'Por horas (tarifa fija)');
 
         // Agregar detalles específicos según el tipo de pago
