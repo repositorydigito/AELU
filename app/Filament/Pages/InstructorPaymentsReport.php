@@ -136,9 +136,12 @@ class InstructorPaymentsReport extends Page implements HasActions, HasForms
                 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado',
             ];
 
-            $dayOfWeek = isset($payment->instructorWorkshop->day_of_week)
-                ? $dayNames[$payment->instructorWorkshop->day_of_week] ?? 'Desconocido'
-                : 'N/A';
+            $dayOfWeek = $payment->instructorWorkshop->day_of_week ?? 'N/A';
+
+            // Si es array (múltiples días), convertir a string
+            if (is_array($dayOfWeek)) {
+                $dayOfWeek = implode('/', $dayOfWeek);
+            }
 
             $startTime = $payment->instructorWorkshop
                 ? \Carbon\Carbon::parse($payment->instructorWorkshop->start_time)->format('H:i')
