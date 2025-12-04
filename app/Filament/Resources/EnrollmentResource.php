@@ -313,8 +313,19 @@ class EnrollmentResource extends Resource
                                             };
 
                                             try {
-                                                // Obtener talleres del período actual
-                                                $currentWorkshops = collect();
+                                                // PASO 1: Obtener nombres de talleres previos si existen
+                                                $previousWorkshopNames = [];
+                                                if (! empty($previousWorkshopIds)) {
+                                                    $previousWorkshopNames = \App\Models\InstructorWorkshop::whereIn('id', $previousWorkshopIds)
+                                                        ->with('workshop')
+                                                        ->get()
+                                                        ->pluck('workshop.name')
+                                                        ->unique()
+                                                        ->toArray();
+                                                }
+
+                                                // PASO 2: Obtener TODOS los talleres del período actual
+                                                $allCurrentWorkshops = collect();
                                                 if ($selectedMonthlyPeriodId) {
                                                     $instructorWorkshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                         ->whereHas('workshop', function ($query) use ($selectedMonthlyPeriodId) {
@@ -326,39 +337,27 @@ class EnrollmentResource extends Resource
                                                         ->select('instructor_workshops.*')
                                                         ->get();
 
+                                                    // PASO 3: Mapear cada taller y marcarlo como previo si corresponde
                                                     foreach ($instructorWorkshops as $instructorWorkshop) {
                                                         $mappedData = $mapWorkshopData($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds, $currentEnrolledWorkshopIds);
                                                         if ($mappedData) {
-                                                            $currentWorkshops->push($mappedData);
+                                                            // Marcar como previo si su nombre está en la lista de talleres previos
+                                                            if (in_array($mappedData['name'], $previousWorkshopNames)) {
+                                                                $mappedData['is_previous'] = true;
+                                                            }
+                                                            $allCurrentWorkshops->push($mappedData);
                                                         }
                                                     }
                                                 }
 
-                                                // Obtener talleres previos
-                                                $previousWorkshopsData = collect();
-                                                if (! empty($previousWorkshopIds)) {
-                                                    $previousInstructorWorkshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
-                                                        ->whereIn('id', $previousWorkshopIds)
-                                                        ->join('workshops', 'instructor_workshops.workshop_id', '=', 'workshops.id')
-                                                        ->orderBy('workshops.name', 'asc')
-                                                        ->select('instructor_workshops.*')
-                                                        ->get();
-
-                                                    foreach ($previousInstructorWorkshops as $instructorWorkshop) {
-                                                        $mappedData = $mapWorkshopData($instructorWorkshop, $selectedWorkshops, $selectedMonthlyPeriodId, $previousWorkshopIds, $currentEnrolledWorkshopIds);
-                                                        if ($mappedData) {
-                                                            $previousWorkshopsData->push($mappedData);
-                                                        }
-                                                    }
-                                                }
-
-                                                // Combinar talleres actuales y previos
-                                                $allWorkshops = $currentWorkshops->merge($previousWorkshopsData);
+                                                // PASO 4: Separar talleres previos para el conteo
+                                                $previousWorkshopsData = $allCurrentWorkshops->where('is_previous', true);
+                                                $currentPeriodPreviousWorkshopIds = $previousWorkshopsData->pluck('id')->unique()->values()->toArray();
 
                                                 return [
-                                                    'workshops' => $allWorkshops,
+                                                    'workshops' => $allCurrentWorkshops->unique('id')->values(),
                                                     'student_id' => $studentId,
-                                                    'previous_workshops' => $previousWorkshopIds,
+                                                    'previous_workshops' => $currentPeriodPreviousWorkshopIds,
                                                     'current_enrolled_workshops' => $currentEnrolledWorkshopIds,
                                                     'selected_monthly_period_id' => $selectedMonthlyPeriodId,
                                                 ];
@@ -868,20 +867,40 @@ class EnrollmentResource extends Resource
                 return [];
             }
 
-            // Buscar inscripciones previas pagadas
+            // Buscar inscripciones previas válidas (excluir solo refunded)
             $previousEnrollments = \App\Models\StudentEnrollment::where('student_id', $studentId)
                 ->where('monthly_period_id', $previousPeriod->id)
-                ->where('payment_status', 'completed')
+                ->whereNotIn('payment_status', ['refunded'])
                 ->with('instructorWorkshop.workshop')
+                ->orderBy('created_at', 'desc') // Más recientes primero
                 ->get();
 
-            // Obtener IDs de talleres válidos
+            // DEBUG: Descomentar para ver qué inscripciones se encontraron
+            // \Log::info('findPreviousWorkshops', [
+            //     'student_id' => $studentId,
+            //     'previous_period' => $previousPeriod->id,
+            //     'enrollments_found' => $previousEnrollments->count(),
+            //     'payment_statuses' => $previousEnrollments->pluck('payment_status')->toArray(),
+            //     'instructor_workshop_ids' => $previousEnrollments->pluck('instructor_workshop_id')->toArray()
+            // ]);
+
+            // Obtener IDs de talleres válidos (sin duplicados por nombre de taller)
             $previousWorkshopIds = [];
+            $seenWorkshopNames = []; // Para trackear nombres de talleres ya procesados
+
             foreach ($previousEnrollments as $enrollment) {
                 if ($enrollment->instructorWorkshop &&
                     $enrollment->instructorWorkshop->is_active &&
                     $enrollment->instructorWorkshop->workshop) {
-                    $previousWorkshopIds[] = $enrollment->instructor_workshop_id;
+
+                    $workshopName = $enrollment->instructorWorkshop->workshop->name;
+
+                    // Solo agregar si no hemos visto este NOMBRE de taller antes
+                    // Esto previene duplicados cuando hay múltiples horarios del mismo taller
+                    if (!in_array($workshopName, $seenWorkshopNames)) {
+                        $previousWorkshopIds[] = $enrollment->instructor_workshop_id;
+                        $seenWorkshopNames[] = $workshopName;
+                    }
                 }
             }
 
