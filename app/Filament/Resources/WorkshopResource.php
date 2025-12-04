@@ -514,15 +514,15 @@ class WorkshopResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('instructor.full_name')
                     ->label('Profesor')
-                    ->searchable(['first_names', 'last_names'])
-                    ->sortable(),
+                    ->searchable(['first_names', 'last_names']),
                 Tables\Columns\TextColumn::make('day_of_week')
                     ->label('Día')
-                    ->searchable(),
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereRaw('LOWER(day_of_week) LIKE LOWER(?)', ['%' . $search . '%']);
+                    }),
                 Tables\Columns\TextColumn::make('start_time')
                     ->label('Hora de Inicio')
                     ->time('H:i A'),
@@ -540,12 +540,10 @@ class WorkshopResource extends Resource
                         $date = \Carbon\Carbon::create($record->monthlyPeriod->year, $record->monthlyPeriod->month, 1);
 
                         return $date->translatedFormat('F Y');
-                    })
-                    ->sortable(),
+                    }),
                 Tables\Columns\TextColumn::make('standard_monthly_fee')
                     ->label('Tarifa Mensual')
-                    ->prefix('S/. ')
-                    ->sortable(),
+                    ->prefix('S/. '),
                 Tables\Columns\TextColumn::make('current_period_enrollments')
                     ->label('Cupos Actuales')
                     ->getStateUsing(function (Workshop $record) {
@@ -585,52 +583,18 @@ class WorkshopResource extends Resource
             ])
             ->defaultSort('name', 'asc')
             ->filters([
-                Tables\Filters\SelectFilter::make('day_of_week')
-                    ->label('Día de la semana')
-                    ->options([
-                        'Lunes' => 'Lunes',
-                        'Martes' => 'Martes',
-                        'Miércoles' => 'Miércoles',
-                        'Jueves' => 'Jueves',
-                        'Viernes' => 'Viernes',
-                        'Sábado' => 'Sábado',
-                        'Domingo' => 'Domingo',
-                    ]),
-
-                Tables\Filters\Filter::make('instructor_search')
-                    ->form([
-                        Forms\Components\TextInput::make('instructor_name')
-                            ->label('Buscar profesor')
-                            ->placeholder('Nombre del profesor...'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['instructor_name'],
-                            fn (Builder $query, $search): Builder => $query->whereHas(
-                                'instructor',
-                                fn (Builder $query): Builder => $query->where(function ($q) use ($search) {
-                                    $q->where('first_names', 'like', "%{$search}%")
-                                        ->orWhere('last_names', 'like', "%{$search}%")
-                                        ->orWhereRaw("CONCAT(first_names, ' ', last_names) LIKE ?", ["%{$search}%"]);
-                                })
-                            )
-                        );
-                    })
-                    ->indicateUsing(function (array $data): ?string {
-                        if (! $data['instructor_name']) {
-                            return null;
-                        }
-
-                        return 'Profesor: '.$data['instructor_name'];
-                    }),
-
                 Tables\Filters\SelectFilter::make('monthly_period')
                     ->label('Mes')
                     ->relationship('monthlyPeriod', 'id')
                     ->getOptionLabelFromRecordUsing(function ($record) {
-                        $date = \Carbon\Carbon::create($record->year, $record->month, 1);
+                        $monthNames = [
+                            1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
+                            5 => 'mayo', 6 => 'junio', 7 => 'julio', 8 => 'agosto',
+                            9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
+                        ];
 
-                        return $date->translatedFormat('F Y');
+                        $monthName = $monthNames[$record->month] ?? 'mes_' . $record->month;
+                        return $monthName . ' ' . $record->year;
                     })
                     ->searchable()
                     ->preload(),
