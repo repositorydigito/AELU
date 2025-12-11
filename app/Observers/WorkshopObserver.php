@@ -19,14 +19,6 @@ class WorkshopObserver
 
     public function updated(Workshop $workshop): void
     {
-        // DEBUG: Ver qué está cambiando
-        \Log::info('Workshop updated', [
-            'id' => $workshop->id,
-            'exists' => $workshop->exists,
-            'dirty' => $workshop->getDirty(),
-            'original' => $workshop->getOriginal(),
-        ]);
-
         // Evitar ejecuciones recursivas
         if (self::$syncing) {
             return;
@@ -34,7 +26,7 @@ class WorkshopObserver
 
         // Verificar que el workshop EXISTE en BD antes de continuar
         if (!$workshop->exists) {
-            \Log::warning('Intentando actualizar un workshop que no existe en BD', ['id' => $workshop->id]);
+            // \Log::warning('Intentando actualizar un workshop que no existe en BD', ['id' => $workshop->id]);
             return;
         }
 
@@ -65,13 +57,9 @@ class WorkshopObserver
             $volunteerPricings = [];
             for ($i = 1; $i < $numberOfClasses; $i++) {
                 $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
-                $volunteerPricings[$i] = min($priceWithSurcharge, $standardMonthlyFee);
+                $volunteerPricings[$i] = $priceWithSurcharge;
             }
             $volunteerPricings[$numberOfClasses] = $standardMonthlyFee;
-
-            if ($numberOfClasses == 4) {
-                $volunteerPricings[5] = round($standardMonthlyFee * 1.25, 2);
-            }
 
             foreach ($volunteerPricings as $numClasses => $price) {
                 WorkshopPricing::create([
@@ -87,13 +75,9 @@ class WorkshopObserver
             $nonVolunteerPricings = [];
             for ($i = 1; $i < $numberOfClasses; $i++) {
                 $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
-                $nonVolunteerPricings[$i] = min($priceWithSurcharge, $standardMonthlyFee);
+                $nonVolunteerPricings[$i] = $priceWithSurcharge;
             }
             $nonVolunteerPricings[$numberOfClasses] = $standardMonthlyFee;
-
-            if ($numberOfClasses == 4) {
-                $nonVolunteerPricings[5] = $standardMonthlyFee;
-            }
 
             foreach ($nonVolunteerPricings as $numClasses => $price) {
                 WorkshopPricing::create([

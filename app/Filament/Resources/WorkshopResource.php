@@ -450,30 +450,20 @@ class WorkshopResource extends Resource
         for ($i = 1; $i < $numberOfClasses; $i++) {
             // Calcular precio con recargo
             $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
-            // Asegurar que nunca supere la tarifa completa
-            $volunteerPricings[$i] = min($priceWithSurcharge, $standardFee);
+            // Permitir que el precio supere la tarifa base
+            $volunteerPricings[$i] = $priceWithSurcharge;
         }
         $volunteerPricings[$numberOfClasses] = $standardFee; // Tarifa completa sin recargo
-
-        // Solo agregar opción de 5 clases si el taller tiene 4 clases base
-        if ($numberOfClasses == 4) {
-            $volunteerPricings[5] = round($standardFee * 1.25, 2);
-        }
 
         // Generar tarifas para no voluntarios
         $nonVolunteerPricings = [];
         for ($i = 1; $i < $numberOfClasses; $i++) {
             // Calcular precio con recargo
             $priceWithSurcharge = round($basePerClass * $surchargeMultiplier * $i, 2);
-            // Asegurar que nunca supere la tarifa completa
-            $nonVolunteerPricings[$i] = min($priceWithSurcharge, $standardFee);
+            // Permitir que el precio supere la tarifa base
+            $nonVolunteerPricings[$i] = $priceWithSurcharge;
         }
         $nonVolunteerPricings[$numberOfClasses] = $standardFee; // Tarifa completa
-
-        // Solo agregar opción de 5 clases si el taller tiene 4 clases base
-        if ($numberOfClasses == 4) {
-            $nonVolunteerPricings[5] = $standardFee;
-        }
 
         $html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
 
@@ -482,11 +472,9 @@ class WorkshopResource extends Resource
         $html .= '<h4 class="font-semibold text-green-800 mb-3">Instructores Voluntarios</h4>';
         $html .= '<div class="space-y-2">';
         foreach ($volunteerPricings as $classes => $price) {
-            $isDefault = $classes === $numberOfClasses;
-            $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded ml-2">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
             $html .= "<span>{$classes} ".($classes === 1 ? 'clase' : 'clases').':</span>';
-            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).$badge.'</span>';
+            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).'</span>';
             $html .= '</div>';
         }
         $html .= '</div></div>';
@@ -496,11 +484,9 @@ class WorkshopResource extends Resource
         $html .= '<h4 class="font-semibold text-blue-800 mb-3">Instructores No Voluntarios</h4>';
         $html .= '<div class="space-y-2">';
         foreach ($nonVolunteerPricings as $classes => $price) {
-            $isDefault = $classes === $numberOfClasses;
-            $badge = $isDefault ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded ml-2">Estándar</span>' : '';
             $html .= "<div class='flex justify-between items-center'>";
             $html .= "<span>{$classes} ".($classes === 1 ? 'clase' : 'clases').':</span>';
-            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).$badge.'</span>';
+            $html .= "<span class='font-medium'>S/ ".number_format($price, 2).'</span>';
             $html .= '</div>';
         }
         $html .= '</div></div>';
