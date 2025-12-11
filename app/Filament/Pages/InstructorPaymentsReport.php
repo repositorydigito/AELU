@@ -155,6 +155,7 @@ class InstructorPaymentsReport extends Page implements HasActions, HasForms
                 'id' => $payment->id,
                 'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A',
                 'workshop_name' => $workshop->name ?? 'N/A',
+                'standard_monthly_fee' => $workshop->standard_monthly_fee ?? 0,
                 'workshop_schedule' => "{$dayOfWeek} {$startTime}-{$endTime}",
                 'period_name' => $period ? $this->generatePeriodName($period->month, $period->year) : 'N/A',
                 'payment_type' => $payment->payment_type === 'volunteer' ? 'Voluntario' : 'Por Horas',
@@ -165,6 +166,8 @@ class InstructorPaymentsReport extends Page implements HasActions, HasForms
                 'document_number' => $payment->document_number ?? 'Sin documento',
                 'rate_or_percentage' => $this->getRateOrPercentage($payment),
                 'rate_or_percentage_value' => $this->getRateOrPercentageValue($payment),
+                'total_students' => $payment->total_students ?? 0,
+                'total_hours' => $payment->total_hours ?? 0,
             ];
         })->toArray();
     }
