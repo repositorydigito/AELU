@@ -103,7 +103,7 @@ class InstructorPaymentService
      */
     private function getWorkshopRevenueForPeriod(InstructorWorkshop $instructorWorkshop, MonthlyPeriod $monthlyPeriod): float
     {
-        return $instructorWorkshop->studentEnrollments()
+        return $instructorWorkshop->enrollments()
             ->where('monthly_period_id', $monthlyPeriod->id)
             ->sum('total_amount');
     }
@@ -113,7 +113,7 @@ class InstructorPaymentService
      */
     private function getTotalStudentsForPeriod(InstructorWorkshop $instructorWorkshop, MonthlyPeriod $monthlyPeriod): int
     {
-        return $instructorWorkshop->studentEnrollments()
+        return $instructorWorkshop->enrollments()
             ->where('monthly_period_id', $monthlyPeriod->id)
             ->distinct('student_id')
             ->count('student_id');

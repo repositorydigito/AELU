@@ -19,7 +19,7 @@
             <ul class="space-y-3 text-gray-700 dark:text-gray-300">
                 <li><a href="{{ url('/admin/instructor-kardex-report') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Kardex por profesor</a></li>
                 <li><a href="{{ url('/admin/instructor-payments-report') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Pagos por profesor</a></li>
-
+                <li><a href="{{ url('/admin/all-instructors-payment-report') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Pagos por profesor - General</a></li>
             </ul>
         </x-filament::section>
 

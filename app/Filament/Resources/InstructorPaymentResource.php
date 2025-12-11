@@ -259,7 +259,7 @@ class InstructorPaymentResource extends Resource
                         } else {
                             // Para instructores por hora, también mostrar el número de estudiantes
                             return $record->instructorWorkshop
-                                ->studentEnrollments()
+                                ->enrollments()
                                 ->where('monthly_period_id', $record->monthly_period_id)
                                 ->distinct('student_id')
                                 ->count('student_id');
@@ -284,7 +284,7 @@ class InstructorPaymentResource extends Resource
                     }),
 
                 Tables\Columns\TextColumn::make('base_amount')
-                    ->label('Ingresos')
+                    ->label('Ingresos / Horas')
                     ->getStateUsing(function (InstructorPayment $record) {
                         if ($record->payment_type === 'volunteer' && $record->applied_volunteer_percentage && $record->calculated_amount > 0) {
                             $baseAmount = $record->calculated_amount / $record->applied_volunteer_percentage;
