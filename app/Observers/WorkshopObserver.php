@@ -39,6 +39,12 @@ class WorkshopObserver
         if ($workshop->isDirty(['day_of_week', 'start_time', 'duration', 'capacity', 'place'])) {
             $this->updateInstructorWorkshops($workshop);
         }
+
+        // Asegurar creación de InstructorWorkshop si no existía al crear el Workshop
+        // Caso típico: se creó el taller sin instructor y luego se asignó en una edición.
+        if ($workshop->instructor_id && $workshop->instructorWorkshops()->count() === 0) {
+            $this->createInstructorWorkshop($workshop);
+        }
     }
 
     protected function syncPricing(Workshop $workshop): void
