@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\StudentRegisterResource\Pages;
 use App\Models\Student;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -20,6 +21,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -78,7 +80,7 @@ class StudentRegisterResource extends Resource
 
                                                             TextInput::make('document_number')
                                                                 ->label('Número de documento')
-                                                                ->nullable()                                                                
+                                                                ->nullable()
                                                                 ->maxLength(15),
                                                         ]),
                                                 ]),
@@ -94,33 +96,29 @@ class StudentRegisterResource extends Resource
                                             DatePicker::make('birth_date')
                                                 ->label('Fecha de Nacimiento')
                                                 ->required()
-                                                ->validationMessages(['required' => 'Este campo es obligatorio'])
                                                 ->maxDate(now())
-                                                ->live()
-                                                ->afterStateUpdated(function (callable $set, $state) {
-                                                    if ($state) {
-                                                        $birthDate = \Carbon\Carbon::parse($state);
-                                                        $age = $birthDate->age;
-                                                        $set('calculated_age', $age);
-                                                    }
-                                                }),
-                                            TextInput::make('calculated_age')
+                                                ->live(onBlur: true),
+
+                                            Placeholder::make('age_display')
                                                 ->label('Edad')
-                                                ->suffix('años')
-                                                ->disabled()
-                                                ->dehydrated(false)
-                                                ->default(function (callable $get) {
-                                                    $birthDate = $get('birth_date');
-                                                    if ($birthDate) {
-                                                        return \Carbon\Carbon::parse($birthDate)->age;
+                                                ->content(function (Get $get, ?Student $record): string {
+                                                    // En edición con record
+                                                    if ($record?->birth_date && !$get('birth_date')) {
+                                                        return $record->age . ' años';
                                                     }
 
-                                                    return null;
+                                                    // Cuando se cambia la fecha
+                                                    $birthDate = $get('birth_date');
+                                                    if (!$birthDate) {
+                                                        return '—';
+                                                    }
+
+                                                    if (is_string($birthDate)) {
+                                                        $birthDate = Carbon::parse($birthDate);
+                                                    }
+
+                                                    return $birthDate->age . ' años';
                                                 }),
-                                            TextInput::make('nationality')
-                                                ->label('Nacionalidad')
-                                                ->nullable()
-                                                ->maxLength(20),
                                         ]),
                                     Grid::make(2)
                                         ->schema([
