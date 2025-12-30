@@ -212,11 +212,16 @@ class AttendanceManagement extends Page implements HasActions, HasForms
             ->toArray();
 
         // Cargar las matrículas de estudiantes para este taller CON sus clases específicas
+        // ORDENADAS ALFABÉTICAMENTE por apellidos y nombres
         $enrollments = StudentEnrollment::whereHas('instructorWorkshop', function ($query) {
             $query->where('workshop_id', $this->selectedWorkshop);
         })
             ->where('payment_status', 'completed')
             ->with(['student', 'enrollmentClasses.workshopClass'])
+            ->join('students', 'student_enrollments.student_id', '=', 'students.id')
+            ->orderBy('students.last_names')
+            ->orderBy('students.first_names')
+            ->select('student_enrollments.*')
             ->get();
 
         $this->studentEnrollments = [];
