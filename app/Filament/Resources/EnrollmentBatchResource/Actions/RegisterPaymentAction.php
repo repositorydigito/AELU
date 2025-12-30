@@ -145,8 +145,9 @@ class RegisterPaymentAction
                                                             </div>
                                                             <div class="text-right">
                                                                 <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
-                                                                    S/ '.number_format($enrollment->total_amount, 2).'
+                                                                    ✓ Pagado
                                                                 </span>
+                                                                <p class="text-sm font-semibold text-green-800 mt-1">S/ '.number_format($enrollment->total_amount, 2).'</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -160,7 +161,7 @@ class RegisterPaymentAction
                     ];
                 }
 
-                // Selección de inscripciones
+                // Selección de inscripciones (SIN live() ni afterStateUpdated)
                 $enrollmentSelection = [
                     Forms\Components\CheckboxList::make('selected_enrollments')
                         ->label('Seleccionar Inscripciones a Pagar')
@@ -216,31 +217,12 @@ class RegisterPaymentAction
                                 ];
                             })
                         )
-                        ->live()
-                        ->afterStateUpdated(function ($state, Forms\Set $set) use ($pendingEnrollments) {
-                            if (empty($state)) {
-                                $set('calculated_total', 0);
-                                return;
-                            }
+                        ->helperText('Seleccione las inscripciones que desea pagar. El total se calculará automáticamente.'),
 
-                            $total = $pendingEnrollments
-                                ->whereIn('id', $state)
-                                ->sum('total_amount');
-
-                            $set('calculated_total', $total);
-                            $set('amount_paid', $total);
-                        }),
-
-                    Forms\Components\TextInput::make('calculated_total')
-                        ->label('Total Seleccionado')
-                        ->prefix('S/')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->default(0)
-                        ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2)),
+                    // Sin campo calculated_total - eliminado completamente
                 ];
 
-                // Campos de pago en efectivo
+                // Campos de pago en efectivo (simplificados)
                 $paymentFields = [
                     Forms\Components\Grid::make(2)
                         ->schema([
@@ -249,24 +231,17 @@ class RegisterPaymentAction
                                 ->numeric()
                                 ->prefix('S/')
                                 ->required()
-                                ->live()
-                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                    $amountPaid = (float) $state;
-                                    $calculatedTotal = (float) ($get('calculated_total') ?? 0);
-                                    $change = $amountPaid - $calculatedTotal;
-                                    $set('change_amount', max(0, $change));
-                                })
-                                ->helperText('Ingresa el monto que recibiste del estudiante'),
+                                ->helperText('Ingrese el monto total que recibió del estudiante'),
 
                             Forms\Components\TextInput::make('change_amount')
-                                ->label('Vuelto')
+                                ->label('Vuelto (Calculado)')
                                 ->numeric()
                                 ->prefix('S/')
                                 ->disabled()
                                 ->default(0)
                                 ->dehydrated(true)
                                 ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2))
-                                ->helperText('Se calcula automáticamente'),
+                                ->helperText('El vuelto se calculará al procesar el pago'),
                         ]),
 
                     Forms\Components\DatePicker::make('payment_date')
@@ -293,7 +268,6 @@ class RegisterPaymentAction
                 // === LÓGICA PARA PAGO POR LINK (Pago Completo) ===
                 if ($record->payment_method === 'link') {
                     try {
-                        // Obtener todas las inscripciones pendientes
                         $pendingEnrollments = $record->enrollments()
                             ->where('payment_status', 'pending')
                             ->pluck('id')
@@ -308,10 +282,8 @@ class RegisterPaymentAction
                             return;
                         }
 
-                        // Actualizar el batch_code
                         $record->update(['batch_code' => $data['batch_code']]);
 
-                        // Procesar el pago completo
                         $payment = $paymentService->processPayment(
                             $record,
                             $pendingEnrollments,
@@ -337,7 +309,6 @@ class RegisterPaymentAction
                 }
 
                 // === LÓGICA PARA PAGO EN EFECTIVO (Parcial) ===
-                // Validar que se hayan seleccionado inscripciones
                 if (empty($data['selected_enrollments'])) {
                     \Filament\Notifications\Notification::make()
                         ->title('Error')
@@ -347,24 +318,31 @@ class RegisterPaymentAction
                     return;
                 }
 
-                // Obtener inscripciones seleccionadas
+                // Calcular el total de las inscripciones seleccionadas
                 $enrollments = \App\Models\StudentEnrollment::whereIn('id', $data['selected_enrollments'])->get();
                 $totalAmount = $enrollments->sum('total_amount');
-
-                // Validar monto para efectivo
                 $amountPaid = (float) ($data['amount_paid'] ?? 0);
 
+                // Validar monto con notificación detallada
                 if ($amountPaid < $totalAmount) {
                     \Filament\Notifications\Notification::make()
                         ->title('Monto Insuficiente')
-                        ->body("El monto recibido (S/ ".number_format($amountPaid, 2).") es menor al total seleccionado (S/ ".number_format($totalAmount, 2)."). Por favor, verifique.")
+                        ->body("
+                            <div class='space-y-2'>
+                                <p><strong>Total de inscripciones seleccionadas:</strong> S/ ".number_format($totalAmount, 2)."</p>
+                                <p><strong>Monto recibido:</strong> S/ ".number_format($amountPaid, 2)."</p>
+                                <p class='text-red-600'><strong>Falta:</strong> S/ ".number_format($totalAmount - $amountPaid, 2)."</p>
+                                <p class='text-sm mt-2'>Por favor, verifique el monto ingresado.</p>
+                            </div>
+                        ")
                         ->danger()
+                        ->duration(8000) // 8 segundos
                         ->send();
                     return;
                 }
 
                 try {
-                    // Procesar el pago usando el servicio
+                    // Procesar el pago
                     $payment = $paymentService->processPayment(
                         $record,
                         $data['selected_enrollments'],
@@ -373,32 +351,47 @@ class RegisterPaymentAction
                         $data['payment_notes'] ?? null
                     );
 
-                    // Actualizar monto pagado y vuelto en el pago
+                    // Actualizar monto pagado
                     $payment->update([
-                        'amount' => $data['amount_paid'] ?? $totalAmount,
+                        'amount' => $amountPaid,
                     ]);
 
-                    // Guardar el vuelto en las notas si hay
-                    if (isset($data['change_amount']) && $data['change_amount'] > 0) {
-                        $changeNote = "\nVuelto: S/ ".number_format($data['change_amount'], 2);
+                    // Calcular y guardar vuelto si hay
+                    $change = $amountPaid - $totalAmount;
+                    if ($change > 0) {
                         $payment->update([
-                            'notes' => ($payment->notes ?? '') . $changeNote
+                            'notes' => ($payment->notes ?? '') . "\nVuelto: S/ ".number_format($change, 2)
                         ]);
                     }
 
-                    // Refrescar el batch
                     $record->refresh();
 
                     $enrollmentsPaid = count($data['selected_enrollments']);
                     $totalEnrollments = $record->enrollments()->count();
+
                     $statusMessage = $record->payment_status === 'completed'
                         ? 'Todas las inscripciones han sido pagadas.'
                         : "Pago parcial registrado ({$enrollmentsPaid} de {$totalEnrollments} inscripciones).";
 
+                    // Notificación de éxito con detalles
+                    $bodyMessage = "
+                        <div class='space-y-1'>
+                            <p>{$statusMessage}</p>
+                            <p><strong>Total pagado:</strong> S/ ".number_format($totalAmount, 2)."</p>
+                            <p><strong>Monto recibido:</strong> S/ ".number_format($amountPaid, 2)."</p>
+                    ";
+
+                    if ($change > 0) {
+                        $bodyMessage .= "<p><strong>Vuelto:</strong> S/ ".number_format($change, 2)."</p>";
+                    }
+
+                    $bodyMessage .= "</div>";
+
                     \Filament\Notifications\Notification::make()
                         ->title('Pago Registrado Exitosamente')
-                        ->body($statusMessage)
+                        ->body($bodyMessage)
                         ->success()
+                        ->duration(6000)
                         ->send();
 
                 } catch (\Exception $e) {
@@ -414,7 +407,7 @@ class RegisterPaymentAction
                 $method = $record->payment_method === 'link' ? 'Link de Pago' : 'Efectivo';
                 $description = $record->payment_method === 'link'
                     ? 'Se registrará el pago completo de todas las inscripciones'
-                    : 'Seleccione las inscripciones que desea pagar';
+                    : 'Seleccione las inscripciones y registre el monto recibido';
                 return "Método de pago: {$method} | {$description}";
             })
             ->modalSubmitActionLabel('Registrar Pago')
