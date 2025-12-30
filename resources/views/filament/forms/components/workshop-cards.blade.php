@@ -659,7 +659,12 @@
                     const query = this.removeAccents(this.searchQuery.toLowerCase().trim());
                     return baseWorkshops.filter(workshop => {
                         const workshopName = this.removeAccents(workshop.name.toLowerCase());
-                        return workshopName.includes(query);
+                        const instructorName = this.removeAccents(workshop.instructor.toLowerCase());
+                        const workshopDay = this.removeAccents(workshop.day.toLowerCase());
+
+                        return workshopName.includes(query) ||
+                            instructorName.includes(query) ||
+                            workshopDay.includes(query);
                     });
                 }
             },
