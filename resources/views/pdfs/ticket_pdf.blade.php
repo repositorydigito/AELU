@@ -161,7 +161,7 @@
                 @if($ticket->status === 'cancelled')
                     <strong>ANULADO</strong>
                 @endif
-                //// <strong>Fecha:</strong> {{ $ticket->issued_at->format('d/m/Y') }}
+                <span style="margin: 0 10px;">&nbsp;&nbsp;&nbsp;&nbsp;</span> <strong>Fecha:</strong> {{ $ticket->issued_at->format('d/m/Y') }}
             </div>
         </div>
 
@@ -271,7 +271,7 @@
             <table width="100%" style="margin-bottom:4px; border-collapse:collapse; border:1.2px solid #000; background-color:#f9f9f9;">
                 <tr>
                     <td style="font-weight:bold; font-size:11px; padding:4px 6px; text-align:left; border:none;">
-                        MONTO PAGADO: S/ {{ number_format($ticket->enrollmentPayment->amount, 2) }}
+                        MONTO RECIBIDO: S/ {{ number_format($ticket->enrollmentPayment->amount, 2) }}
                     </td>
                     <td style="font-weight:bold; font-size:11px; padding:4px 6px; text-align:right; border:none;">
                         @php
