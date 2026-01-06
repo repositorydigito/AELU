@@ -728,6 +728,38 @@ class StudentRegisterResource extends Resource
                     ->color('primary'),
             ])
             ->actions([
+                // Action para registrar observaciones
+                Tables\Actions\Action::make('observations')
+                    ->label('Observaciones')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('info')
+                    ->modalHeading('Observaciones del Alumno')
+                    ->modalDescription(fn (Student $record) => "{$record->full_name} - {$record->student_code}")
+                    ->form([
+                        Forms\Components\Textarea::make('observations')
+                            ->label('Observaciones')
+                            ->rows(6)
+                            ->placeholder('Escriba aquí las observaciones sobre el alumno...')
+                            ->maxLength(5000),
+                    ])
+                    ->fillForm(fn (Student $record): array => [
+                        'observations' => $record->observations,
+                    ])
+                    ->action(function (Student $record, array $data): void {
+                        $record->update([
+                            'observations' => $data['observations'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Observaciones Actualizadas')
+                            ->body('Las observaciones del alumno han sido guardadas correctamente.')
+                            ->success()
+                            ->send();
+                    })
+                    ->modalSubmitActionLabel('Guardar')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalWidth('4xl'),
+
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
                 /* Tables\Actions\Action::make('update_pricing')

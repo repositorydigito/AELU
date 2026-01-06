@@ -28,6 +28,7 @@ class Student extends Model
         'emergency_contact_relationship',
         'emergency_contact_phone',
         'maintenance_period_id',
+        'observations',
     ];
 
     protected $casts = [
