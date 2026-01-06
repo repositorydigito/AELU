@@ -219,10 +219,12 @@ class RegisterPaymentAction
                         )
                         ->helperText('Seleccione las inscripciones que desea pagar. El total se calculará automáticamente.'),
 
-                    // Sin campo calculated_total - eliminado completamente
+                    // Campo hidden con el total (se calcula en el servidor cuando cambian los checkboxes)
+                    Forms\Components\Hidden::make('calculated_total')
+                        ->default(0),
                 ];
 
-                // Campos de pago en efectivo (simplificados)
+                // Campos de pago en efectivo (vuelto reactivo)
                 $paymentFields = [
                     Forms\Components\Grid::make(2)
                         ->schema([
@@ -231,17 +233,35 @@ class RegisterPaymentAction
                                 ->numeric()
                                 ->prefix('S/')
                                 ->required()
-                                ->helperText('Ingrese el monto total que recibió del estudiante'),
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                    $amountPaid = (float) ($state ?? 0);
+
+                                    // Obtener las inscripciones seleccionadas y calcular el total
+                                    $selectedIds = $get('selected_enrollments') ?? [];
+
+                                    if (empty($selectedIds)) {
+                                        $set('change_amount', 0);
+                                        return;
+                                    }
+
+                                    // Calcular el total de las inscripciones seleccionadas
+                                    $total = \App\Models\StudentEnrollment::whereIn('id', $selectedIds)
+                                        ->sum('total_amount');
+
+                                    // Calcular el vuelto
+                                    $change = max(0, $amountPaid - $total);
+                                    $set('change_amount', $change);
+                                }),
 
                             Forms\Components\TextInput::make('change_amount')
-                                ->label('Vuelto (Calculado)')
+                                ->label('Vuelto')
                                 ->numeric()
                                 ->prefix('S/')
                                 ->disabled()
                                 ->default(0)
                                 ->dehydrated(true)
-                                ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2))
-                                ->helperText('El vuelto se calculará al procesar el pago'),
+                                ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2)),
                         ]),
 
                     Forms\Components\DatePicker::make('payment_date')
