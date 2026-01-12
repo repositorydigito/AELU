@@ -121,10 +121,18 @@
 
                                     {{-- Hora --}}
                                     <div class="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         {{ $workshop['start_time'] }} - {{ $workshop['end_time'] }}
+                                    </div>
+
+                                    {{-- Modalidad --}}
+                                    <div class="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                        {{ ucfirst($workshop['modality'] ?? 'No especificada') }}
                                     </div>
 
                                     {{-- Información adicional --}}
@@ -156,6 +164,8 @@
                             <span>{{ is_array($selectedWorkshopData['day_of_week'] ?? null) ? implode('/', $selectedWorkshopData['day_of_week']) : ($selectedWorkshopData['day_of_week'] ?? 'N/A') }}</span>
                             <span class="hidden md:inline">•</span>
                             <span>{{ $selectedWorkshopData['start_time'] ?? '' }} - {{ $selectedWorkshopData['end_time'] ?? '' }}</span>
+                            <span class="hidden md:inline">•</span>
+                            <span>{{ ucfirst($selectedWorkshopData['modality'] ?? 'No especificada') }}</span>
                             <span class="hidden md:inline">•</span>
                             <span>{{ $selectedWorkshopData['enrolled_students'] ?? 0 }} estudiantes</span>
                         </div>

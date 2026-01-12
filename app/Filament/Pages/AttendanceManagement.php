@@ -94,8 +94,9 @@ class AttendanceManagement extends Page implements HasActions, HasForms
             ->filter(function ($workshop) {
                 // Filtro por nombre
                 if (! empty($this->searchName)) {
-                    $searchTerm = strtolower($this->searchName);
-                    $workshopName = strtolower($workshop['name']);
+                    $searchTerm = $this->normalizeString($this->searchName);
+                    $workshopName = $this->normalizeString($workshop['name']);
+
                     if (! str_contains($workshopName, $searchTerm)) {
                         return false;
                     }
@@ -112,6 +113,19 @@ class AttendanceManagement extends Page implements HasActions, HasForms
             })
             ->values()
             ->toArray();
+    }
+
+    private function normalizeString($string): string
+    {
+        $string = mb_strtolower($string, 'UTF-8');
+        $replacements = [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
+            'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+            'â' => 'a', 'ê' => 'e', 'î' => 'i', 'ô' => 'o', 'û' => 'u',
+            'ñ' => 'n',
+        ];
+        return strtr($string, $replacements);
     }
 
     public function updatedSearchName(): void
@@ -179,6 +193,7 @@ class AttendanceManagement extends Page implements HasActions, HasForms
                     'place' => $workshop->place,
                     'period_name' => $periodName,
                     'period_id' => $workshop->monthly_period_id,
+                    'modality' => $workshop->modality,
                     'classes_count' => $workshop->workshopClasses->count(),
                 ];
             })
