@@ -29,9 +29,9 @@ class MaintenancePeriod extends Model
     public static function getMinimumAcceptablePeriod()
     {
         $now = Carbon::now();
-        
-        $previousMonth = $now->copy()->subMonth();
-        
+
+        $previousMonth = $now->copy()->subMonths(2);
+
         return self::where('year', $previousMonth->year)
             ->where('month', $previousMonth->month)
             ->first();
