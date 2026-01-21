@@ -714,6 +714,9 @@
                     attributes: true,
                     attributeFilter: ['data-previous-workshops', 'data-current-enrolled-workshops', 'data-student-id', 'data-workshops']
                 });
+
+                // Observer para el hidden input selected_workshops
+                this.observeSelectedWorkshopsInput();
             },
 
             // Inicializar talleres pre-seleccionados
@@ -723,8 +726,9 @@
                 if (hiddenInput && hiddenInput.value) {
                     try {
                         const preSelected = JSON.parse(hiddenInput.value);
-                        if (Array.isArray(preSelected)) {
+                        if (Array.isArray(preSelected) && preSelected.length > 0) {
                             this.selectedWorkshops = preSelected;
+                            console.log('Talleres pre-seleccionados cargados:', preSelected);
                         }
                     } catch (e) {
                         console.log('No se pudieron cargar talleres pre-seleccionados:', e);
@@ -743,6 +747,77 @@
                         }
                     }
                 }
+            },
+
+            // Observar cambios en el input hidden de selected_workshops
+            observeSelectedWorkshopsInput() {
+                const hiddenInput = document.querySelector('input[name="selected_workshops"]');
+                if (!hiddenInput) {
+                    console.log('Hidden input selected_workshops no encontrado');
+                    return;
+                }
+
+                // Usar MutationObserver para detectar cambios en el value del input
+                const inputObserver = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                            const newValue = hiddenInput.value;
+                            if (newValue) {
+                                try {
+                                    const preSelected = JSON.parse(newValue);
+                                    if (Array.isArray(preSelected) && preSelected.length > 0) {
+                                        // Solo actualizar si es diferente de lo que tenemos
+                                        if (JSON.stringify(this.selectedWorkshops) !== JSON.stringify(preSelected)) {
+                                            this.selectedWorkshops = preSelected;
+                                            console.log('Talleres actualizados desde input observer:', preSelected);
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('Error parseando selected_workshops:', e);
+                                }
+                            }
+                        }
+                    });
+                });
+
+                inputObserver.observe(hiddenInput, {
+                    attributes: true,
+                    attributeFilter: ['value']
+                });
+
+                // También observar cambios via input event (Livewire puede usar esto)
+                hiddenInput.addEventListener('input', (e) => {
+                    const newValue = e.target.value;
+                    if (newValue) {
+                        try {
+                            const preSelected = JSON.parse(newValue);
+                            if (Array.isArray(preSelected) && preSelected.length > 0) {
+                                if (JSON.stringify(this.selectedWorkshops) !== JSON.stringify(preSelected)) {
+                                    this.selectedWorkshops = preSelected;
+                                    console.log('Talleres actualizados desde input event:', preSelected);
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error parseando selected_workshops:', e);
+                        }
+                    }
+                });
+
+                // Usar setTimeout para re-verificar después de que Livewire haya terminado de hidratarse
+                setTimeout(() => {
+                    this.initializePreSelectedWorkshops();
+                }, 500);
+
+                // Escuchar evento de Livewire cuando el form ha sido llenado
+                window.addEventListener('form-filled', (event) => {
+                    if (event.detail && event.detail.selectedWorkshops) {
+                        const workshops = event.detail.selectedWorkshops;
+                        if (Array.isArray(workshops) && workshops.length > 0) {
+                            this.selectedWorkshops = workshops;
+                            console.log('Talleres actualizados desde evento form-filled:', workshops);
+                        }
+                    }
+                });
             },
 
             updatePreviousWorkshops() {

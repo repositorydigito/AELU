@@ -509,7 +509,9 @@ class EnrollmentResource extends Resource
                                             Forms\Components\Select::make('selected_classes')
                                                 ->label('Clases Específicas')
                                                 ->multiple()
-                                                ->options(function (Forms\Get $get) {
+                                                ->searchable()
+                                                ->preload()
+                                                ->getSearchResultsUsing(function (string $search, Forms\Get $get) {
                                                     $workshopId = $get('instructor_workshop_id');
                                                     $selectedMonthlyPeriodId = $get('../../selected_monthly_period_id');
 
@@ -540,6 +542,23 @@ class EnrollmentResource extends Resource
                                                     }
 
                                                     return $options;
+                                                })
+                                                ->getOptionLabelUsing(function ($value, Forms\Get $get): ?string {
+                                                    if (! $value) {
+                                                        return null;
+                                                    }
+
+                                                    $class = \App\Models\WorkshopClass::find($value);
+                                                    if (! $class) {
+                                                        return null;
+                                                    }
+
+                                                    $dayName = \Carbon\Carbon::parse($class->class_date)->translatedFormat('l');
+                                                    $formattedDate = \Carbon\Carbon::parse($class->class_date)->format('d/m/Y');
+                                                    $startTime = \Carbon\Carbon::parse($class->start_time)->format('H:i');
+                                                    $endTime = \Carbon\Carbon::parse($class->end_time)->format('H:i');
+
+                                                    return "{$dayName} {$formattedDate} ({$startTime} - {$endTime})";
                                                 })
                                                 ->placeholder('Seleccionar clases específicas')
                                                 ->helperText(function (Forms\Get $get) {
