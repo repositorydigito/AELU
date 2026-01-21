@@ -610,6 +610,11 @@
 
     <script>
     function workshopSelector() {
+        console.log('=== INICIALIZANDO WORKSHOP SELECTOR ===');
+        console.log('selectedWorkshopsForJs inicial:', @json($selectedWorkshopsForJs));
+        console.log('previousWorkshopIds inicial:', @json($previousWorkshopIdsForJs));
+        console.log('Total workshops:', @json($workshopsForJs).length);
+
         return {
             showSelectedDetails: false,
             allWorkshops: @json($workshopsForJs),
@@ -703,8 +708,10 @@
             },
 
             init() {
+                // Inicializar inmediatamente
                 this.updatePreviousWorkshops();
 
+                // Observar cambios en el DOM
                 const observer = new MutationObserver(() => {
                     this.updatePreviousWorkshops();
                 });
@@ -713,6 +720,16 @@
                     attributes: true,
                     attributeFilter: ['data-previous-workshops', 'data-current-enrolled-workshops', 'data-student-id', 'data-workshops']
                 });
+
+                // Re-verificar después de un breve delay para capturar cambios de Livewire
+                setTimeout(() => {
+                    this.updatePreviousWorkshops();
+                }, 100);
+
+                // También re-verificar después de un delay más largo por si acaso
+                setTimeout(() => {
+                    this.updatePreviousWorkshops();
+                }, 500);
             },
 
             updatePreviousWorkshops() {
@@ -723,6 +740,21 @@
                         this.allWorkshops = JSON.parse(workshopsAttr);
                     } catch (e) {
                         console.error('Error parsing data-workshops:', e);
+                    }
+                }
+
+                // IMPORTANTE: Actualizar talleres seleccionados desde el input hidden
+                // Esto es crucial cuando el ViewField se regenera en modo edición
+                const hiddenInput = document.querySelector('input[name="selected_workshops"]');
+                if (hiddenInput && hiddenInput.value) {
+                    try {
+                        const preSelected = JSON.parse(hiddenInput.value);
+                        if (Array.isArray(preSelected)) {
+                            this.selectedWorkshops = preSelected;
+                            console.log('Talleres seleccionados actualizados:', preSelected);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing selected_workshops:', e);
                     }
                 }
 

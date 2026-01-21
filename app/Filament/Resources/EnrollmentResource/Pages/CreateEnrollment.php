@@ -55,27 +55,136 @@ class CreateEnrollment extends CreateRecord
 
         // Pre-poblar talleres seleccionados
         $selectedWorkshops = $this->editingBatch->enrollments->pluck('instructor_workshop_id')->toArray();
-        $formData['selected_workshops'] = json_encode($selectedWorkshops);
+
+        // IMPORTANTE: Mapear talleres del período anterior al período actual
+        $workshopMapping = [];
+
+        foreach ($this->editingBatch->enrollments as $enrollment) {
+            $originalWorkshop = $enrollment->instructorWorkshop;
+            if (!$originalWorkshop) continue;
+
+            // Buscar el taller equivalente en el período actual
+            // Usar criterios más estrictos: nombre, instructor, día, hora y modalidad
+            $originalStartTime = \Carbon\Carbon::parse($originalWorkshop->start_time)->format('H:i:s');
+
+            // Buscar talleres candidatos con el mismo nombre e instructor
+            $candidates = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                ->whereHas('workshop', function ($query) use ($firstEnrollment, $originalWorkshop) {
+                    $query->where('monthly_period_id', $firstEnrollment->monthly_period_id)
+                          ->where('name', $originalWorkshop->workshop->name);
+                })
+                ->whereHas('instructor', function ($query) use ($originalWorkshop) {
+                    $query->where('first_names', $originalWorkshop->instructor->first_names)
+                          ->where('last_names', $originalWorkshop->instructor->last_names);
+                })
+                ->where('is_active', true)
+                ->get();
+
+            // Filtrar manualmente por día, hora y modalidad
+            $currentWorkshop = $candidates->first(function($candidate) use ($originalWorkshop, $originalStartTime) {
+                $candidateTime = \Carbon\Carbon::parse($candidate->start_time)->format('H:i:s');
+                $candidateModality = $candidate->workshop->modality ?? '';
+                $originalModality = $originalWorkshop->workshop->modality ?? '';
+
+                return $candidate->day_of_week === $originalWorkshop->day_of_week &&
+                       $candidateTime === $originalStartTime &&
+                       $candidateModality === $originalModality;
+            });
+
+            if ($currentWorkshop) {
+                $workshopMapping[$originalWorkshop->id] = $currentWorkshop->id;
+            } else {
+                // Si no hay equivalente, mantener el ID original
+                $workshopMapping[$originalWorkshop->id] = $originalWorkshop->id;
+            }
+        }
+
+        // Aplicar el mapeo a los talleres seleccionados
+        $mappedSelectedWorkshops = array_values($workshopMapping);
+        $formData['selected_workshops'] = json_encode($mappedSelectedWorkshops);
 
         // Pre-poblar talleres previos si existen
         $previousWorkshops = static::findPreviousWorkshops(
             $this->editingBatch->student_id,
             $firstEnrollment->monthly_period_id
         );
-        $formData['previous_workshops'] = json_encode($previousWorkshops);
+
+        // IMPORTANTE: Mapear los talleres previos al período actual
+        // Esto evita que se muestren TODOS los horarios con el mismo nombre
+        $mappedPreviousWorkshops = [];
+
+        foreach ($previousWorkshops as $oldWorkshopId) {
+            // Si el taller fue mapeado, usar el ID nuevo
+            if (isset($workshopMapping[$oldWorkshopId])) {
+                $mappedPreviousWorkshops[] = $workshopMapping[$oldWorkshopId];
+            } else {
+                // Si no está en el mapeo, intentar mapearlo ahora
+                $originalWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                    ->find($oldWorkshopId);
+
+                if ($originalWorkshop) {
+                    $originalStartTime = \Carbon\Carbon::parse($originalWorkshop->start_time)->format('H:i:s');
+
+                    $currentWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                        ->whereHas('workshop', function ($query) use ($firstEnrollment, $originalWorkshop) {
+                            $query->where('monthly_period_id', $firstEnrollment->monthly_period_id)
+                                  ->where('name', $originalWorkshop->workshop->name)
+                                  ->where('modality', $originalWorkshop->workshop->modality);
+                        })
+                        ->whereHas('instructor', function ($query) use ($originalWorkshop) {
+                            $query->where('first_names', $originalWorkshop->instructor->first_names)
+                                  ->where('last_names', $originalWorkshop->instructor->last_names);
+                        })
+                        ->where('day_of_week', $originalWorkshop->day_of_week)
+                        ->whereRaw('TIME(start_time) = ?', [$originalStartTime])
+                        ->where('is_active', true)
+                        ->first();
+
+                    if ($currentWorkshop) {
+                        $mappedPreviousWorkshops[] = $currentWorkshop->id;
+                    }
+                }
+            }
+        }
+
+        $formData['previous_workshops'] = json_encode(array_unique($mappedPreviousWorkshops));
 
         // Pre-poblar detalles de talleres
         $workshopDetails = [];
         foreach ($this->editingBatch->enrollments as $enrollment) {
+            $originalWorkshopId = $enrollment->instructor_workshop_id;
+            $mappedWorkshopId = $workshopMapping[$originalWorkshopId] ?? $originalWorkshopId;
+
             // Obtener las clases específicas de enrollment_classes
             $selectedClasses = $enrollment->enrollmentClasses->pluck('workshop_class_id')->toArray();
 
+            // Si el taller fue mapeado a uno nuevo, necesitamos mapear las clases también
+            $mappedSelectedClasses = $selectedClasses;
+            if ($mappedWorkshopId !== $originalWorkshopId && !empty($selectedClasses)) {
+                // Buscar las clases equivalentes en el nuevo período
+                $originalClasses = \App\Models\WorkshopClass::whereIn('id', $selectedClasses)
+                    ->orderBy('class_date', 'asc')
+                    ->get();
+
+                $newWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($mappedWorkshopId);
+                if ($newWorkshop) {
+                    $newClasses = \App\Models\WorkshopClass::where('workshop_id', $newWorkshop->workshop->id)
+                        ->where('monthly_period_id', $firstEnrollment->monthly_period_id)
+                        ->where('status', '!=', 'cancelled')
+                        ->orderBy('class_date', 'asc')
+                        ->limit(count($originalClasses))
+                        ->get();
+
+                    $mappedSelectedClasses = $newClasses->pluck('id')->toArray();
+                }
+            }
+
             $workshopDetails[] = [
-                'instructor_workshop_id' => $enrollment->instructor_workshop_id,
+                'instructor_workshop_id' => $mappedWorkshopId,
                 'enrollment_type' => $enrollment->enrollment_type ?? 'full_month',
                 'number_of_classes' => $enrollment->number_of_classes,
                 'enrollment_date' => $enrollment->enrollment_date,
-                'selected_classes' => $selectedClasses,
+                'selected_classes' => $mappedSelectedClasses,
             ];
         }
 
