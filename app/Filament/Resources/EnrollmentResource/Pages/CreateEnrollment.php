@@ -83,9 +83,6 @@ class CreateEnrollment extends CreateRecord
 
         // Aplicar todos los datos al formulario
         $this->form->fill($formData);
-
-        // Forzar actualización del componente para que Alpine.js detecte los cambios
-        $this->dispatch('form-filled', ['selectedWorkshops' => $selectedWorkshops]);
     }
 
     public function getTitle(): string

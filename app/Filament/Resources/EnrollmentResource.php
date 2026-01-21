@@ -193,10 +193,27 @@ class EnrollmentResource extends Resource
                                                 $selectedWorkshops = [];
                                             }
 
+                                            // Obtener los workshop_details existentes
+                                            $existingWorkshopDetails = $get('workshop_details') ?? [];
+
+                                            // Crear un mapa de los detalles existentes por instructor_workshop_id
+                                            $existingDetailsMap = [];
+                                            foreach ($existingWorkshopDetails as $detail) {
+                                                if (isset($detail['instructor_workshop_id'])) {
+                                                    $existingDetailsMap[$detail['instructor_workshop_id']] = $detail;
+                                                }
+                                            }
+
                                             $workshopDetails = [];
 
                                             foreach ($selectedWorkshops as $workshopId) {
-                                                // Obtener información del taller para configurar valores por defecto
+                                                // Si ya existe detail para este taller, preservarlo
+                                                if (isset($existingDetailsMap[$workshopId])) {
+                                                    $workshopDetails[] = $existingDetailsMap[$workshopId];
+                                                    continue;
+                                                }
+
+                                                // Si no existe, crear uno nuevo con valores por defecto
                                                 $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')
                                                     ->find($workshopId);
 
@@ -373,7 +390,7 @@ class EnrollmentResource extends Resource
                                         })
                                         ->live()
                                         ->key(function (Forms\Get $get) {
-                                            return 'workshops_'.md5($get('previous_workshops').$get('student_id').$get('selected_monthly_period_id'));
+                                            return 'workshops_'.md5($get('previous_workshops').$get('student_id').$get('selected_monthly_period_id').$get('selected_workshops'));
                                         })
                                         ->columnSpanFull(),
                                 ])
@@ -510,8 +527,7 @@ class EnrollmentResource extends Resource
                                                 ->label('Clases Específicas')
                                                 ->multiple()
                                                 ->searchable()
-                                                ->preload()
-                                                ->getSearchResultsUsing(function (string $search, Forms\Get $get) {
+                                                ->options(function (Forms\Get $get) {
                                                     $workshopId = $get('instructor_workshop_id');
                                                     $selectedMonthlyPeriodId = $get('../../selected_monthly_period_id');
 
@@ -542,23 +558,6 @@ class EnrollmentResource extends Resource
                                                     }
 
                                                     return $options;
-                                                })
-                                                ->getOptionLabelUsing(function ($value, Forms\Get $get): ?string {
-                                                    if (! $value) {
-                                                        return null;
-                                                    }
-
-                                                    $class = \App\Models\WorkshopClass::find($value);
-                                                    if (! $class) {
-                                                        return null;
-                                                    }
-
-                                                    $dayName = \Carbon\Carbon::parse($class->class_date)->translatedFormat('l');
-                                                    $formattedDate = \Carbon\Carbon::parse($class->class_date)->format('d/m/Y');
-                                                    $startTime = \Carbon\Carbon::parse($class->start_time)->format('H:i');
-                                                    $endTime = \Carbon\Carbon::parse($class->end_time)->format('H:i');
-
-                                                    return "{$dayName} {$formattedDate} ({$startTime} - {$endTime})";
                                                 })
                                                 ->placeholder('Seleccionar clases específicas')
                                                 ->helperText(function (Forms\Get $get) {
