@@ -163,10 +163,13 @@ class AttendanceManagement extends Page implements HasActions, HasForms
         $this->workshops = $workshopQuery
             ->get()
             ->map(function ($workshop) {
-                // Calcular estudiantes inscritos
+                // Calcular estudiantes inscritos PARA EL PERÍODO ESPECÍFICO DEL TALLER
                 $enrolledStudents = StudentEnrollment::whereHas('instructorWorkshop', function ($query) use ($workshop) {
                     $query->where('workshop_id', $workshop->id);
-                })->where('payment_status', 'completed')->count();
+                })
+                    ->where('monthly_period_id', $workshop->monthly_period_id)
+                    ->where('payment_status', 'completed')
+                    ->count();
 
                 // Calcular cupos disponibles
                 $availableSlots = max(0, ($workshop->capacity ?? 0) - $enrolledStudents);
@@ -220,6 +223,16 @@ class AttendanceManagement extends Page implements HasActions, HasForms
             return;
         }
 
+        // Obtener el taller seleccionado con su período mensual
+        $workshop = Workshop::find($this->selectedWorkshop);
+
+        if (!$workshop) {
+            $this->workshopClasses = [];
+            $this->studentEnrollments = [];
+            $this->attendanceData = [];
+            return;
+        }
+
         // Cargar las clases del taller
         $this->workshopClasses = WorkshopClass::where('workshop_id', $this->selectedWorkshop)
             ->orderBy('class_date')
@@ -228,9 +241,11 @@ class AttendanceManagement extends Page implements HasActions, HasForms
 
         // Cargar las matrículas de estudiantes para este taller CON sus clases específicas
         // ORDENADAS ALFABÉTICAMENTE por apellidos y nombres
+        // FILTRADO POR EL PERÍODO MENSUAL DEL TALLER
         $enrollments = StudentEnrollment::whereHas('instructorWorkshop', function ($query) {
             $query->where('workshop_id', $this->selectedWorkshop);
         })
+            ->where('monthly_period_id', $workshop->monthly_period_id)
             ->where('payment_status', 'completed')
             ->with(['student', 'enrollmentClasses.workshopClass'])
             ->join('students', 'student_enrollments.student_id', '=', 'students.id')
