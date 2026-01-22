@@ -48,20 +48,40 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
 
     public function mount(): void
     {
-        $this->form->fill();
+        // Si el usuario NO es administrador, pre-seleccionar su propio ID
+        $currentUser = auth()->user();
+        $isAdmin = in_array($currentUser->name, ['sdordan', 'ggonzalez', 'tnamoc']);
+
+        if (!$isAdmin) {
+            $this->form->fill([
+                'cashier_id' => $currentUser->id,
+            ]);
+            $this->selectedCashier = $currentUser->id;
+        } else {
+            $this->form->fill();
+        }
     }
 
     public function form(Form $form): Form
     {
+        $currentUser = auth()->user();
+        $isAdmin = in_array($currentUser->name, ['sdordan', 'ggonzalez', 'tnamoc']);
+
+        // Si es admin, mostrar todos los usuarios. Si no, solo el usuario actual
+        $cashierOptions = $isAdmin
+            ? \App\Models\User::whereDoesntHave('roles', function ($query) {
+                $query->where('name', 'Delegado');
+              })->pluck('name', 'id')
+            : collect([$currentUser->id => $currentUser->name]);
+
         return $form
             ->schema([
                 Select::make('cashier_id')
                     ->label('Cajero')
                     ->placeholder('Selecciona un cajero...')
-                    ->options(\App\Models\User::whereDoesntHave('roles', function ($query) {
-                        $query->where('name', 'Delegado');
-                    })->pluck('name', 'id'))
-                    ->searchable()
+                    ->options($cashierOptions)
+                    ->searchable($isAdmin) // Solo búsqueda si es admin
+                    ->disabled(!$isAdmin) // Deshabilitar si no es admin
                     ->live()
                     ->afterStateUpdated(function ($state) {
                         $this->selectedCashier = $state;
