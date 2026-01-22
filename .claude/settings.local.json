@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\\\Users\\\\rhuallpa\\\\.config\\\\herd\\\\bin\\\\php.bat\" artisan enrollments:fix-february-mappings)",
+      "Bash(\"C:\\\\Users\\\\rhuallpa\\\\.config\\\\herd\\\\bin\\\\php.bat\" check_capacity.php)",
+      "Bash(\"C:\\\\Users\\\\rhuallpa\\\\.config\\\\herd\\\\bin\\\\php.bat\" final_verification.php)",
+      "Bash(\"C:\\\\Users\\\\rhuallpa\\\\.config\\\\herd\\\\bin\\\\php.bat\" check_tenis_mesa.php)",
+      "Bash(del check_capacity.php verify_workshop_ids.php final_verification.php check_tenis_mesa.php)"
+    ]
+  }
+}
