@@ -36,7 +36,7 @@ class WorkshopObserver
         }
 
         // Actualizar InstructorWorkshops si cambian campos relevantes
-        if ($workshop->isDirty(['day_of_week', 'start_time', 'duration', 'capacity', 'place'])) {
+        if ($workshop->isDirty(['day_of_week', 'start_time', 'duration', 'capacity', 'place', 'instructor_id'])) {
             $this->updateInstructorWorkshops($workshop);
         }
 
@@ -149,13 +149,20 @@ class WorkshopObserver
             // Usar withoutEvents para evitar disparar observers en cascade
             $workshop->instructorWorkshops()->each(function($instructorWorkshop) use ($daysOfWeek, $workshop, $endTime) {
                 $instructorWorkshop->withoutEvents(function() use ($instructorWorkshop, $daysOfWeek, $workshop, $endTime) {
-                    $instructorWorkshop->update([
+                    $updateData = [
                         'day_of_week' => $daysOfWeek,
                         'start_time' => $workshop->start_time,
                         'end_time' => $endTime,
                         'max_capacity' => $workshop->capacity,
                         'place' => $workshop->place,
-                    ]);
+                    ];
+
+                    // Actualizar instructor_id si cambió
+                    if ($workshop->instructor_id) {
+                        $updateData['instructor_id'] = $workshop->instructor_id;
+                    }
+
+                    $instructorWorkshop->update($updateData);
                 });
             });
         } finally {

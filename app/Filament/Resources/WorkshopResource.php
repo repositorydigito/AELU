@@ -842,7 +842,27 @@ class WorkshopResource extends Resource
                     'start_time' => $workshop->start_time,
                     'end_time' => $workshop->end_time,
                     'status' => $classData['status'],
+                    'max_capacity' => $workshop->capacity,
                 ]);
+            } else {
+                // 4. Crear nueva clase si no existe
+                \App\Models\WorkshopClass::create([
+                    'workshop_id' => $workshop->id,
+                    'monthly_period_id' => $workshop->monthly_period_id,
+                    'class_date' => $classData['raw_date'],
+                    'start_time' => $workshop->start_time,
+                    'end_time' => $workshop->end_time,
+                    'status' => $classData['status'] ?? 'scheduled',
+                    'max_capacity' => $workshop->capacity,
+                ]);
+            }
+        }
+
+        // 5. Eliminar clases sobrantes si hay menos clases en el nuevo horario
+        if ($workshopClasses->count() > count($scheduleData)) {
+            $classesToDelete = $workshopClasses->slice(count($scheduleData));
+            foreach ($classesToDelete as $classToDelete) {
+                $classToDelete->delete();
             }
         }
     }
