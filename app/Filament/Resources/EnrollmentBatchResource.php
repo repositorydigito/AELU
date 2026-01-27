@@ -16,11 +16,17 @@ use Illuminate\Support\Facades\DB;
 class EnrollmentBatchResource extends Resource
 {
     protected static ?string $model = EnrollmentBatch::class;
+
     protected static ?string $navigationLabel = 'Inscripciones';
+
     protected static ?string $pluralModelLabel = 'Inscripciones';
+
     protected static ?string $modelLabel = 'Inscripción';
+
     protected static ?int $navigationSort = 4;
+
     protected static ?string $navigationGroup = 'Gestión';
+
     protected static ?string $navigationIcon = 'heroicon-o-pencil-square';
 
     public static function form(Form $form): Form
@@ -182,6 +188,7 @@ class EnrollmentBatchResource extends Resource
                         if ($record->cancelled_at && empty($record->cancelled_by_user_id)) {
                             return 'Sistema';
                         }
+
                         return $record->cancelledBy?->name;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -218,6 +225,7 @@ class EnrollmentBatchResource extends Resource
                                 $firstEnrollment->monthlyPeriod->month
                             )->translatedFormat('F Y'));
                         }
+
                         return ucfirst(\Carbon\Carbon::parse($record->updated_at)->translatedFormat('F Y'));
                     }),
 
@@ -295,6 +303,7 @@ class EnrollmentBatchResource extends Resource
                                     $period->year,
                                     $period->month
                                 )->translatedFormat('F Y'));
+
                                 return [$period->id => $monthName];
                             })
                             ->toArray();
@@ -305,6 +314,7 @@ class EnrollmentBatchResource extends Resource
                                 $enrollmentQuery->where('monthly_period_id', $data['value']);
                             });
                         }
+
                         return $query;
                     })
                     ->searchable()
@@ -314,19 +324,17 @@ class EnrollmentBatchResource extends Resource
                 Tables\Actions\Action::make('download_ticket')
                     ->label('Ver Tickets')
                     ->icon('heroicon-o-ticket')
-                    ->visible(fn (EnrollmentBatch $record): bool =>
-                        $record->tickets()->exists()
+                    ->visible(fn (EnrollmentBatch $record): bool => $record->tickets()->exists()
                     )
-                    ->modalHeading(fn (EnrollmentBatch $record) => 'Tickets de ' . ($record->student->full_name ?? 'N/A'))
-                    ->modalDescription(fn (EnrollmentBatch $record) =>
-                        'Total de tickets emitidos: ' . $record->tickets()->where('status', 'active')->count()
+                    ->modalHeading(fn (EnrollmentBatch $record) => 'Tickets de '.($record->student->full_name ?? 'N/A'))
+                    ->modalDescription(fn (EnrollmentBatch $record) => 'Total de tickets emitidos: '.$record->tickets()->where('status', 'active')->count()
                     )
                     ->modalContent(fn (EnrollmentBatch $record) => view('filament.modals.tickets-list', [
                         'tickets' => $record->tickets()
                             // ->where('status', 'active')
                             ->with(['studentEnrollments.instructorWorkshop.workshop', 'issuedByUser'])
                             ->orderBy('issued_at', 'asc')
-                            ->get()
+                            ->get(),
                     ]))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
@@ -390,6 +398,20 @@ class EnrollmentBatchResource extends Resource
                             ->rows(3),
                     ])
                     ->action(function (EnrollmentBatch $record, array $data): void {
+                        // VALIDACIÓN DE SEGURIDAD: Solo usuarios autorizados pueden anular
+                        $authorizedUsers = ['sdordan', 'tnamoc', 'ggonzalez'];
+                        $currentUserName = auth()->user()->name ?? '';
+
+                        if (! in_array($currentUserName, $authorizedUsers)) {
+                            Notification::make()
+                                ->title('Acción no permitida')
+                                ->body('No tienes permisos para anular inscripciones.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
                         try {
                             // Obtener información de los talleres ANTES de la transacción
                             $workshops = $record->enrollments()
@@ -452,8 +474,14 @@ class EnrollmentBatchResource extends Resource
                                 ->send();
                         }
                     })
-                    ->visible(fn (EnrollmentBatch $record): bool => in_array($record->payment_status, ['pending', 'completed'])
-                    ),
+                    ->visible(function (EnrollmentBatch $record): bool {
+                        // Solo mostrar el botón si el estado permite anular Y el usuario está autorizado
+                        $authorizedUsers = ['sdordan', 'tnamoc', 'ggonzalez'];
+                        $currentUserName = auth()->user()->name ?? '';
+
+                        return in_array($record->payment_status, ['pending', 'completed'])
+                            && in_array($currentUserName, $authorizedUsers);
+                    }),
                 Tables\Actions\Action::make('edit_full')
                     ->label('Editar')
                     ->icon('heroicon-o-pencil-square')
@@ -467,8 +495,7 @@ class EnrollmentBatchResource extends Resource
                             'notes' => $record->notes,
                         ]);
                     })
-                    ->visible(fn (EnrollmentBatch $record): bool =>
-                        in_array($record->payment_status, ['pending', 'to_pay'])
+                    ->visible(fn (EnrollmentBatch $record): bool => in_array($record->payment_status, ['pending', 'to_pay'])
                     ),
             ])
             ->bulkActions([
