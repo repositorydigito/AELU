@@ -5,7 +5,10 @@
       "Bash(\"C:\\\\Users\\\\rhuallpa\\\\.config\\\\herd\\\\bin\\\\php.bat\" check_capacity.php)",
       "Bash(\"C:\\\\Users\\\\rhuallpa\\\\.config\\\\herd\\\\bin\\\\php.bat\" final_verification.php)",
       "Bash(\"C:\\\\Users\\\\rhuallpa\\\\.config\\\\herd\\\\bin\\\\php.bat\" check_tenis_mesa.php)",
-      "Bash(del check_capacity.php verify_workshop_ids.php final_verification.php check_tenis_mesa.php)"
+      "Bash(del check_capacity.php verify_workshop_ids.php final_verification.php check_tenis_mesa.php)",
+      "Bash(php artisan tinker:*)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Proyectos Digito\\\\aelu\\\\codigo\\\\AELU && php artisan tinker --execute=\"\"$student = App\\\\Models\\\\Student::where\\(''first_names'', ''like'', ''%%SUSANA%%''\\)->where\\(''last_names'', ''like'', ''%%UCHIMA%%''\\)->first\\(\\); echo $student ? $student->full_name . '' ID: '' . $student->id : ''No encontrado'';\"\"\")",
+      "Bash(powershell.exe -Command \"cd ''C:\\\\Proyectos Digito\\\\aelu\\\\codigo\\\\AELU''; php artisan tinker --execute=\"\"echo App\\\\Models\\\\Student::where\\(''first_names'', ''like'', ''%SUSANA%''\\)->where\\(''last_names'', ''like'', ''%UCHIMA%''\\)->first\\(\\)?->id;\"\"\")"
     ]
   }
 }

@@ -4,13 +4,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EnrollmentResource\Pages;
 use App\Models\StudentEnrollment;
-use Filament\Forms\Components\Actions\Action;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 
 class EnrollmentResource extends Resource
@@ -90,7 +88,9 @@ class EnrollmentResource extends Resource
                                     }
 
                                     $previousWorkshops = static::findPreviousWorkshops($studentId, $state);
-                                    $set('previous_workshops', json_encode($previousWorkshops));
+                                    // Mapear los IDs de talleres previos al período actual
+                                    $mappedPreviousWorkshops = static::mapWorkshopsToPeriod($previousWorkshops, $state);
+                                    $set('previous_workshops', json_encode($mappedPreviousWorkshops));
                                 })
                                 ->validationMessages(['required' => 'El período mensual es obligatorio.'])
                                 ->columnSpanFull(),
@@ -171,7 +171,9 @@ class EnrollmentResource extends Resource
                                     $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
                                     if ($selectedMonthlyPeriodId) {
                                         $previousWorkshops = static::findPreviousWorkshops($state, $selectedMonthlyPeriodId);
-                                        $set('previous_workshops', json_encode($previousWorkshops));
+                                        // Mapear los IDs de talleres previos al período actual
+                                        $mappedPreviousWorkshops = static::mapWorkshopsToPeriod($previousWorkshops, $selectedMonthlyPeriodId);
+                                        $set('previous_workshops', json_encode($mappedPreviousWorkshops));
                                     }
 
                                     // Limpiar selecciones
@@ -210,6 +212,7 @@ class EnrollmentResource extends Resource
                                                 // Si ya existe detail para este taller, preservarlo
                                                 if (isset($existingDetailsMap[$workshopId])) {
                                                     $workshopDetails[] = $existingDetailsMap[$workshopId];
+
                                                     continue;
                                                 }
 
@@ -248,10 +251,9 @@ class EnrollmentResource extends Resource
                                             $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
                                             $previousWorkshopIds = json_decode($get('previous_workshops') ?? '[]', true);
 
-
                                             // IMPORTANTE: Verificar si los talleres ya pertenecen al período actual
                                             // Si ya están en el período correcto, no necesitamos mapearlos
-                                            if (!empty($selectedWorkshops) && $selectedMonthlyPeriodId) {
+                                            if (! empty($selectedWorkshops) && $selectedMonthlyPeriodId) {
                                                 // Verificar cuántos de los talleres seleccionados ya están en el período actual
                                                 $workshopsInCurrentPeriod = \App\Models\InstructorWorkshop::whereIn('id', $selectedWorkshops)
                                                     ->whereHas('workshop', function ($query) use ($selectedMonthlyPeriodId) {
@@ -269,7 +271,7 @@ class EnrollmentResource extends Resource
                                                     // Solo mapear los talleres que NO están en el período actual
                                                     $workshopsToMap = array_diff($selectedWorkshops, $workshopsInCurrentPeriod);
 
-                                                    if (!empty($workshopsToMap)) {
+                                                    if (! empty($workshopsToMap)) {
                                                         $originalWorkshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                             ->whereIn('id', $workshopsToMap)
                                                             ->get();
@@ -281,12 +283,12 @@ class EnrollmentResource extends Resource
                                                             $currentWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                                                                 ->whereHas('workshop', function ($query) use ($selectedMonthlyPeriodId, $originalWorkshop) {
                                                                     $query->where('monthly_period_id', $selectedMonthlyPeriodId)
-                                                                          ->where('name', $originalWorkshop->workshop->name)
-                                                                          ->where('modality', $originalWorkshop->workshop->modality);
+                                                                        ->where('name', $originalWorkshop->workshop->name)
+                                                                        ->where('modality', $originalWorkshop->workshop->modality);
                                                                 })
                                                                 ->whereHas('instructor', function ($query) use ($originalWorkshop) {
                                                                     $query->where('first_names', $originalWorkshop->instructor->first_names)
-                                                                          ->where('last_names', $originalWorkshop->instructor->last_names);
+                                                                        ->where('last_names', $originalWorkshop->instructor->last_names);
                                                                 })
                                                                 ->where('day_of_week', $originalWorkshop->day_of_week)
                                                                 ->whereRaw('TIME(start_time) = ?', [$originalStartTime])
@@ -408,7 +410,6 @@ class EnrollmentResource extends Resource
                                                         ->get();
 
                                                     $allWorkshopIds = $instructorWorkshops->pluck('id')->toArray();
-
 
                                                     // PASO 2: Mapear cada taller y marcarlo como previo si corresponde
                                                     foreach ($instructorWorkshops as $instructorWorkshop) {
@@ -603,8 +604,10 @@ class EnrollmentResource extends Resource
                                                                 $endTime = \Carbon\Carbon::parse($class->end_time)->format('H:i');
                                                                 $options[$class->id] = "{$dayName} {$formattedDate} ({$startTime} - {$endTime})";
                                                             }
+
                                                             return $options;
                                                         }
+
                                                         return [];
                                                     }
 
@@ -685,12 +688,12 @@ class EnrollmentResource extends Resource
                                 ->reorderable(false)
                                 ->itemLabel(function (array $state): ?string {
                                     $workshopId = $state['instructor_workshop_id'] ?? null;
-                                    if (!$workshopId) {
+                                    if (! $workshopId) {
                                         return 'Taller';
                                     }
 
                                     $workshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
-                                    if (!$workshop) {
+                                    if (! $workshop) {
                                         return 'Taller';
                                     }
 
@@ -731,26 +734,26 @@ class EnrollmentResource extends Resource
                         ->schema([
                             // Resumen de talleres y cálculo de precios
                             Forms\Components\Placeholder::make('enrollment_summary')
-                                        ->label('')
-                                        ->content(function (Forms\Get $get) {
-                                            $workshopDetails = $get('workshop_details') ?? [];
-                                            if (empty($workshopDetails)) {
-                                                return 'No hay talleres seleccionados';
-                                            }
+                                ->label('')
+                                ->content(function (Forms\Get $get) {
+                                    $workshopDetails = $get('workshop_details') ?? [];
+                                    if (empty($workshopDetails)) {
+                                        return 'No hay talleres seleccionados';
+                                    }
 
-                                            // Obtener información del estudiante
-                                            $studentId = $get('student_id');
-                                            $student = \App\Models\Student::find($studentId);
-                                            $inscriptionMultiplier = $student ? $student->inscription_multiplier : 1.0;
-                                            $isPrePama = $student ? $student->is_pre_pama : false;
-                                            $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
+                                    // Obtener información del estudiante
+                                    $studentId = $get('student_id');
+                                    $student = \App\Models\Student::find($studentId);
+                                    $inscriptionMultiplier = $student ? $student->inscription_multiplier : 1.0;
+                                    $isPrePama = $student ? $student->is_pre_pama : false;
+                                    $selectedMonthlyPeriodId = $get('selected_monthly_period_id');
 
-                                            $html = '<div class="space-y-4">';
+                                    $html = '<div class="space-y-4">';
 
-                                            // Información del estudiante
-                                            if ($student) {
-                                                $categoryText = $student->category_partner ?? 'No definida';
-                                                $html .= "
+                                    // Información del estudiante
+                                    if ($student) {
+                                        $categoryText = $student->category_partner ?? 'No definida';
+                                        $html .= "
                                                     <div class='mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
                                                         <h3 class='font-semibold text-blue-800 mb-2'>Información del Estudiante</h3>
                                                         <div class='grid grid-cols-2 gap-4 text-sm'>
@@ -764,79 +767,79 @@ class EnrollmentResource extends Resource
                                                         </div>
                                                     </div>
                                                 ";
+                                    }
+
+                                    $subtotal = 0;
+                                    $prepamaTotal = 0;
+
+                                    foreach ($workshopDetails as $detail) {
+                                        $workshopId = $detail['instructor_workshop_id'] ?? null;
+                                        $numberOfClasses = $detail['number_of_classes'] ?? 1;
+                                        $selectedClasses = $detail['selected_classes'] ?? [];
+
+                                        if (! $workshopId) {
+                                            continue;
+                                        }
+
+                                        $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                                            ->find($workshopId);
+
+                                        if (! $instructorWorkshop) {
+                                            continue;
+                                        }
+
+                                        // Obtener el precio base
+                                        $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
+                                            ->where('number_of_classes', $numberOfClasses)
+                                            ->where('for_volunteer_workshop', false)
+                                            ->first();
+
+                                        $basePrice = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
+
+                                        // Calcular recargo PRE-PAMA
+                                        $prepamaCharge = $isPrePama ? ($basePrice * ($inscriptionMultiplier - 1)) : 0;
+                                        $finalPrice = $basePrice * $inscriptionMultiplier;
+
+                                        $subtotal += $basePrice;
+                                        $prepamaTotal += $prepamaCharge;
+
+                                        // Convertir día de la semana
+                                        $daysOfWeek = $instructorWorkshop->day_of_week;
+                                        if (is_array($daysOfWeek)) {
+                                            $dayInSpanish = implode('/', $daysOfWeek);
+                                        } else {
+                                            $dayInSpanish = $daysOfWeek ?? 'N/A';
+                                        }
+                                        $classesLabel = $numberOfClasses.($numberOfClasses === 1 ? ' clase' : ' clases');
+
+                                        // Obtener las fechas de las clases específicas
+                                        $classDatesText = '';
+                                        if (! empty($selectedClasses) && $selectedMonthlyPeriodId) {
+                                            $workshopClasses = \App\Models\WorkshopClass::whereIn('id', $selectedClasses)
+                                                ->orderBy('class_date', 'asc')
+                                                ->get();
+
+                                            $classDates = [];
+                                            foreach ($workshopClasses as $class) {
+                                                $classDates[] = \Carbon\Carbon::parse($class->class_date)->format('d/m');
                                             }
 
-                                            $subtotal = 0;
-                                            $prepamaTotal = 0;
-
-                                            foreach ($workshopDetails as $detail) {
-                                                $workshopId = $detail['instructor_workshop_id'] ?? null;
-                                                $numberOfClasses = $detail['number_of_classes'] ?? 1;
-                                                $selectedClasses = $detail['selected_classes'] ?? [];
-
-                                                if (! $workshopId) {
-                                                    continue;
-                                                }
-
-                                                $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
-                                                    ->find($workshopId);
-
-                                                if (! $instructorWorkshop) {
-                                                    continue;
-                                                }
-
-                                                // Obtener el precio base
-                                                $pricing = \App\Models\WorkshopPricing::where('workshop_id', $instructorWorkshop->workshop->id)
-                                                    ->where('number_of_classes', $numberOfClasses)
-                                                    ->where('for_volunteer_workshop', false)
-                                                    ->first();
-
-                                                $basePrice = $pricing ? $pricing->price : ($instructorWorkshop->workshop->standard_monthly_fee * $numberOfClasses / 4);
-
-                                                // Calcular recargo PRE-PAMA
-                                                $prepamaCharge = $isPrePama ? ($basePrice * ($inscriptionMultiplier - 1)) : 0;
-                                                $finalPrice = $basePrice * $inscriptionMultiplier;
-
-                                                $subtotal += $basePrice;
-                                                $prepamaTotal += $prepamaCharge;
-
-                                                // Convertir día de la semana
-                                                $daysOfWeek = $instructorWorkshop->day_of_week;
-                                                if (is_array($daysOfWeek)) {
-                                                    $dayInSpanish = implode('/', $daysOfWeek);
-                                                } else {
-                                                    $dayInSpanish = $daysOfWeek ?? 'N/A';
-                                                }
-                                                $classesLabel = $numberOfClasses.($numberOfClasses === 1 ? ' clase' : ' clases');
-
-                                                // Obtener las fechas de las clases específicas
-                                                $classDatesText = '';
-                                                if (!empty($selectedClasses) && $selectedMonthlyPeriodId) {
-                                                    $workshopClasses = \App\Models\WorkshopClass::whereIn('id', $selectedClasses)
-                                                        ->orderBy('class_date', 'asc')
-                                                        ->get();
-
-                                                    $classDates = [];
-                                                    foreach ($workshopClasses as $class) {
-                                                        $classDates[] = \Carbon\Carbon::parse($class->class_date)->format('d/m');
-                                                    }
-
-                                                    if (!empty($classDates)) {
-                                                        $classDatesText = '<div class="mt-2 text-xs text-green-600">
-                                                            <strong>Fechas de clases:</strong> ' . implode(', ', $classDates) . '
+                                            if (! empty($classDates)) {
+                                                $classDatesText = '<div class="mt-2 text-xs text-green-600">
+                                                            <strong>Fechas de clases:</strong> '.implode(', ', $classDates).'
                                                         </div>';
-                                                    }
-                                                }
+                                            }
+                                        }
 
-                                                // Mostrar información del precio
-                                                $priceInfo = 'S/ '.number_format($basePrice, 2);
-                                                if ($isPrePama && $prepamaCharge > 0) {
-                                                    $priceInfo = 'S/ '.number_format($basePrice, 2).' + S/ '.number_format($prepamaCharge, 2).' (PRE-PAMA) = S/ '.number_format($finalPrice, 2);
-                                                }
+                                        // Mostrar información del precio
+                                        $priceInfo = 'S/ '.number_format($basePrice, 2);
+                                        if ($isPrePama && $prepamaCharge > 0) {
+                                            $priceInfo = 'S/ '.number_format($basePrice, 2).' + S/ '.number_format($prepamaCharge, 2).' (PRE-PAMA) = S/ '.number_format($finalPrice, 2);
+                                        }
 
-                                                $modality = $instructorWorkshop->workshop->modality ?? 'No especificada';
+                                        $modality = $instructorWorkshop->workshop->modality ?? 'No especificada';
 
-                                                $html .= "
+                                        $html .= "
                                                     <div class='bg-green-50 border border-green-200 rounded-lg p-4'>
                                                         <div class='flex justify-between items-start'>
                                                             <div class='flex-1'>
@@ -852,11 +855,11 @@ class EnrollmentResource extends Resource
                                                         </div>
                                                     </div>
                                                 ";
-                                            }
+                                    }
 
-                                            $totalFinal = $subtotal + $prepamaTotal;
+                                    $totalFinal = $subtotal + $prepamaTotal;
 
-                                            $html .= "
+                                    $html .= "
                                                 <div class='border-t pt-4 mt-4'>
                                                     <div class='bg-gray-50 p-4 rounded-lg'>
                                                         <div class='space-y-2'>
@@ -877,9 +880,9 @@ class EnrollmentResource extends Resource
                                                 </div>
                                             ';
 
-                                            // Nota informativa si es PRE-PAMA
-                                            if ($isPrePama && $prepamaTotal > 0) {
-                                                $html .= "
+                                    // Nota informativa si es PRE-PAMA
+                                    if ($isPrePama && $prepamaTotal > 0) {
+                                        $html .= "
                                                     <div class='mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg'>
                                                         <div class='flex items-center'>
                                                             <svg class='w-5 h-5 text-orange-500 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -892,13 +895,13 @@ class EnrollmentResource extends Resource
                                                         </div>
                                                     </div>
                                                 ";
-                                            }
+                                    }
 
-                                            $html .= '</div>';
+                                    $html .= '</div>';
 
-                                            return new \Illuminate\Support\HtmlString($html);
-                                        })
-                                        ->columnSpanFull(),
+                                    return new \Illuminate\Support\HtmlString($html);
+                                })
+                                ->columnSpanFull(),
 
                             // Selección de método de pago
                             Forms\Components\Section::make('Seleccionar medio de pago')
@@ -1004,7 +1007,7 @@ class EnrollmentResource extends Resource
 
                     // Solo agregar si no hemos visto este NOMBRE de taller antes
                     // Esto previene duplicados cuando hay múltiples horarios del mismo taller
-                    if (!in_array($workshopName, $seenWorkshopNames)) {
+                    if (! in_array($workshopName, $seenWorkshopNames)) {
                         $previousWorkshopIds[] = $enrollment->instructor_workshop_id;
                         $seenWorkshopNames[] = $workshopName;
                     }
@@ -1013,6 +1016,76 @@ class EnrollmentResource extends Resource
 
             return array_unique($previousWorkshopIds);
         } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Mapea IDs de talleres del período anterior al período actual
+     *
+     * @param  array  $workshopIds  IDs de instructor_workshop del período anterior
+     * @param  int  $targetPeriodId  ID del período al que se quiere mapear
+     * @return array IDs de instructor_workshop en el período objetivo
+     */
+    public static function mapWorkshopsToPeriod($workshopIds, $targetPeriodId)
+    {
+        if (empty($workshopIds) || ! $targetPeriodId) {
+            return [];
+        }
+
+        try {
+            // Obtener los talleres originales
+            $originalWorkshops = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                ->whereIn('id', $workshopIds)
+                ->get();
+
+            $mappedIds = [];
+
+            foreach ($originalWorkshops as $originalWorkshop) {
+                // Extraer solo la hora del start_time
+                $originalStartTime = \Carbon\Carbon::parse($originalWorkshop->start_time)->format('H:i:s');
+                $originalDayOfWeek = $originalWorkshop->day_of_week;
+
+                // Buscar candidatos sin filtrar por day_of_week (ya que es JSON y no se puede comparar directamente)
+                $candidates = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                    ->whereHas('workshop', function ($query) use ($targetPeriodId, $originalWorkshop) {
+                        $query->where('monthly_period_id', $targetPeriodId)
+                            ->where('name', $originalWorkshop->workshop->name)
+                            ->where('modality', $originalWorkshop->workshop->modality);
+                    })
+                    ->whereHas('instructor', function ($query) use ($originalWorkshop) {
+                        $query->where('first_names', $originalWorkshop->instructor->first_names)
+                            ->where('last_names', $originalWorkshop->instructor->last_names);
+                    })
+                    ->where('is_active', true)
+                    ->get();
+
+                // Filtrar en PHP por day_of_week y start_time
+                $targetWorkshop = $candidates->first(function ($workshop) use ($originalStartTime, $originalDayOfWeek) {
+                    // Comparar día de la semana (ambos son arrays JSON)
+                    if ($workshop->day_of_week != $originalDayOfWeek) {
+                        return false;
+                    }
+
+                    // Comparar solo la hora, ignorando la fecha
+                    $targetTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i:s');
+
+                    return $targetTime === $originalStartTime;
+                });
+
+                if ($targetWorkshop) {
+                    $mappedIds[] = $targetWorkshop->id;
+                }
+            }
+
+            return array_unique($mappedIds);
+        } catch (\Exception $e) {
+            \Log::error('Error mapping workshops to period', [
+                'workshop_ids' => $workshopIds,
+                'target_period_id' => $targetPeriodId,
+                'error' => $e->getMessage(),
+            ]);
+
             return [];
         }
     }
