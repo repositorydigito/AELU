@@ -150,7 +150,7 @@
         <!-- Información del estudiante con código integrado -->
         <div class="student-info">
             <div class="student-name-row">
-                {{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }} - {{ $student->student_code ?? 'N/A' }}
+                {{ $student->last_names ?? 'N/A' }}, {{ $student->first_names ?? 'N/A' }} - {{ $student->student_code ?? 'N/A' }}@if(in_array($student->category_partner ?? '', ['PRE PAMA 50+', 'PRE PAMA 55+'])) - {{ $student->category_partner }}@endif
             </div>
             <div class="student-details">
                 <strong>Ticket:</strong> {{ $enrollmentBatch->batch_code ?? str_pad($enrollmentBatch->id, 6, '0', STR_PAD_LEFT) }} //// <strong>Fecha:</strong> {{ $enrollmentBatch->created_at->format('d/m/Y') }}
