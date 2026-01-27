@@ -6,8 +6,8 @@ use App\Models\EnrollmentBatch;
 use App\Models\EnrollmentPayment;
 use App\Models\StudentEnrollment;
 use App\Models\Ticket;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class EnrollmentPaymentService
 {
@@ -64,12 +64,13 @@ class EnrollmentPaymentService
             }
 
             // 6. Crear el ticket para este pago
-            if (!Auth::check()) {
+            if (! Auth::check()) {
                 throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
             }
 
             if ($paymentMethod === 'link') {
-                $ticketCode = $batch->batch_code;
+                // Para pagos por link, agregar el prefijo del usuario al código ingresado manualmente
+                $ticketCode = $this->generateTicketCodeForLink(Auth::id(), $batch->batch_code);
             } else {
                 $ticketCode = $this->generateTicketCode(Auth::id());
             }
@@ -93,6 +94,7 @@ class EnrollmentPaymentService
             return $payment;
         });
     }
+
     public function updateBatchStatus(EnrollmentBatch $batch): void
     {
         $batch->refresh();
@@ -125,6 +127,7 @@ class EnrollmentPaymentService
 
         $batch->save();
     }
+
     public function getPendingEnrollments(EnrollmentBatch $batch)
     {
         return $batch->enrollments()
@@ -133,6 +136,7 @@ class EnrollmentPaymentService
             ->where('payment_status', 'pending')
             ->get();
     }
+
     public function validatePaymentAmount(array $studentEnrollmentIds, float $expectedAmount): bool
     {
         $totalAmount = StudentEnrollment::whereIn('id', $studentEnrollmentIds)
@@ -140,30 +144,55 @@ class EnrollmentPaymentService
 
         return abs($totalAmount - $expectedAmount) < 0.01;
     }
+
     private function generateTicketCode(int $userId): string
     {
         $user = \App\Models\User::find($userId);
 
-        if (!$user || empty($user->enrollment_code)) {
+        if (! $user || empty($user->enrollment_code)) {
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
         // Contar solo los tickets que son pago en efectivo
-        $lastTicketNumber = \App\Models\Ticket::whereHas('enrollmentPayment', function($query) {
+        $lastTicketNumber = \App\Models\Ticket::whereHas('enrollmentPayment', function ($query) {
             $query->where('payment_method', 'cash');
         })
-        ->where('issued_by_user_id', $userId)
-        ->where('ticket_code', 'LIKE', $user->enrollment_code . '-%')
-        ->get()
-        ->map(function($ticket) use ($user) {
-            // Extraer el número del código (ej: de "002-000019" extraer 19)
-            $parts = explode('-', $ticket->ticket_code);
-            return isset($parts[1]) ? intval($parts[1]) : 0;
-        })
-        ->max();
+            ->where('issued_by_user_id', $userId)
+            ->where('ticket_code', 'LIKE', $user->enrollment_code.'-%')
+            ->get()
+            ->map(function ($ticket) {
+                // Extraer el número del código (ej: de "002-000019" extraer 19)
+                $parts = explode('-', $ticket->ticket_code);
+
+                return isset($parts[1]) ? intval($parts[1]) : 0;
+            })
+            ->max();
 
         $nextNumber = ($lastTicketNumber ?? 0) + 1;
 
-        return $user->enrollment_code . '-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Genera el código de ticket para pagos por link
+     * Agrega el prefijo del usuario al código ingresado manualmente
+     *
+     * @param  int  $userId  ID del usuario
+     * @param  string  $manualCode  Código ingresado manualmente (ej: "B001-9827")
+     * @return string Código completo con prefijo (ej: "002-B001-9827")
+     */
+    private function generateTicketCodeForLink(int $userId, string $manualCode): string
+    {
+        $user = \App\Models\User::find($userId);
+
+        if (! $user || empty($user->enrollment_code)) {
+            throw new \Exception('El usuario no tiene código de inscripción configurado.');
+        }
+
+        // Limpiar espacios del código manual
+        $manualCode = trim($manualCode);
+
+        // Combinar el código del usuario con el código manual
+        return $user->enrollment_code.'-'.$manualCode;
     }
 }
