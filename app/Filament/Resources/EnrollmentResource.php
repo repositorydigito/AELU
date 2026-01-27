@@ -1046,8 +1046,8 @@ class EnrollmentResource extends Resource
                 $originalStartTime = \Carbon\Carbon::parse($originalWorkshop->start_time)->format('H:i:s');
                 $originalDayOfWeek = $originalWorkshop->day_of_week;
 
-                // Buscar candidatos sin filtrar por day_of_week (ya que es JSON y no se puede comparar directamente)
-                $candidates = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                // PRIMER INTENTO: Buscar con el mismo instructor (mapeo exacto)
+                $candidatesWithInstructor = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
                     ->whereHas('workshop', function ($query) use ($targetPeriodId, $originalWorkshop) {
                         $query->where('monthly_period_id', $targetPeriodId)
                             ->where('name', $originalWorkshop->workshop->name)
@@ -1061,7 +1061,7 @@ class EnrollmentResource extends Resource
                     ->get();
 
                 // Filtrar en PHP por day_of_week y start_time
-                $targetWorkshop = $candidates->first(function ($workshop) use ($originalStartTime, $originalDayOfWeek) {
+                $targetWorkshop = $candidatesWithInstructor->first(function ($workshop) use ($originalStartTime, $originalDayOfWeek) {
                     // Comparar día de la semana (ambos son arrays JSON)
                     if ($workshop->day_of_week != $originalDayOfWeek) {
                         return false;
@@ -1072,6 +1072,32 @@ class EnrollmentResource extends Resource
 
                     return $targetTime === $originalStartTime;
                 });
+
+                // SEGUNDO INTENTO: Si no se encontró con el mismo instructor,
+                // buscar SIN filtrar por instructor (el taller puede haber cambiado de instructor)
+                if (! $targetWorkshop) {
+                    $candidatesWithoutInstructor = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])
+                        ->whereHas('workshop', function ($query) use ($targetPeriodId, $originalWorkshop) {
+                            $query->where('monthly_period_id', $targetPeriodId)
+                                ->where('name', $originalWorkshop->workshop->name)
+                                ->where('modality', $originalWorkshop->workshop->modality);
+                        })
+                        ->where('is_active', true)
+                        ->get();
+
+                    // Filtrar en PHP por day_of_week y start_time
+                    $targetWorkshop = $candidatesWithoutInstructor->first(function ($workshop) use ($originalStartTime, $originalDayOfWeek) {
+                        // Comparar día de la semana (ambos son arrays JSON)
+                        if ($workshop->day_of_week != $originalDayOfWeek) {
+                            return false;
+                        }
+
+                        // Comparar solo la hora, ignorando la fecha
+                        $targetTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i:s');
+
+                        return $targetTime === $originalStartTime;
+                    });
+                }
 
                 if ($targetWorkshop) {
                     $mappedIds[] = $targetWorkshop->id;
