@@ -144,7 +144,50 @@ class WorkshopResource extends Resource
                             ->label('Número de cupos (Aforo)')
                             ->numeric()
                             ->minValue(0)
-                            ->required(),
+                            ->required()
+                            ->rules([
+                                function ($livewire) {
+                                    return function (string $attribute, $value, \Closure $fail) use ($livewire) {
+                                        // Solo validar al editar, no al crear
+                                        if (!($livewire instanceof \Filament\Resources\Pages\EditRecord)) {
+                                            return;
+                                        }
+
+                                        $workshop = $livewire->record;
+                                        if (!$workshop || !$workshop->exists) {
+                                            return;
+                                        }
+
+                                        // Obtener el número actual de inscripciones activas
+                                        $currentEnrollments = $workshop->enrollments()
+                                            ->where('monthly_period_id', $workshop->monthly_period_id)
+                                            ->whereIn('payment_status', ['completed', 'pending'])
+                                            ->distinct('student_id')
+                                            ->count();
+
+                                        // Si hay inscripciones y la nueva capacidad es menor
+                                        if ($currentEnrollments > 0 && $value < $currentEnrollments) {
+                                            $fail("No puedes reducir los cupos a {$value} porque actualmente hay {$currentEnrollments} estudiantes inscritos en este taller. Debes cancelar inscripciones primero o establecer una capacidad de al menos {$currentEnrollments} cupos.");
+                                        }
+                                    };
+                                },
+                            ])
+                            ->helperText(function ($livewire) {
+                                // Mostrar información de inscripciones actuales al editar
+                                if ($livewire instanceof \Filament\Resources\Pages\EditRecord && $livewire->record) {
+                                    $workshop = $livewire->record;
+                                    $currentEnrollments = $workshop->enrollments()
+                                        ->where('monthly_period_id', $workshop->monthly_period_id)
+                                        ->whereIn('payment_status', ['completed', 'pending'])
+                                        ->distinct('student_id')
+                                        ->count();
+
+                                    if ($currentEnrollments > 0) {
+                                        return "⚠️ Actualmente hay {$currentEnrollments} estudiantes inscritos. No puedes reducir los cupos por debajo de este número.";
+                                    }
+                                }
+                                return 'Establece el número máximo de estudiantes para este taller';
+                            }),
                         Forms\Components\TextInput::make('number_of_classes')
                             ->label('Número de clases')
                             ->numeric()
