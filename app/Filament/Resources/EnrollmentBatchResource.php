@@ -220,9 +220,10 @@ class EnrollmentBatchResource extends Resource
                     ->getStateUsing(function ($record) {
                         $firstEnrollment = $record->enrollments->first();
                         if ($firstEnrollment && $firstEnrollment->monthlyPeriod) {
-                            return ucfirst(\Carbon\Carbon::createFromDate(
+                            return ucfirst(\Carbon\Carbon::create(
                                 $firstEnrollment->monthlyPeriod->year,
-                                $firstEnrollment->monthlyPeriod->month
+                                $firstEnrollment->monthlyPeriod->month,
+                                1
                             )->translatedFormat('F Y'));
                         }
 
@@ -299,9 +300,10 @@ class EnrollmentBatchResource extends Resource
                             ->orderBy('month', 'desc')
                             ->get()
                             ->mapWithKeys(function ($period) {
-                                $monthName = ucfirst(\Carbon\Carbon::createFromDate(
+                                $monthName = ucfirst(\Carbon\Carbon::create(
                                     $period->year,
-                                    $period->month
+                                    $period->month,
+                                    1
                                 )->translatedFormat('F Y'));
 
                                 return [$period->id => $monthName];

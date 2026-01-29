@@ -278,7 +278,7 @@
                     <td style="font-weight:bold; font-size:11px; padding:4px 6px; text-align:right; border:none;">
                         MES PAGADO:
                         @if($enrollmentBatch->enrollments->first() && $enrollmentBatch->enrollments->first()->monthlyPeriod)
-                            {{ strtoupper(\Carbon\Carbon::createFromDate($enrollmentBatch->enrollments->first()->monthlyPeriod->year, $enrollmentBatch->enrollments->first()->monthlyPeriod->month)->translatedFormat('M Y')) }}
+                            {{ strtoupper(\Carbon\Carbon::create($enrollmentBatch->enrollments->first()->monthlyPeriod->year, $enrollmentBatch->enrollments->first()->monthlyPeriod->month, 1)->translatedFormat('M Y')) }}
                         @else
                             {{ strtoupper(\Carbon\Carbon::parse($enrollmentBatch->created_at)->translatedFormat('M Y')) }}
                         @endif
