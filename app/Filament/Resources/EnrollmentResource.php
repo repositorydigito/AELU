@@ -37,36 +37,54 @@ class EnrollmentResource extends Resource
                             Forms\Components\Select::make('selected_monthly_period_id')
                                 ->label('Período Mensual')
                                 ->options(function () {
-                                    $currentDate = now();
-                                    $nextDate = now()->addMonth();
-                                    $previousDate = now()->subMonth();
+                                    $currentMonth = now()->month;
+                                    $currentYear = now()->year;
 
                                     $options = [];
 
+                                    // Calcular mes anterior
+                                    $previousMonth = $currentMonth - 1;
+                                    $previousYear = $currentYear;
+                                    if ($previousMonth < 1) {
+                                        $previousMonth = 12;
+                                        $previousYear -= 1;
+                                    }
+
                                     // Buscar período del mes anterior
-                                    $previousPeriod = \App\Models\MonthlyPeriod::where('year', $previousDate->year)
-                                        ->where('month', $previousDate->month)
+                                    $previousPeriod = \App\Models\MonthlyPeriod::where('year', $previousYear)
+                                        ->where('month', $previousMonth)
                                         ->first();
 
                                     if ($previousPeriod) {
+                                        $previousDate = \Carbon\Carbon::create($previousYear, $previousMonth, 1);
                                         $options[$previousPeriod->id] = $previousDate->translatedFormat('F Y');
                                     }
 
                                     // Buscar período del mes actual
-                                    $currentPeriod = \App\Models\MonthlyPeriod::where('year', $currentDate->year)
-                                        ->where('month', $currentDate->month)
+                                    $currentPeriod = \App\Models\MonthlyPeriod::where('year', $currentYear)
+                                        ->where('month', $currentMonth)
                                         ->first();
 
                                     if ($currentPeriod) {
+                                        $currentDate = \Carbon\Carbon::create($currentYear, $currentMonth, 1);
                                         $options[$currentPeriod->id] = $currentDate->translatedFormat('F Y');
                                     }
 
+                                    // Calcular próximo mes
+                                    $nextMonth = $currentMonth + 1;
+                                    $nextYear = $currentYear;
+                                    if ($nextMonth > 12) {
+                                        $nextMonth = 1;
+                                        $nextYear += 1;
+                                    }
+
                                     // Buscar período del próximo mes
-                                    $nextPeriod = \App\Models\MonthlyPeriod::where('year', $nextDate->year)
-                                        ->where('month', $nextDate->month)
+                                    $nextPeriod = \App\Models\MonthlyPeriod::where('year', $nextYear)
+                                        ->where('month', $nextMonth)
                                         ->first();
 
                                     if ($nextPeriod) {
+                                        $nextDate = \Carbon\Carbon::create($nextYear, $nextMonth, 1);
                                         $options[$nextPeriod->id] = $nextDate->translatedFormat('F Y');
                                     }
 
@@ -264,9 +282,7 @@ class EnrollmentResource extends Resource
 
                                                 // Si todos los talleres ya están en el período actual, no hacer nada
                                                 if (count($workshopsInCurrentPeriod) === count($selectedWorkshops)) {
-                                                    \Log::info('ViewData - No mapping needed, workshops already in current period:', [
-                                                        'workshop_ids' => $selectedWorkshops,
-                                                    ]);
+                                                    // No se necesita mapeo, los talleres ya están en el período actual
                                                 } else {
                                                     // Solo mapear los talleres que NO están en el período actual
                                                     $workshopsToMap = array_diff($selectedWorkshops, $workshopsInCurrentPeriod);
@@ -303,12 +319,6 @@ class EnrollmentResource extends Resource
                                                         // Combinar los talleres que ya estaban en el período con los mapeados
                                                         $allMappedIds = array_merge($workshopsInCurrentPeriod, array_values($mappedWorkshops));
                                                         $selectedWorkshops = $allMappedIds;
-
-                                                        \Log::info('ViewData - Partial Workshop Mapping:', [
-                                                            'already_in_period' => $workshopsInCurrentPeriod,
-                                                            'newly_mapped' => $mappedWorkshops,
-                                                            'final_selected' => $selectedWorkshops,
-                                                        ]);
                                                     }
                                                 }
                                             }
