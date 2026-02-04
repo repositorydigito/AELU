@@ -120,8 +120,13 @@ class EnrollmentPaymentService
                 $batch->payment_registered_by_user_id = $lastPayment->registered_by_user_id;
                 $batch->payment_registered_at = $lastPayment->registered_at;
             }
+        } elseif ($completedEnrollments > 0) {
+            // Si hay PAGOS PARCIALES (algunas completed, otras pending)
+            // Cambiar a 'to_pay' para proteger del cronjob auto-cancel
+            $batch->payment_status = 'to_pay';
         } else {
-            // Mantener en pending si aún hay inscripciones sin pagar
+            // Si NO hay ningún pago, mantener en 'pending'
+            // (estos sí serán cancelados por el cronjob)
             $batch->payment_status = 'pending';
         }
 

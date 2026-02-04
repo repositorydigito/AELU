@@ -243,7 +243,7 @@ class EnrollmentBatchResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'warning',
-                        'to_pay' => 'danger',
+                        'to_pay' => 'info',
                         'completed' => 'success',
                         'credit_favor' => 'info',
                         'refunded' => 'danger',
