@@ -331,6 +331,7 @@ class EnrollmentBatchResource extends Resource
                         'pending' => 'En Proceso',
                         'completed' => 'Inscrito',
                         'refunded' => 'Anulado',
+                        'to_pay' => 'Por Pagar',
                     ]),
 
                 Tables\Filters\SelectFilter::make('payment_method')
