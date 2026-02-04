@@ -181,6 +181,58 @@ class EnrollmentBatchResource extends Resource
                     ->placeholder('Pendiente')
                     ->toggleable(isToggledHiddenByDefault: true), */
 
+                Tables\Columns\TextColumn::make('cobrado_por')
+                    ->label('Cobrado por')
+                    ->getStateUsing(function (EnrollmentBatch $record): string {
+                        $payments = $record->payments()
+                            ->with('registeredByUser')
+                            ->get();
+
+                        if ($payments->isEmpty()) {
+                            return '-';
+                        }
+
+                        $users = $payments
+                            ->pluck('registeredByUser.name')
+                            ->filter() // Remover nulls
+                            ->unique()
+                            ->values();
+
+                        if ($users->isEmpty()) {
+                            return '-';
+                        }
+
+                        // Si es un solo usuario, mostrar nombre simple
+                        if ($users->count() === 1) {
+                            return $users->first();
+                        }
+
+                        // Si son múltiples usuarios, mostrar separados por comas
+                        return $users->join(', ');
+                    })
+                    ->wrap()
+                    ->toggleable()
+                    ->tooltip(function (EnrollmentBatch $record): ?string {
+                        $payments = $record->payments()
+                            ->with('registeredByUser')
+                            ->orderBy('registered_at')
+                            ->get();
+
+                        if ($payments->isEmpty()) {
+                            return null;
+                        }
+
+                        $details = $payments->map(function ($payment) {
+                            $user = $payment->registeredByUser?->name ?? 'Usuario desconocido';
+                            $date = $payment->registered_at?->format('d/m/Y H:i') ?? '-';
+                            $amount = 'S/ '.number_format($payment->amount, 2);
+
+                            return "{$user} - {$date} - {$amount}";
+                        })->join("\n");
+
+                        return "Detalle de pagos:\n".$details;
+                    }),
+
                 Tables\Columns\TextColumn::make('cancelledBy.name')
                     ->label('Anulado Por')
                     ->formatStateUsing(function ($state, \App\Models\EnrollmentBatch $record) {
