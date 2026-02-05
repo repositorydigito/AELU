@@ -87,29 +87,31 @@
     <table class="table">
         <thead>
             <tr>
-                <th>Taller</th>
-                <th>Instructor</th>
-                <th>Período</th>
-                <th>Fecha Inscripción</th>
-                <th>Monto Total</th>
-                <th>Método de Pago</th>
-                <th>N° Ticket</th>
-                <th>Estado</th>
-                <th>Cajero</th>
+                <th style="width: 16%;">Taller</th>
+                <th style="width: 15%;">Horario</th>
+                <th style="width: 10%;">Modalidad</th>
+                <th style="width: 8%;">N° Clases</th>
+                <th style="width: 12%;">Período</th>
+                <th style="width: 10%;">Fecha Inscripción</th>
+                <th style="width: 9%;">Monto</th>
+                <th style="width: 8%;">Método</th>
+                <th style="width: 8%;">N° Ticket</th>
+                <th style="width: 8%;">Estado</th>
             </tr>
         </thead>
         <tbody>
             @foreach($tickets as $ticket)
             <tr>
                 <td>{{ $ticket['workshop_name'] }}</td>
-                <td>{{ $ticket['instructor_name'] }}</td>
+                <td style="font-size: 9px;">{{ $ticket['schedule'] }}</td>
+                <td style="text-align: center; font-size: 9px;">{{ $ticket['modality'] }}</td>
+                <td style="text-align: center;">{{ $ticket['number_of_classes'] }}</td>
                 <td>{{ $ticket['period_name'] }}</td>
                 <td>{{ $ticket['enrollment_date'] }}</td>
-                <td>S/ {{ number_format($ticket['total_amount'], 2) }}</td>
-                <td>{{ $ticket['payment_method'] }}</td>
-                <td>{{ $ticket['ticket_code'] ?? '' }}</td>
-                <td>{{ $ticket['ticket_status'] ?? '' }}</td>
-                <td>{{ $ticket['cashier_name'] ?? '' }}</td>
+                <td style="text-align: right; font-weight: bold;">S/ {{ number_format($ticket['amount'], 2) }}</td>
+                <td style="text-align: center;">{{ $ticket['payment_method'] }}</td>
+                <td style="text-align: center;">{{ $ticket['ticket_code'] ?? '' }}</td>
+                <td style="text-align: center;">{{ $ticket['ticket_status'] ?? '' }}</td>
             </tr>
             @endforeach
         </tbody>

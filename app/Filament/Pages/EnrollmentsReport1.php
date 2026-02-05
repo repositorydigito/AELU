@@ -126,84 +126,50 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
             ->orderBy('issued_at', 'desc')
             ->get();
 
+        // Desglosar por inscripción individual (un taller por fila)
         $this->studentEnrollments = [];
 
         foreach ($tickets as $ticket) {
-            // Agrupar talleres por período para este ticket
-            $workshopsByPeriod = [];
-            $totalAmount = 0;
-            $paymentMethod = '';
-            $enrollmentDate = null;
-            $cashierName = '';
-
             foreach ($ticket->studentEnrollments as $enrollment) {
-                $workshop = $enrollment->instructorWorkshop->workshop ?? null;
-                $instructor = $enrollment->instructorWorkshop->instructor ?? null;
+                $instructorWorkshop = $enrollment->instructorWorkshop;
+                $workshop = $instructorWorkshop->workshop ?? null;
                 $period = $enrollment->monthlyPeriod ?? null;
 
-                if ($period) {
-                    $periodKey = $this->generatePeriodName($period->month, $period->year);
-                    if (!isset($workshopsByPeriod[$periodKey])) {
-                        $workshopsByPeriod[$periodKey] = [];
+                // Formatear día de la semana + horario
+                $dayOfWeek = '';
+                if ($instructorWorkshop->day_of_week) {
+                    if (is_array($instructorWorkshop->day_of_week)) {
+                        $dayOfWeek = implode('/', $instructorWorkshop->day_of_week);
+                    } else {
+                        $dayOfWeek = $instructorWorkshop->day_of_week;
                     }
-                    $workshopsByPeriod[$periodKey][] = [
-                        'workshop_name' => $workshop->name ?? 'N/A',
-                        'instructor_name' => $instructor ? ($instructor->first_names.' '.$instructor->last_names) : 'N/A'
-                    ];
                 }
 
-                $totalAmount += $enrollment->total_amount;
-
-                // Tomar los datos de la primera inscripción para los campos comunes
-                if (!$paymentMethod) {
-                    $paymentMethod = $enrollment->payment_method === 'cash' ? 'Efectivo' :
-                                   ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method));
+                $schedule = $dayOfWeek;
+                if ($instructorWorkshop->start_time && $instructorWorkshop->end_time) {
+                    $startTime = \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i');
+                    $endTime = \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i');
+                    $schedule .= ' ' . $startTime . '-' . $endTime;
                 }
 
-                if (!$enrollmentDate) {
-                    $enrollmentDate = $enrollment->enrollment_date;
-                }
-
-                if (!$cashierName && $enrollment->enrollmentBatch && $enrollment->enrollmentBatch->paymentRegisteredByUser) {
-                    $cashierName = $enrollment->enrollmentBatch->paymentRegisteredByUser->name;
-                }
+                $this->studentEnrollments[] = [
+                    'id' => $enrollment->id,
+                    'workshop_name' => $workshop->name ?? 'N/A',
+                    'schedule' => trim($schedule) ?: 'N/A',
+                    'modality' => $workshop->modality ? ucfirst($workshop->modality) : 'N/A',
+                    'number_of_classes' => $enrollment->number_of_classes,
+                    'period_name' => $period ? $this->generatePeriodName($period->month, $period->year) : 'N/A',
+                    'enrollment_date' => $enrollment->enrollment_date ? $enrollment->enrollment_date->format('d/m/Y') : 'N/A',
+                    'amount' => $enrollment->total_amount,
+                    'payment_method' => $enrollment->payment_method === 'cash' ? 'Efectivo' :
+                                       ($enrollment->payment_method === 'link' ? 'Link' : ucfirst($enrollment->payment_method)),
+                    'ticket_code' => $ticket->ticket_code,
+                    'ticket_status' => $ticket->status === 'active' ? 'Activo' :
+                                    ($ticket->status === 'cancelled' ? 'Anulado' :
+                                    ($ticket->status === 'refunded' ? 'Reembolsado' : ucfirst($ticket->status))),
+                    'issued_at' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A'
+                ];
             }
-
-            // Crear una cadena con todos los talleres agrupados por período
-            $workshopsText = '';
-            $periodsText = '';
-            $instructorsText = '';
-
-            foreach ($workshopsByPeriod as $periodName => $workshops) {
-                if ($workshopsText) {
-                    $workshopsText .= ' | ';
-                    $periodsText .= ' | ';
-                    $instructorsText .= ' | ';
-                }
-
-                $periodWorkshops = array_map(function($w) { return $w['workshop_name']; }, $workshops);
-                $periodInstructors = array_map(function($w) { return $w['instructor_name']; }, $workshops);
-
-                $workshopsText .= implode(', ', $periodWorkshops);
-                $periodsText .= $periodName;
-                $instructorsText .= implode(', ', array_unique($periodInstructors));
-            }
-
-            $this->studentEnrollments[] = [
-                'id' => $ticket->id,
-                'workshop_name' => $workshopsText,
-                'instructor_name' => $instructorsText,
-                'period_name' => $periodsText,
-                'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
-                'total_amount' => $totalAmount,
-                'payment_method' => $paymentMethod,
-                'ticket_code' => $ticket->ticket_code,
-                'ticket_status' => $ticket->status === 'active' ? 'Activo' :
-                                ($ticket->status === 'cancelled' ? 'Anulado' :
-                                ($ticket->status === 'refunded' ? 'Reembolsado' : ucfirst($ticket->status))),
-                'cashier_name' => $cashierName ?: ($ticket->issuedByUser ? $ticket->issuedByUser->name : 'N/A'),
-                'issued_at' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A'
-            ];
         }
     }
 

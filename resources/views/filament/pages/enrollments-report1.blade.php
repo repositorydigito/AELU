@@ -48,27 +48,30 @@
                     <thead>
                         <tr class="bg-gray-50 dark:bg-gray-800">
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taller</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Instructor</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Horario</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modalidad</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Clases</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Período</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Inscripción</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto Total</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Método de Pago</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Ticket</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cajero</th>
+                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monto</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Método de Pago</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">N° Ticket</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($studentEnrollments as $enrollment)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['workshop_name'] }}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['instructor_name'] }}</td>
+                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['schedule'] }}</td>
+                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['modality'] }}</td>
+                            <td class="px-4 py-4 text-sm text-center text-gray-900 dark:text-white">{{ $enrollment['number_of_classes'] }}</td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['period_name'] }}</td>
                             <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['enrollment_date'] }}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">S/ {{ number_format($enrollment['total_amount'], 2) }}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['payment_method'] }}</td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['ticket_code'] ?? '' }}</td>
-                            <td class="px-4 py-4 text-sm">
+                            <td class="px-4 py-4 text-sm text-right font-semibold text-gray-900 dark:text-white">S/ {{ number_format($enrollment['amount'], 2) }}</td>
+                            <td class="px-4 py-4 text-sm text-center text-gray-900 dark:text-white">{{ $enrollment['payment_method'] }}</td>
+                            <td class="px-4 py-4 text-sm text-center text-gray-900 dark:text-white">{{ $enrollment['ticket_code'] ?? '' }}</td>
+                            <td class="px-4 py-4 text-sm text-center">
                                 @if($enrollment['ticket_status'] === 'Activo')
                                     <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">{{ $enrollment['ticket_status'] }}</span>
                                 @elseif($enrollment['ticket_status'] === 'Anulado')
@@ -79,7 +82,6 @@
                                     <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">{{ $enrollment['ticket_status'] }}</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">{{ $enrollment['cashier_name'] ?? '' }}</td>
                         </tr>
                         @endforeach
                     </tbody>
