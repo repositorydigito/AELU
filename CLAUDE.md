@@ -121,7 +121,12 @@ php artisan pail
 **Student Enrollment Flow (Three-Level Structure)**
 1. **EnrollmentBatch** (`app/Models/EnrollmentBatch.php`)
    - Groups multiple workshop enrollments for one student in one period
-   - Tracks overall payment status: `pending`, `to_pay`, `completed`, `credit_favor`, `refunded`
+   - Tracks overall payment status with protection for partial payments:
+     - `pending`: No payments made (subject to auto-cancellation)
+     - `to_pay`: Partial payment made (protected from auto-cancellation)
+     - `completed`: All enrollments paid
+     - `credit_favor`: Credit balance
+     - `refunded`: Cancelled/refunded
    - Has unique `batch_code` for identification
    - Supports partial payments via `EnrollmentPayment`
 
@@ -194,9 +199,11 @@ php artisan pail
 
 5. **Auto-Cancellation** (SystemSettings configurable):
    - Default day: 28th of each month
-   - Cancels ALL pending enrollment batches (any period)
-   - Changes status to `refunded`
+   - Cancels ONLY batches with `payment_status = 'pending'` (no payments made)
+   - **DOES NOT cancel** batches with `payment_status = 'to_pay'` (partial payments)
+   - Changes cancelled batches status to `refunded`
    - Records "Sistema" as `cancelled_by`
+   - **Important:** Batches with partial payments require manual follow-up
 
 ### Automated Monthly Processes
 
@@ -216,9 +223,11 @@ php artisan pail
 
 **3. Auto-Cancel Pending Enrollments** (`AutoCancelPendingEnrollments.php`)
 - Runs: Every minute (checks for configured day/time)
-- Cancels ALL pending batches (across all months)
-- Marks as `refunded`, cancels tickets
-- Configurable via SystemSettings
+- Cancels ONLY batches with `payment_status = 'pending'` (zero payments)
+- **Protects batches with partial payments** (`payment_status = 'to_pay'`)
+- Marks cancelled batches as `refunded`, cancels their tickets
+- Configurable via SystemSettings (day, time, enabled/disabled)
+- **Note:** Batches with partial payments remain active indefinitely and require manual management
 
 ### Filament Resources & Pages
 
@@ -317,8 +326,15 @@ Key business logic services (in `app/Services/`):
 
 1. **Instructor payment calculation**: Use `InstructorPaymentService`, don't calculate manually
 2. **Partial payments**: Use `EnrollmentPayment` linked via `EnrollmentPaymentItem`
+   - When a partial payment is registered, batch status automatically changes to `'to_pay'`
+   - This protects the batch from auto-cancellation
+   - **Important:** Batches in `'to_pay'` status remain active indefinitely and require manual follow-up
 3. **Tickets must be generated**: After payment registration
 4. **Refunds**: Update batch status to `refunded`, cancel related tickets
+5. **Payment status flow**:
+   - `pending` (no payments) → Auto-cancelled on configured day
+   - `to_pay` (partial payment) → Protected from auto-cancellation
+   - `completed` (all paid) → Final state
 
 ### When Working with Students
 
