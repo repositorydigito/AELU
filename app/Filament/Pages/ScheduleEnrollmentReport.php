@@ -217,6 +217,11 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 ];
             }
 
+            // Ordenar alfabéticamente por nombre de estudiante
+            usort($this->scheduleEnrollments, function ($a, $b) {
+                return strcmp($a['student_name'], $b['student_name']);
+            });
+
         } catch (\Exception $e) {
             $this->scheduleEnrollments = [];
             Notification::make()

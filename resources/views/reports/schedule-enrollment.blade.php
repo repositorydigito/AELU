@@ -43,6 +43,7 @@
             margin: 2px 0;
             font-size: 9px;
             color: #333;
+            font-size: 12px;
         }
         .table {
             width: 100%;
@@ -89,6 +90,13 @@
     <div class="header">
         <h1>REPORTE DE INSCRIPCIONES POR HORARIO</h1>
         <p><strong>Periodo:</strong> {{ $period_name }} ({{ $period_dates }})</p>
+    </div>
+
+    <div class="info-section">
+        <h2>{{ $workshop_name }}</h2>
+        <p><strong>Horario:</strong> {{ $schedule_info }}</p>
+        <p><strong>Instructor:</strong> {{ $instructor_name }}</p>
+        <p><strong>Modalidad:</strong> {{ $modality }}</p>
     </div>
 
     <table class="table">
