@@ -31,6 +31,9 @@ class SystemSettings extends Page
             'auto_generate_enabled' => SystemSetting::get('auto_generate_enabled', false),
             'auto_generate_day' => SystemSetting::get('auto_generate_day', 20),
             'auto_generate_time' => SystemSetting::get('auto_generate_time', '23:59:59'),
+            'auto_replicate_enrollments_enabled' => SystemSetting::get('auto_replicate_enrollments_enabled', false),
+            'auto_replicate_enrollments_day' => SystemSetting::get('auto_replicate_enrollments_day', 25),
+            'auto_replicate_enrollments_time' => SystemSetting::get('auto_replicate_enrollments_time', '23:59:59'),
         ]);
     }
 
@@ -84,12 +87,12 @@ class SystemSettings extends Page
                     ])
                     ->columns(1),
 
-                Forms\Components\Section::make('Generación Automática de Inscripciones')
-                    ->description('Configuración para generar automáticamente inscripciones para el mes siguiente')
+                Forms\Components\Section::make('Replicación Automática de Talleres')
+                    ->description('Configuración para duplicar talleres del mes actual al siguiente mes')
                     ->schema([
                         Forms\Components\Toggle::make('auto_generate_enabled')
-                            ->label('Habilitar Generación Automática')
-                            ->helperText('Activar o desactivar la generación automática de inscripciones para el mes siguiente')
+                            ->label('Habilitar Replicación de Talleres')
+                            ->helperText('Activar o desactivar la replicación automática de talleres')
                             ->live()
                             ->columnSpanFull(),
 
@@ -97,7 +100,7 @@ class SystemSettings extends Page
                             ->schema([
                                 Forms\Components\TextInput::make('auto_generate_day')
                                     ->label('Día del Mes')
-                                    ->helperText('Día del mes para ejecutar la generación (1-31)')
+                                    ->helperText('Día del mes para ejecutar la replicación (1-31)')
                                     ->numeric()
                                     ->minValue(1)
                                     ->maxValue(31)
@@ -107,7 +110,7 @@ class SystemSettings extends Page
 
                                 Forms\Components\TimePicker::make('auto_generate_time')
                                     ->label('Hora de Ejecución')
-                                    ->helperText('Hora del día para ejecutar la generación')
+                                    ->helperText('Hora del día para ejecutar la replicación')
                                     ->default('23:59:59')
                                     ->seconds(false)
                                     ->required()
@@ -118,35 +121,83 @@ class SystemSettings extends Page
                             ->label('Información')
                             ->content(function (Forms\Get $get) {
                                 if (!$get('auto_generate_enabled')) {
-                                    return 'La generación automática está deshabilitada.';
+                                    return 'La replicación automática de talleres está deshabilitada.';
                                 }
 
                                 $day = $get('auto_generate_day') ?? 20;
                                 $time = $get('auto_generate_time') ?? '23:59:59';
-                                
-                                return "Las inscripciones del mes siguiente se generarán automáticamente cada día {$day} del mes a las {$time} basándose en las inscripciones completadas del mes actual.";
+
+                                return "Los talleres del mes actual se replicarán automáticamente al siguiente mes cada día {$day} a las {$time}. Esto incluye la generación de clases según los días y horarios configurados.";
                             })
                             ->columnSpanFull(),
                     ])
                     ->columns(1),
 
-                Forms\Components\Section::make('Comandos de Prueba')
-                    ->description('Herramientas para probar la funcionalidad')
+                Forms\Components\Section::make('Replicación Automática de Inscripciones')
+                    ->description('Configuración para duplicar inscripciones completadas al mes siguiente')
                     ->schema([
-                        Forms\Components\Actions::make([
-                            Forms\Components\Actions\Action::make('test_command')
-                                ->label('Ejecutar Comando de Prueba')
-                                ->color('warning')
-                                ->icon('heroicon-o-play')
-                                ->action(function () {
-                                    // Aquí podrías ejecutar el comando de prueba si quisieras
-                                    Notification::make()
-                                        ->title('Comando de Prueba')
-                                        ->body('Para probar, ejecuta: php artisan enrollments:auto-cancel')
-                                        ->info()
-                                        ->send();
-                                }),
-                        ])
+                        Forms\Components\Toggle::make('auto_replicate_enrollments_enabled')
+                            ->label('Habilitar Replicación de Inscripciones')
+                            ->helperText('Activar o desactivar la replicación automática de inscripciones completadas')
+                            ->live()
+                            ->columnSpanFull(),
+
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\TextInput::make('auto_replicate_enrollments_day')
+                                    ->label('Día del Mes')
+                                    ->helperText('Día del mes para ejecutar la replicación (1-31)')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->maxValue(31)
+                                    ->default(25)
+                                    ->required()
+                                    ->disabled(fn (Forms\Get $get) => !$get('auto_replicate_enrollments_enabled')),
+
+                                Forms\Components\TimePicker::make('auto_replicate_enrollments_time')
+                                    ->label('Hora de Ejecución')
+                                    ->helperText('Hora del día para ejecutar la replicación')
+                                    ->default('23:59:59')
+                                    ->seconds(false)
+                                    ->required()
+                                    ->disabled(fn (Forms\Get $get) => !$get('auto_replicate_enrollments_enabled')),
+                            ]),
+
+                        Forms\Components\Placeholder::make('auto_replicate_enrollments_info')
+                            ->label('Información')
+                            ->content(function (Forms\Get $get) {
+                                if (!$get('auto_replicate_enrollments_enabled')) {
+                                    return 'La replicación automática de inscripciones está deshabilitada.';
+                                }
+
+                                $day = $get('auto_replicate_enrollments_day') ?? 25;
+                                $time = $get('auto_replicate_enrollments_time') ?? '23:59:59';
+
+                                return "Las inscripciones completadas del mes actual se replicarán automáticamente al siguiente mes cada día {$day} a las {$time}. Solo se replican estudiantes con mantenimiento vigente y talleres con cupo disponible.";
+                            })
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('auto_replicate_enrollments_warning')
+                            ->label('⚠️ Importante')
+                            ->content('La replicación de inscripciones debe ejecutarse DESPUÉS de la replicación de talleres. Recomendación: configurar replicación de talleres al día 20 e inscripciones al día 25.')
+                            ->columnSpanFull()
+                            ->visible(fn (Forms\Get $get) => $get('auto_replicate_enrollments_enabled')),
+                    ])
+                    ->columns(1),
+
+                Forms\Components\Section::make('Comandos de Prueba')
+                    ->description('Herramientas para probar la funcionalidad manualmente')
+                    ->schema([
+                        Forms\Components\Placeholder::make('test_commands_info')
+                            ->label('Comandos Disponibles')
+                            ->content('
+                                • Anular inscripciones: php artisan enrollments:auto-cancel
+                                • Replicar talleres: php artisan workshops:auto-replicate --force
+                                • Replicar inscripciones: php artisan enrollments:auto-generate --force
+
+                                El flag --force permite ejecutar los comandos sin esperar el día/hora configurado.
+                            ')
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
             ])
@@ -167,18 +218,25 @@ class SystemSettings extends Page
         $data = $this->form->getState();
 
         try {
+            // Guardar configuraciones de anulación
             SystemSetting::set('auto_cancel_enabled', $data['auto_cancel_enabled'], 'boolean');
-            SystemSetting::set('auto_generate_enabled', $data['auto_generate_enabled'], 'boolean');
-            
-            // Solo guardar estos valores si la funcionalidad está habilitada
             if ($data['auto_cancel_enabled']) {
                 SystemSetting::set('auto_cancel_day', $data['auto_cancel_day'] ?? 28, 'integer');
                 SystemSetting::set('auto_cancel_time', $data['auto_cancel_time'] ?? '23:59:59', 'string');
             }
 
+            // Guardar configuraciones de replicación de talleres
+            SystemSetting::set('auto_generate_enabled', $data['auto_generate_enabled'], 'boolean');
             if ($data['auto_generate_enabled']) {
                 SystemSetting::set('auto_generate_day', $data['auto_generate_day'] ?? 20, 'integer');
                 SystemSetting::set('auto_generate_time', $data['auto_generate_time'] ?? '23:59:59', 'string');
+            }
+
+            // Guardar configuraciones de replicación de inscripciones
+            SystemSetting::set('auto_replicate_enrollments_enabled', $data['auto_replicate_enrollments_enabled'], 'boolean');
+            if ($data['auto_replicate_enrollments_enabled']) {
+                SystemSetting::set('auto_replicate_enrollments_day', $data['auto_replicate_enrollments_day'] ?? 25, 'integer');
+                SystemSetting::set('auto_replicate_enrollments_time', $data['auto_replicate_enrollments_time'] ?? '23:59:59', 'string');
             }
 
             Notification::make()

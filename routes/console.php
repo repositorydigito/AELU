@@ -18,7 +18,7 @@ Schedule::command('workshops:auto-replicate')
     ->withoutOverlapping()
     ->runInBackground();
 
-/* Schedule::command('enrollments:auto-generate')
+Schedule::command('enrollments:auto-generate')
     ->everyMinute()
     ->withoutOverlapping()
-    ->runInBackground(); */
+    ->runInBackground();
