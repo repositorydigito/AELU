@@ -2,14 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\MonthlyPeriod;
+use App\Models\SystemSetting;
+use App\Services\WorkshopReplicationService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
-use App\Models\SystemSetting;
-use App\Models\MonthlyPeriod;
-use App\Models\Workshop;
-use App\Services\WorkshopReplicationService;
 
 class ReplicateWorkshopsForNextMonth extends Command
 {
@@ -25,6 +24,7 @@ class ReplicateWorkshopsForNextMonth extends Command
         $isEnabled = SystemSetting::get('auto_generate_enabled', false);
         if (! $isEnabled) {
             $this->info('Auto-generación deshabilitada. Saliendo...');
+
             return Command::SUCCESS;
         }
 
@@ -40,11 +40,13 @@ class ReplicateWorkshopsForNextMonth extends Command
         if (! $this->option('force')) {
             if ($now->day !== $generateDay) {
                 $this->info("Hoy es día {$now->day}, esperando día {$generateDay}");
+
                 return Command::SUCCESS;
             }
 
             if ($nowMinute !== $targetMinute) {
                 $this->info("Hora actual {$nowMinute} distinta de hora objetivo {$targetMinute}. Saliendo...");
+
                 return Command::SUCCESS;
             }
         } else {
@@ -57,6 +59,7 @@ class ReplicateWorkshopsForNextMonth extends Command
 
         if (! $currentPeriod) {
             $this->error('No se encontró período mensual actual.');
+
             return Command::FAILURE;
         }
 
@@ -72,11 +75,27 @@ class ReplicateWorkshopsForNextMonth extends Command
             ]
         );
 
+        // Verificar si ya se replicaron los talleres para este período
+        if ($nextPeriod->workshops_replicated_at && ! $this->option('force')) {
+            $this->info("Los talleres ya fueron replicados para {$nextPeriod->year}/{$nextPeriod->month} el {$nextPeriod->workshops_replicated_at->format('Y-m-d H:i:s')}");
+            $this->info('Usa --force para forzar la replicación nuevamente.');
+
+            return Command::SUCCESS;
+        }
+
+        if ($this->option('force') && $nextPeriod->workshops_replicated_at) {
+            $this->warn("ADVERTENCIA: Forzando replicación aunque ya se ejecutó el {$nextPeriod->workshops_replicated_at->format('Y-m-d H:i:s')}");
+            $this->warn('Esto puede crear talleres duplicados.');
+        }
+
         $service = app(WorkshopReplicationService::class);
 
         DB::beginTransaction();
         try {
             $replicated = $service->replicateFromPeriodToNext($currentPeriod, $nextPeriod);
+
+            // Marcar como replicado
+            $nextPeriod->update(['workshops_replicated_at' => now()]);
 
             DB::commit();
 
@@ -88,7 +107,8 @@ class ReplicateWorkshopsForNextMonth extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error replicando talleres', ['error' => $e->getMessage()]);
-            $this->error('Error durante replicación: ' . $e->getMessage());
+            $this->error('Error durante replicación: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }

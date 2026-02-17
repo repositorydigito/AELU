@@ -2,17 +2,18 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\SystemSetting;
 use App\Models\MonthlyPeriod;
+use App\Models\SystemSetting;
 use App\Services\EnrollmentReplicationService;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AutoGenerateNextMonthEnrollments extends Command
 {
     protected $signature = 'enrollments:auto-generate {--force : Ejecuta aunque no sea el día/hora configurado}';
+
     protected $description = 'Automatically replicate enrollments for the next month based on current month completed enrollments';
 
     public function handle()
@@ -21,8 +22,9 @@ class AutoGenerateNextMonthEnrollments extends Command
 
         // Verificar si la funcionalidad está habilitada
         $isEnabled = SystemSetting::get('auto_replicate_enrollments_enabled', false);
-        if (!$isEnabled && !$this->option('force')) {
+        if (! $isEnabled && ! $this->option('force')) {
             $this->info('Replicación automática de inscripciones deshabilitada. Saliendo...');
+
             return Command::SUCCESS;
         }
 
@@ -36,14 +38,16 @@ class AutoGenerateNextMonthEnrollments extends Command
         $nowMinute = $now->format('H:i');
 
         // Validar día/hora exactos cuando no es forzado
-        if (!$this->option('force')) {
+        if (! $this->option('force')) {
             if ($now->day !== $generateDay) {
                 $this->info("Hoy es día {$now->day}, esperando día {$generateDay}");
+
                 return Command::SUCCESS;
             }
 
             if ($nowMinute !== $targetMinute) {
                 $this->info("Hora actual {$nowMinute} distinta de hora objetivo {$targetMinute}. Saliendo...");
+
                 return Command::SUCCESS;
             }
         } else {
@@ -55,8 +59,9 @@ class AutoGenerateNextMonthEnrollments extends Command
             ->where('month', $now->month)
             ->first();
 
-        if (!$currentPeriod) {
+        if (! $currentPeriod) {
             $this->error('No se encontró período mensual actual.');
+
             return Command::FAILURE;
         }
 
@@ -72,6 +77,19 @@ class AutoGenerateNextMonthEnrollments extends Command
             ]
         );
 
+        // Verificar si ya se replicaron las inscripciones para este período
+        if ($nextPeriod->enrollments_replicated_at && ! $this->option('force')) {
+            $this->info("Las inscripciones ya fueron replicadas para {$nextPeriod->year}/{$nextPeriod->month} el {$nextPeriod->enrollments_replicated_at->format('Y-m-d H:i:s')}");
+            $this->info('Usa --force para forzar la replicación nuevamente.');
+
+            return Command::SUCCESS;
+        }
+
+        if ($this->option('force') && $nextPeriod->enrollments_replicated_at) {
+            $this->warn("ADVERTENCIA: Forzando replicación aunque ya se ejecutó el {$nextPeriod->enrollments_replicated_at->format('Y-m-d H:i:s')}");
+            $this->warn('Esto puede crear inscripciones duplicadas.');
+        }
+
         $this->info("Replicando inscripciones de {$currentPeriod->year}/{$currentPeriod->month} a {$nextPeriod->year}/{$nextPeriod->month}");
 
         $service = app(EnrollmentReplicationService::class);
@@ -79,6 +97,9 @@ class AutoGenerateNextMonthEnrollments extends Command
         DB::beginTransaction();
         try {
             $result = $service->replicateEnrollmentsToNextMonth($currentPeriod, $nextPeriod);
+
+            // Marcar como replicado
+            $nextPeriod->update(['enrollments_replicated_at' => now()]);
 
             DB::commit();
 
@@ -90,16 +111,16 @@ class AutoGenerateNextMonthEnrollments extends Command
             $this->info("- Lotes omitidos: {$result['skipped']}");
 
             // Mostrar advertencias
-            if (!empty($result['warnings'])) {
-                $this->warn("- Advertencias: " . count($result['warnings']));
+            if (! empty($result['warnings'])) {
+                $this->warn('- Advertencias: '.count($result['warnings']));
                 foreach ($result['warnings'] as $warning) {
                     $this->warn("  • {$warning}");
                 }
             }
 
             // Mostrar errores
-            if (!empty($result['errors'])) {
-                $this->error("- Errores: " . count($result['errors']));
+            if (! empty($result['errors'])) {
+                $this->error('- Errores: '.count($result['errors']));
                 foreach ($result['errors'] as $error) {
                     $this->error("  • {$error}");
                 }
@@ -110,7 +131,8 @@ class AutoGenerateNextMonthEnrollments extends Command
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error crítico replicando inscripciones', ['error' => $e->getMessage()]);
-            $this->error('Error crítico durante replicación: ' . $e->getMessage());
+            $this->error('Error crítico durante replicación: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }

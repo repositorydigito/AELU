@@ -3,15 +3,14 @@
 namespace App\Services;
 
 use App\Models\EnrollmentBatch;
-use App\Models\StudentEnrollment;
 use App\Models\EnrollmentClass;
-use App\Models\MonthlyPeriod;
-use App\Models\Workshop;
 use App\Models\InstructorWorkshop;
-use App\Models\WorkshopClass;
+use App\Models\MonthlyPeriod;
 use App\Models\Student;
+use App\Models\StudentEnrollment;
+use App\Models\Workshop;
+use App\Models\WorkshopClass;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class EnrollmentReplicationService
@@ -27,6 +26,17 @@ class EnrollmentReplicationService
     ];
 
     /**
+     * Cache de InstructorWorkshops del siguiente período para evitar N+1
+     */
+    protected $nextPeriodInstructorWorkshops = null;
+
+    /**
+     * IDs de batches creados durante esta ejecución por estudiante
+     * Para permitir múltiples batches del mismo estudiante
+     */
+    protected $createdBatchIdsByStudent = [];
+
+    /**
      * Replica inscripciones del período actual al siguiente
      *
      * @return array{batches:int, enrollments:int, classes:int, skipped:int, warnings:array, errors:array}
@@ -37,6 +47,27 @@ class EnrollmentReplicationService
 
         Log::info("Starting enrollment replication from period {$currentPeriod->year}/{$currentPeriod->month} to {$nextPeriod->year}/{$nextPeriod->month}");
 
+        // Pre-cargar InstructorWorkshops del siguiente período para evitar N+1
+        $this->nextPeriodInstructorWorkshops = InstructorWorkshop::with('workshop')
+            ->whereHas('workshop', function ($query) use ($nextPeriod) {
+                $query->where('monthly_period_id', $nextPeriod->id);
+            })
+            ->get()
+            ->keyBy(function ($iw) {
+                // Crear clave única: instructor_id + nombre + día + horario + duración
+                $dayOfWeek = is_array($iw->workshop->day_of_week)
+                    ? json_encode($iw->workshop->day_of_week)
+                    : $iw->workshop->day_of_week;
+
+                return $iw->instructor_id.'_'.
+                       $iw->workshop->name.'_'.
+                       $dayOfWeek.'_'.
+                       $iw->workshop->start_time.'_'.
+                       $iw->workshop->duration;
+            });
+
+        Log::info("Pre-loaded {$this->nextPeriodInstructorWorkshops->count()} instructor workshops for next period");
+
         // Buscar batches completados del período actual
         $completedBatches = EnrollmentBatch::where('payment_status', 'completed')
             ->whereHas('enrollments', function ($query) use ($currentPeriod) {
@@ -46,12 +77,13 @@ class EnrollmentReplicationService
             ->with([
                 'enrollments.instructorWorkshop.workshop',
                 'enrollments.enrollmentClasses.workshopClass',
-                'student.studentCategory'
+                'student',
             ])
             ->get();
 
         if ($completedBatches->isEmpty()) {
             Log::info('No completed enrollment batches found for replication');
+
             return $this->getStats();
         }
 
@@ -66,7 +98,7 @@ class EnrollmentReplicationService
                 $this->stats['errors'][] = "Batch ID {$batch->id} (Student: {$batch->student->full_name}): {$e->getMessage()}";
                 Log::error("Error replicating batch {$batch->id}", [
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         }
@@ -84,25 +116,36 @@ class EnrollmentReplicationService
         $student = $batch->student;
 
         // Validación 1: Verificar si ya existe un batch para este estudiante en el siguiente período
-        $existingBatch = EnrollmentBatch::where('student_id', $student->id)
+        // IMPORTANTE: Excluir batches que fueron creados durante ESTA ejecución
+        // para permitir que un estudiante tenga múltiples batches replicados
+        $excludeBatchIds = $this->createdBatchIdsByStudent[$student->id] ?? [];
+
+        $query = EnrollmentBatch::where('student_id', $student->id)
             ->whereHas('enrollments', function ($query) use ($nextPeriod) {
                 $query->where('monthly_period_id', $nextPeriod->id);
             })
-            ->whereNotIn('payment_status', ['refunded'])
-            ->first();
+            ->whereNotIn('payment_status', ['refunded']);
+
+        if (! empty($excludeBatchIds)) {
+            $query->whereNotIn('id', $excludeBatchIds);
+        }
+
+        $existingBatch = $query->first();
 
         if ($existingBatch) {
             $this->stats['batches_skipped']++;
-            $this->stats['warnings'][] = "Student {$student->full_name} already has a batch for next period (Batch ID: {$existingBatch->id})";
-            Log::info("Skipping batch {$batch->id}: Student already has enrollment for next period");
+            $this->stats['warnings'][] = "Student {$student->full_name} already has a batch for next period (Batch ID: {$existingBatch->id}) created manually";
+            Log::info("Skipping batch {$batch->id}: Student already has manual enrollment for next period");
+
             return;
         }
 
         // Validación 2: Verificar que el estudiante esté al día con mantenimiento
-        if (!$this->validateStudentEligibility($student, $nextPeriod)) {
+        if (! $this->validateStudentEligibility($student, $nextPeriod)) {
             $this->stats['batches_skipped']++;
             $this->stats['warnings'][] = "Student {$student->full_name} is not eligible (maintenance not current)";
             Log::info("Skipping batch {$batch->id}: Student not current with maintenance");
+
             return;
         }
 
@@ -135,6 +178,13 @@ class EnrollmentReplicationService
         if ($successfulEnrollments > 0) {
             $newBatch->update(['total_amount' => $totalAmount]);
             $this->stats['batches_created']++;
+
+            // Registrar este batch como creado durante esta ejecución
+            if (! isset($this->createdBatchIdsByStudent[$student->id])) {
+                $this->createdBatchIdsByStudent[$student->id] = [];
+            }
+            $this->createdBatchIdsByStudent[$student->id][] = $newBatch->id;
+
             Log::info("Created batch {$newBatch->id} for student {$student->full_name} with {$successfulEnrollments} enrollments");
         } else {
             // Si no se creó ninguna inscripción, eliminar el batch vacío
@@ -155,7 +205,7 @@ class EnrollmentReplicationService
             'total_amount' => 0, // Se actualizará después
             'payment_status' => 'pending',
             'payment_method' => $batch->payment_method,
-            'enrollment_date' => now()->format('Y-m-d'),
+            'enrollment_date' => now()->timezone(config('app.timezone', 'America/Lima'))->format('Y-m-d'),
             'payment_due_date' => $this->adjustDateToNextMonth($batch->payment_due_date, $nextPeriod),
             'notes' => "Replicación automática desde período {$batch->enrollments->first()->monthlyPeriod->year}/{$batch->enrollments->first()->monthlyPeriod->month} - Lote original: {$batch->id}",
         ]);
@@ -172,7 +222,7 @@ class EnrollmentReplicationService
             $nextPeriod
         );
 
-        if (!$newInstructorWorkshop) {
+        if (! $newInstructorWorkshop) {
             throw new \Exception("Workshop '{$enrollment->instructorWorkshop->workshop->name}' not found in next period");
         }
 
@@ -202,7 +252,7 @@ class EnrollmentReplicationService
             'total_amount' => $finalPrice,
             'payment_status' => 'pending',
             'payment_method' => $enrollment->payment_method,
-            'enrollment_date' => now()->format('Y-m-d'),
+            'enrollment_date' => now()->timezone(config('app.timezone', 'America/Lima'))->format('Y-m-d'),
             'payment_due_date' => $this->adjustDateToNextMonth($enrollment->payment_due_date, $nextPeriod),
             'pricing_notes' => 'Replicación automática - precio recalculado',
             'previous_enrollment_id' => $enrollment->id, // Mantener cadena de renovación
@@ -225,27 +275,19 @@ class EnrollmentReplicationService
     {
         $originalWorkshop = $originalIW->workshop;
 
-        // Buscar workshop equivalente en el siguiente período
-        // Por: nombre + instructor + horarios + día de semana
-        $equivalentWorkshop = Workshop::where('monthly_period_id', $nextPeriod->id)
-            ->where('name', $originalWorkshop->name)
-            ->where('instructor_id', $originalWorkshop->instructor_id)
-            ->where('start_time', $originalWorkshop->start_time)
-            ->where('duration', $originalWorkshop->duration)
-            ->first();
+        // Crear clave de búsqueda: instructor_id + nombre + día + horario + duración
+        $dayOfWeek = is_array($originalWorkshop->day_of_week)
+            ? json_encode($originalWorkshop->day_of_week)
+            : $originalWorkshop->day_of_week;
 
-        if (!$equivalentWorkshop) {
-            return null;
-        }
+        $searchKey = $originalIW->instructor_id.'_'.
+                     $originalWorkshop->name.'_'.
+                     $dayOfWeek.'_'.
+                     $originalWorkshop->start_time.'_'.
+                     $originalWorkshop->duration;
 
-        // Buscar o crear InstructorWorkshop
-        // En este sistema parece que InstructorWorkshop se crea con el Workshop
-        // pero verificamos por si acaso
-        $instructorWorkshop = InstructorWorkshop::where('workshop_id', $equivalentWorkshop->id)
-            ->where('instructor_id', $originalWorkshop->instructor_id)
-            ->first();
-
-        return $instructorWorkshop;
+        // Buscar en el cache pre-cargado
+        return $this->nextPeriodInstructorWorkshops->get($searchKey);
     }
 
     /**
@@ -256,6 +298,16 @@ class EnrollmentReplicationService
         StudentEnrollment $newEnrollment,
         MonthlyPeriod $nextPeriod
     ): void {
+        // Para inscripciones de mes completo, inscribir en TODAS las clases disponibles del nuevo período
+        // sin intentar mapear clase por clase, ya que eventos específicos del mes (ej: aniversario)
+        // no deben afectar la generación de clases del siguiente mes
+        if ($originalEnrollment->enrollment_type === 'full_month') {
+            $this->createDefaultEnrollmentClasses($newEnrollment, $nextPeriod);
+
+            return;
+        }
+
+        // Para inscripciones de clases específicas, intentar mapear cada clase
         $originalClasses = $originalEnrollment->enrollmentClasses()
             ->with('workshopClass')
             ->orderBy('id')
@@ -264,8 +316,12 @@ class EnrollmentReplicationService
         if ($originalClasses->isEmpty()) {
             // Si no hay clases específicas, crear para todas las clases del workshop
             $this->createDefaultEnrollmentClasses($newEnrollment, $nextPeriod);
+
             return;
         }
+
+        // Llevar registro de las WorkshopClasses ya usadas para evitar duplicados
+        $usedWorkshopClassIds = [];
 
         // Mapear cada clase original a su equivalente en el siguiente período
         foreach ($originalClasses as $originalEnrollmentClass) {
@@ -275,7 +331,8 @@ class EnrollmentReplicationService
             $newWorkshopClass = $this->findEquivalentWorkshopClass(
                 $originalWorkshopClass,
                 $newEnrollment->instructorWorkshop->workshop,
-                $nextPeriod
+                $nextPeriod,
+                $usedWorkshopClassIds
             );
 
             if ($newWorkshopClass) {
@@ -285,6 +342,9 @@ class EnrollmentReplicationService
                     'class_fee' => $originalEnrollmentClass->class_fee,
                     'attendance_status' => 'enrolled',
                 ]);
+
+                // Marcar esta clase como usada
+                $usedWorkshopClassIds[] = $newWorkshopClass->id;
 
                 $this->stats['classes_created']++;
             } else {
@@ -299,18 +359,27 @@ class EnrollmentReplicationService
     protected function findEquivalentWorkshopClass(
         WorkshopClass $originalClass,
         Workshop $newWorkshop,
-        MonthlyPeriod $nextPeriod
+        MonthlyPeriod $nextPeriod,
+        array $excludeIds = []
     ): ?WorkshopClass {
         // Buscar por: workshop equivalente + mismo día de la semana + mismos horarios
+        // Carbon dayOfWeek: 0=Domingo, 1=Lunes, ..., 6=Sábado
+        // MySQL DAYOFWEEK(): 1=Domingo, 2=Lunes, ..., 7=Sábado
+        // Por lo tanto: DAYOFWEEK() - 1 = Carbon dayOfWeek
         $originalWeekday = Carbon::parse($originalClass->class_date)->dayOfWeek;
 
-        return WorkshopClass::where('workshop_id', $newWorkshop->id)
+        $query = WorkshopClass::where('workshop_id', $newWorkshop->id)
             ->where('monthly_period_id', $nextPeriod->id)
-            ->whereRaw('WEEKDAY(class_date) = ?', [$originalWeekday])
+            ->whereRaw('DAYOFWEEK(class_date) - 1 = ?', [$originalWeekday])
             ->where('start_time', $originalClass->start_time)
-            ->where('end_time', $originalClass->end_time)
-            ->orderBy('class_date')
-            ->first();
+            ->where('end_time', $originalClass->end_time);
+
+        // Excluir las clases ya usadas para esta inscripción
+        if (! empty($excludeIds)) {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        return $query->orderBy('class_date')->first();
     }
 
     /**
@@ -345,12 +414,12 @@ class EnrollmentReplicationService
     {
         // Verificar que el estudiante tenga mantenimiento vigente
         // Debe estar dentro de 2 meses de gracia
-        if (!$student->maintenance_period_id) {
+        if (! $student->maintenance_period_id) {
             return false;
         }
 
         $maintenancePeriod = MonthlyPeriod::find($student->maintenance_period_id);
-        if (!$maintenancePeriod) {
+        if (! $maintenancePeriod) {
             return false;
         }
 
@@ -369,8 +438,8 @@ class EnrollmentReplicationService
      */
     protected function adjustDateToNextMonth($date, MonthlyPeriod $nextPeriod): string
     {
-        if (!$date) {
-            return now()->format('Y-m-d');
+        if (! $date) {
+            return now()->timezone(config('app.timezone', 'America/Lima'))->format('Y-m-d');
         }
 
         $originalDate = Carbon::parse($date);
@@ -399,6 +468,8 @@ class EnrollmentReplicationService
             'errors' => [],
             'warnings' => [],
         ];
+
+        $this->createdBatchIdsByStudent = [];
     }
 
     /**

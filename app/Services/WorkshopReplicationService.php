@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Workshop;
 use App\Models\MonthlyPeriod;
+use App\Models\Workshop;
 use App\Models\WorkshopClass;
 use Carbon\Carbon;
 
@@ -83,9 +83,9 @@ class WorkshopReplicationService
         $startDate = Carbon::parse($period->start_date)->startOfDay();
         $endDate = Carbon::parse($period->end_date)->endOfDay();
 
-        $classesToCreate = (int) ($workshop->number_of_classes ?? 4);
         $createdCount = 0;
 
+        // Encontrar todas las fechas del período que coinciden con los días configurados
         $dates = [];
         $cursor = $startDate->copy();
         while ($cursor->lte($endDate)) {
@@ -95,7 +95,8 @@ class WorkshopReplicationService
             $cursor->addDay();
         }
 
-        $dates = array_slice($dates, 0, $classesToCreate);
+        // Actualizar number_of_classes del workshop con la cantidad real de clases que se van a generar
+        $workshop->update(['number_of_classes' => count($dates)]);
 
         $startTime = Carbon::parse($workshop->start_time);
         $endTime = $startTime->copy()->addMinutes((int) ($workshop->duration ?? 60));
@@ -119,6 +120,6 @@ class WorkshopReplicationService
 
     private function mapNumericDayToSpanish(int $n): string
     {
-        return ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][$n] ?? 'Lunes';
+        return ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][$n] ?? 'Lunes';
     }
 }

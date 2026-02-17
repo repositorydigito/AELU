@@ -15,6 +15,8 @@ class MonthlyPeriod extends Model
         'renewal_start_date',
         'renewal_end_date',
         'auto_generate_classes',
+        'workshops_replicated_at',
+        'enrollments_replicated_at',
     ];
 
     protected $casts = [
@@ -26,6 +28,8 @@ class MonthlyPeriod extends Model
         'renewal_start_date' => 'date',
         'renewal_end_date' => 'date',
         'auto_generate_classes' => 'boolean',
+        'workshops_replicated_at' => 'datetime',
+        'enrollments_replicated_at' => 'datetime',
     ];
 
     public function classes()
