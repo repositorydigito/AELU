@@ -59,44 +59,76 @@ class EditWorkshop extends EditRecord
         $workshop = $this->record;
         $scheduleData = $this->data['schedule_data'] ?? [];
 
-        if (!empty($scheduleData) && is_array($scheduleData)) {
-            // Obtener las clases existentes ordenadas por fecha
-            $existingClasses = $workshop->workshopClasses()
-                ->orderBy('class_date', 'asc')
-                ->get();
+        if (empty($scheduleData) || !is_array($scheduleData)) {
+            return;
+        }
 
-            // Actualizar o crear clases según los datos del formulario
-            foreach ($scheduleData as $index => $classData) {
-                if (isset($existingClasses[$index])) {
-                    // ACTUALIZAR la clase existente en lugar de eliminarla
-                    $existingClasses[$index]->update([
-                        'class_date' => $classData['raw_date'],
-                        'start_time' => $workshop->start_time,
-                        'end_time' => $workshop->end_time,
-                        'status' => $classData['status'] ?? 'scheduled',
-                        'max_capacity' => $workshop->capacity,
-                    ]);
-                } else {
-                    // CREAR nueva clase si no existe
-                    WorkshopClass::create([
-                        'workshop_id' => $workshop->id,
-                        'monthly_period_id' => $workshop->monthly_period_id,
-                        'class_date' => $classData['raw_date'],
-                        'start_time' => $workshop->start_time,
-                        'end_time' => $workshop->end_time,
-                        'status' => $classData['status'] ?? 'scheduled',
-                        'max_capacity' => $workshop->capacity,
-                    ]);
-                }
-            }
+        // Verificar si hay clases existentes
+        $existingClasses = $workshop->workshopClasses()
+            ->orderBy('class_date', 'asc')
+            ->get();
 
-            // ELIMINAR clases sobrantes si hay menos clases en el nuevo horario
-            if ($existingClasses->count() > count($scheduleData)) {
-                $classesToDelete = $existingClasses->slice(count($scheduleData));
-                foreach ($classesToDelete as $classToDelete) {
-                    $classToDelete->delete();
-                }
+        if ($existingClasses->isEmpty()) {
+            // No hay clases → Crearlas desde cero
+            foreach ($scheduleData as $classData) {
+                WorkshopClass::create([
+                    'workshop_id' => $workshop->id,
+                    'monthly_period_id' => $workshop->monthly_period_id,
+                    'class_date' => $classData['raw_date'],
+                    'start_time' => $workshop->start_time,
+                    'end_time' => \Carbon\Carbon::parse($workshop->start_time)->addMinutes($workshop->duration ?? 60)->format('H:i:s'),
+                    'status' => $classData['status'] ?? 'scheduled',
+                    'max_capacity' => $workshop->capacity,
+                ]);
             }
+        } else {
+            // Ya hay clases → Actualizarlas preservando IDs y enrollment_classes
+            \DB::transaction(function () use ($workshop, $scheduleData, $existingClasses) {
+                $endTime = \Carbon\Carbon::parse($workshop->start_time)->addMinutes($workshop->duration ?? 60)->format('H:i:s');
+
+                // PASO 1: Cambiar todas las fechas a temporales (año 3000)
+                // Esto "libera" las fechas reales y evita violaciones de unique_class
+                foreach ($existingClasses as $index => $class) {
+                    $tempDate = '3000-01-' . str_pad($index + 1, 2, '0', STR_PAD_LEFT);
+                    \DB::table('workshop_classes')
+                        ->where('id', $class->id)
+                        ->update(['class_date' => $tempDate]);
+                }
+
+                // PASO 2: Actualizar cada clase a su nueva fecha real
+                foreach ($existingClasses as $index => $class) {
+                    if (isset($scheduleData[$index])) {
+                        \DB::table('workshop_classes')
+                            ->where('id', $class->id)
+                            ->update([
+                                'class_date' => $scheduleData[$index]['raw_date'],
+                                'start_time' => $workshop->start_time,
+                                'end_time' => $endTime,
+                                'status' => $scheduleData[$index]['status'] ?? $class->status,
+                                'max_capacity' => $workshop->capacity,
+                                'updated_at' => now(),
+                            ]);
+                    } else {
+                        // Menos clases en el nuevo schedule → Eliminar sobrantes
+                        $class->delete();
+                    }
+                }
+
+                // PASO 3: Crear clases adicionales si hay más en el nuevo schedule
+                if (count($scheduleData) > $existingClasses->count()) {
+                    for ($i = $existingClasses->count(); $i < count($scheduleData); $i++) {
+                        WorkshopClass::create([
+                            'workshop_id' => $workshop->id,
+                            'monthly_period_id' => $workshop->monthly_period_id,
+                            'class_date' => $scheduleData[$i]['raw_date'],
+                            'start_time' => $workshop->start_time,
+                            'end_time' => $endTime,
+                            'status' => $scheduleData[$i]['status'] ?? 'scheduled',
+                            'max_capacity' => $workshop->capacity,
+                        ]);
+                    }
+                }
+            });
         }
     }
 }
