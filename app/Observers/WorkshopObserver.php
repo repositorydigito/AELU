@@ -113,16 +113,32 @@ class WorkshopObserver
                 }
             }
 
+            // Buscar el InstructorWorkshop más reciente del mismo instructor y mismo taller
+            // (mismo nombre + horario + modalidad + lugar) para heredar la configuración de pago
+            $previous = \App\Models\InstructorWorkshop::where('instructor_id', $workshop->instructor_id)
+                ->whereHas('workshop', function ($q) use ($workshop) {
+                    $q->where('name', $workshop->name)
+                      ->where('id', '!=', $workshop->id)
+                      ->where('start_time', $workshop->start_time)
+                      ->where('modality', $workshop->modality)
+                      ->where('place', $workshop->place);
+                })
+                ->latest()
+                ->first();
+
             \App\Models\InstructorWorkshop::create([
-                'workshop_id' => $workshop->id,
-                'instructor_id' => $workshop->instructor_id,
-                'day_of_week' => $daysOfWeek,
-                'start_time' => $workshop->start_time,
-                'end_time' => $endTime,
-                'max_capacity' => $workshop->capacity,
-                'is_active' => true,
-                'payment_type' => 'volunteer',
-                'place' => $workshop->place ?? null,
+                'workshop_id'                 => $workshop->id,
+                'instructor_id'               => $workshop->instructor_id,
+                'day_of_week'                 => $daysOfWeek,
+                'start_time'                  => $workshop->start_time,
+                'end_time'                    => $endTime,
+                'max_capacity'                => $workshop->capacity,
+                'is_active'                   => true,
+                'payment_type'                => $previous?->payment_type ?? 'volunteer',
+                'hourly_rate'                 => $previous?->hourly_rate,
+                'duration_hours'              => $previous?->duration_hours,
+                'custom_volunteer_percentage' => $previous?->custom_volunteer_percentage,
+                'place'                       => $workshop->place ?? null,
             ]);
         }
     }
