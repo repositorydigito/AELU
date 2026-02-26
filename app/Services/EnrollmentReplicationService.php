@@ -412,25 +412,10 @@ class EnrollmentReplicationService
      */
     protected function validateStudentEligibility(Student $student, MonthlyPeriod $nextPeriod): bool
     {
-        // Verificar que el estudiante tenga mantenimiento vigente
-        // Debe estar dentro de 2 meses de gracia
-        if (! $student->maintenance_period_id) {
-            return false;
-        }
-
-        $maintenancePeriod = MonthlyPeriod::find($student->maintenance_period_id);
-        if (! $maintenancePeriod) {
-            return false;
-        }
-
-        // Calcular diferencia en meses
-        $periodDate = Carbon::create($nextPeriod->year, $nextPeriod->month, 1);
-        $maintenanceDate = Carbon::create($maintenancePeriod->year, $maintenancePeriod->month, 1);
-
-        $monthsDiff = $periodDate->diffInMonths($maintenanceDate);
-
-        // 2 meses de gracia
-        return $monthsDiff <= 2;
+        // Usa la lógica centralizada del modelo, que contempla:
+        // - Categorías exoneradas (Vitalicios, Hijo de Fundador, Transitorio Mayor de 75)
+        // - Período de gracia de 2 meses para el resto
+        return $student->isMaintenanceCurrent();
     }
 
     /**
