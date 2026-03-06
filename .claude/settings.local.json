@@ -20,7 +20,8 @@
       "Bash(nvm list:*)",
       "Bash(nvm install:*)",
       "Bash(nvm use:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(\"/c/Users/RICHARD/.config/herd/bin/php84.bat\" artisan:*)"
     ]
   }
 }

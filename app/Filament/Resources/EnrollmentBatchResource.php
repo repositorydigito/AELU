@@ -550,7 +550,7 @@ class EnrollmentBatchResource extends Resource
                             'notes' => $record->notes,
                         ]);
                     })
-                    ->visible(fn (EnrollmentBatch $record): bool => in_array($record->payment_status, ['pending', 'to_pay'])
+                    ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'pending'
                     ),
             ])
             ->bulkActions([
