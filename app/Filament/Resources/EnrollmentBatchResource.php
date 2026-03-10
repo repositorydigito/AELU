@@ -455,10 +455,7 @@ class EnrollmentBatchResource extends Resource
                     })
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
-                    ->visible(fn (EnrollmentBatch $record): bool =>
-                        $record->payment_status === 'refunded' ||
-                        ($record->payment_status === 'completed' && ! empty($record->cancellation_reason))
-                    ),
+                    ->visible(fn (EnrollmentBatch $record): bool => ! empty($record->cancellation_reason)),
                 \App\Filament\Resources\EnrollmentBatchResource\Actions\RegisterPaymentAction::make(),
                 Tables\Actions\Action::make('cancel_enrollment')
                     ->label('Anular')
@@ -571,6 +568,118 @@ class EnrollmentBatchResource extends Resource
                         $currentUserName = auth()->user()->name ?? '';
 
                         return in_array($record->payment_status, ['pending', 'completed'])
+                            && in_array($currentUserName, $authorizedUsers);
+                    }),
+                Tables\Actions\Action::make('cancel_pending_enrollments')
+                    ->label('Anular Pendientes')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('warning')
+                    ->modalHeading('Anular Inscripciones Pendientes')
+                    ->modalDescription('Seleccione las inscripciones pendientes que desea anular. Las inscripciones ya pagadas no se verán afectadas.')
+                    ->form(function (EnrollmentBatch $record) {
+                        $pendingEnrollments = $record->enrollments()
+                            ->with(['instructorWorkshop.workshop', 'instructorWorkshop.instructor'])
+                            ->whereNull('cancelled_at')
+                            ->where('payment_status', 'pending')
+                            ->get();
+
+                        return [
+                            Forms\Components\CheckboxList::make('selected_enrollments')
+                                ->label('Inscripciones a anular')
+                                ->options($pendingEnrollments->mapWithKeys(function ($enrollment) {
+                                    $iw       = $enrollment->instructorWorkshop;
+                                    $name     = $iw->workshop->name ?? 'N/A';
+                                    $days     = is_array($iw->day_of_week)
+                                                    ? implode('/', $iw->day_of_week)
+                                                    : ($iw->day_of_week ?? 'N/A');
+                                    $start    = $iw->start_time
+                                                    ? \Carbon\Carbon::parse($iw->start_time)->format('H:i')
+                                                    : 'N/A';
+                                    $end      = $iw->end_time
+                                                    ? \Carbon\Carbon::parse($iw->end_time)->format('H:i')
+                                                    : 'N/A';
+                                    $modality = $iw->workshop->modality ?? 'N/A';
+
+                                    return [$enrollment->id => "{$name} | {$days} {$start}-{$end} | {$modality}"];
+                                }))
+                                ->required()
+                                ->columns(1),
+
+                            Forms\Components\Textarea::make('cancellation_reason')
+                                ->label('Motivo de la anulación')
+                                ->rows(3)
+                                ->nullable(),
+                        ];
+                    })
+                    ->action(function (EnrollmentBatch $record, array $data): void {
+                        if (empty($data['selected_enrollments'])) {
+                            Notification::make()
+                                ->title('Error')
+                                ->body('Debe seleccionar al menos una inscripción.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
+                        try {
+                            DB::transaction(function () use ($record, $data) {
+                                $enrollments = $record->enrollments()
+                                    ->whereIn('id', $data['selected_enrollments'])
+                                    ->whereNull('cancelled_at')
+                                    ->where('payment_status', 'pending')
+                                    ->get();
+
+                                foreach ($enrollments as $enrollment) {
+                                    $enrollment->update([
+                                        'payment_status'       => 'refunded',
+                                        'cancelled_at'         => now(),
+                                        'cancelled_by_user_id' => auth()->id(),
+                                        'cancellation_reason'  => $data['cancellation_reason'] ?? null,
+                                    ]);
+                                }
+
+                                // Recalcular total del lote sin las inscripciones canceladas
+                                $newTotal = $record->enrollments()->whereNull('cancelled_at')->sum('total_amount');
+
+                                // Concatenar motivo en el historial del lote
+                                $newEntry = 'Anulación manual de pendientes el ' . now()->format('d/m/Y H:i:s')
+                                    . ' por ' . auth()->user()->name . ':'
+                                    . "\n" . ($data['cancellation_reason'] ?? 'Sin motivo especificado');
+
+                                $cancellationReason = $record->cancellation_reason
+                                    ? $record->cancellation_reason . "\n\n---\n\n" . $newEntry
+                                    : $newEntry;
+
+                                $record->update([
+                                    'total_amount'        => $newTotal,
+                                    'cancellation_reason' => $cancellationReason,
+                                ]);
+
+                                // Recalcular estado del lote
+                                app(\App\Services\EnrollmentPaymentService::class)->updateBatchStatus($record);
+                            });
+
+                            Notification::make()
+                                ->title('Inscripciones anuladas exitosamente')
+                                ->success()
+                                ->send();
+
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Error al anular inscripciones')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    })
+                    ->modalSubmitActionLabel('Anular seleccionadas')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->visible(function (EnrollmentBatch $record): bool {
+                        $authorizedUsers = ['sdordan', 'tnamoc', 'ggonzalez'];
+                        $currentUserName = auth()->user()->name ?? '';
+
+                        return $record->payment_status === 'to_pay'
+                            && $record->enrollments()->whereNull('cancelled_at')->where('payment_status', 'pending')->exists()
                             && in_array($currentUserName, $authorizedUsers);
                     }),
                 Tables\Actions\Action::make('edit_full')
