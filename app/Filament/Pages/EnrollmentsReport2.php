@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\MonthlyEnrollmentsExport;
 use App\Models\MonthlyPeriod;
 use App\Models\StudentEnrollment;
 use Dompdf\Dompdf;
@@ -247,10 +248,35 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
         }
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => ! empty($this->monthlyEnrollments))
+            ->action(function () {
+                try {
+                    $fileName = 'inscripciones-'.$this->periodData->year.'-'.str_pad($this->periodData->month, 2, '0', STR_PAD_LEFT).'.xlsx';
+
+                    return (new MonthlyEnrollmentsExport(
+                        $this->monthlyEnrollments,
+                    ))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
 
