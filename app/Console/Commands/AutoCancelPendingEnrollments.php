@@ -2,13 +2,12 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\EnrollmentBatch;
-use App\Models\StudentEnrollment;
 use App\Models\SystemSetting;
+use App\Services\EnrollmentPaymentService;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class AutoCancelPendingEnrollments extends Command
 {
@@ -18,43 +17,47 @@ class AutoCancelPendingEnrollments extends Command
 
     public function handle()
     {
-        $this->info('Starting auto-cancel process...');
-
-        // Verificar si la funcionalidad está habilitada
         $isEnabled = SystemSetting::get('auto_cancel_enabled', false);
-        if (!$isEnabled) {
+        if (! $isEnabled) {
             $this->info('Auto-cancel is disabled. Skipping...');
             return;
         }
 
-        // Obtener configuraciones
         $cancelDay = (int) SystemSetting::get('auto_cancel_day', 28);
         $cancelTime = SystemSetting::get('auto_cancel_time', '23:59:59');
-
         $today = Carbon::now();
         $targetTime = Carbon::today()->setTimeFromTimeString($cancelTime);
 
-        // Verificar si es el día correcto del mes
         if ($today->day !== $cancelDay) {
             $this->info("Today is day {$today->day}, waiting for day {$cancelDay}");
             return;
         }
 
-        // Verificar si ya pasó la hora configurada
         if ($today->lt($targetTime)) {
             $this->info("Current time {$today->format('H:i:s')} is before target time {$cancelTime}");
             return;
         }
 
-        $this->info("Starting auto-cancellation process for day {$cancelDay} at {$today->format('H:i:s')}");
+        $this->info("Running auto-cancellation for day {$cancelDay} at {$today->format('H:i:s')}");
 
-        // Buscar TODOS los lotes de inscripciones en estado pending, sin importar el mes
-        $pendingBatches = EnrollmentBatch::where('payment_status', 'pending')
+        // Anular lotes sin ningún pago
+        $this->cancelPendingBatches();
+
+        // Anular solo las inscripciones sin pago dentro de lotes con pago parcial
+        $this->cancelUnpaidEnrollmentsInPartialBatches();
+    }
+
+    /**
+     * Anula completamente los lotes en estado 'pending' (sin ningún pago registrado).
+     */
+    private function cancelPendingBatches(): void
+    {
+        $batches = EnrollmentBatch::where('payment_status', 'pending')
             ->with(['enrollments', 'student', 'tickets'])
             ->get();
 
-        if ($pendingBatches->isEmpty()) {
-            $this->info('No pending enrollment batches found for auto-cancellation');
+        if ($batches->isEmpty()) {
+            $this->info('No pending batches found.');
             return;
         }
 
@@ -65,64 +68,146 @@ class AutoCancelPendingEnrollments extends Command
         DB::beginTransaction();
 
         try {
-            foreach ($pendingBatches as $batch) {
+            foreach ($batches as $batch) {
                 try {
-                    // Actualizar el lote (marcar como anulado por el sistema)
                     $batch->update([
-                        'payment_status' => 'refunded',
-                        'cancelled_at' => now(),
+                        'payment_status'      => 'refunded',
+                        'cancelled_at'        => now(),
                         'cancelled_by_user_id' => null,
-                        'cancellation_reason' => 'Anulación automática - No se completó el pago antes del día límite',
-                        'notes' => ($batch->notes ? $batch->notes . "\n\n" : '') .
-                                  'Anulación automática el ' . now()->format('d/m/Y H:i:s') .
-                                  ': No se completó el pago antes del día límite'
+                        'cancellation_reason' => 'Anulación automática - Sin pago al día límite',
+                        'notes'               => ($batch->notes ? $batch->notes . "\n\n" : '') .
+                                                 'Anulación automática el ' . now()->format('d/m/Y H:i:s'),
                     ]);
 
-                    // Actualizar cada inscripción individualmente para disparar observers
                     foreach ($batch->enrollments as $enrollment) {
                         $enrollment->update([
-                            'payment_status' => 'refunded',
-                            'cancelled_at' => now(),
+                            'payment_status'      => 'refunded',
+                            'cancelled_at'        => now(),
                             'cancelled_by_user_id' => null,
-                            'cancellation_reason' => 'Anulación automática - No se completó el pago antes del día límite',
+                            'cancellation_reason' => 'Anulación automática - Sin pago al día límite',
                         ]);
                         $cancelledEnrollments++;
                     }
 
-                    // Anular TODOS los tickets asociados al lote (incluidos los ya pagados)
                     $batch->tickets()->update([
-                        'status' => 'cancelled',
-                        'cancelled_at' => now(),
+                        'status'              => 'cancelled',
+                        'cancelled_at'        => now(),
                         'cancelled_by_user_id' => null,
                         'cancellation_reason' => 'Anulación automática de inscripción',
                     ]);
 
                     $cancelledBatches++;
 
-                    $this->info("Cancelled batch ID {$batch->id} for student {$batch->student->first_names} {$batch->student->last_names}");
-
                 } catch (\Exception $e) {
-                    $errors[] = "Error cancelling batch ID {$batch->id}: " . $e->getMessage();
+                    $errors[] = "Batch ID {$batch->id}: " . $e->getMessage();
                 }
             }
 
             DB::commit();
 
-            // Resumen de la operación
-            $this->info("Auto-cancellation completed successfully");
-            $this->info("- Cancelled batches: {$cancelledBatches}");
-            $this->info("- Cancelled enrollments: {$cancelledEnrollments}");
+            $this->info("Pending batches cancelled: {$cancelledBatches} batches, {$cancelledEnrollments} enrollments.");
 
-            if (!empty($errors)) {
-                $this->warn("- Errors encountered: " . count($errors));
-                foreach ($errors as $error) {
-                    $this->error($error);
-                }
+            foreach ($errors as $error) {
+                $this->error($error);
             }
 
         } catch (\Exception $e) {
-            DB::rollback();
-            $this->error('Critical error during auto-cancellation: ' . $e->getMessage());
+            DB::rollBack();
+            $this->error('Critical error cancelling pending batches: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Para lotes con pago parcial ('to_pay'), anula solo las inscripciones
+     * que siguen sin pagar, dejando intactas las ya pagadas.
+     */
+    private function cancelUnpaidEnrollmentsInPartialBatches(): void
+    {
+        $batches = EnrollmentBatch::where('payment_status', 'to_pay')
+            ->with(['enrollments.instructorWorkshop.workshop', 'student'])
+            ->get();
+
+        if ($batches->isEmpty()) {
+            $this->info('No partial batches found.');
+            return;
+        }
+
+        $processedBatches = 0;
+        $cancelledEnrollments = 0;
+        $errors = [];
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($batches as $batch) {
+                try {
+                    // Inscripciones pendientes de pago dentro de este lote parcial
+                    $unpaidEnrollments = $batch->enrollments
+                        ->whereNull('cancelled_at')
+                        ->where('payment_status', 'pending');
+
+                    if ($unpaidEnrollments->isEmpty()) {
+                        continue;
+                    }
+
+                    $workshopLines = [];
+
+                    foreach ($unpaidEnrollments as $enrollment) {
+                        $iw       = $enrollment->instructorWorkshop;
+                        $name     = $iw->workshop->name ?? 'Sin nombre';
+                        $days     = is_array($iw->day_of_week)
+                                        ? implode('/', $iw->day_of_week)
+                                        : ($iw->day_of_week ?? 'N/A');
+                        $start    = $iw->start_time ? \Carbon\Carbon::parse($iw->start_time)->format('H:i') : 'N/A';
+                        $end      = $iw->end_time   ? \Carbon\Carbon::parse($iw->end_time)->format('H:i')   : 'N/A';
+                        $modality = $iw->workshop->modality ?? 'N/A';
+
+                        $workshopLines[] = "- {$name} | {$days} {$start}-{$end} | {$modality}";
+
+                        $enrollment->update([
+                            'payment_status'       => 'refunded',
+                            'cancelled_at'         => now(),
+                            'cancelled_by_user_id' => null,
+                            'cancellation_reason'  => 'Anulación automática - Sin pago al día límite',
+                        ]);
+                        $cancelledEnrollments++;
+                    }
+
+                    // Ajustar total del lote a la suma de inscripciones no canceladas
+                    $newTotal = $batch->enrollments()->whereNull('cancelled_at')->sum('total_amount');
+
+                    // Nota de auditoría: detalle de talleres anulados y nuevo total
+                    $note = 'Anulación automática el ' . now()->format('d/m/Y H:i:s') . ': '
+                        . 'Se anularon ' . count($workshopLines) . ' inscripción(es) sin pago.'
+                        . "\n" . implode("\n", $workshopLines)
+                        . "\nNuevo total: S/ " . number_format($newTotal, 2) . '.';
+
+                    $batch->update([
+                        'total_amount'        => $newTotal,
+                        'cancellation_reason' => $note,
+                    ]);
+
+                    // Recalcular estado del lote (pasa a 'completed' si todas las restantes están pagadas)
+                    app(EnrollmentPaymentService::class)->updateBatchStatus($batch);
+
+                    $processedBatches++;
+
+                } catch (\Exception $e) {
+                    $errors[] = "Batch ID {$batch->id}: " . $e->getMessage();
+                }
+            }
+
+            DB::commit();
+
+            $this->info("Partial batches processed: {$processedBatches} batches, {$cancelledEnrollments} enrollments cancelled.");
+
+            foreach ($errors as $error) {
+                $this->error($error);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->error('Critical error processing partial batches: ' . $e->getMessage());
         }
     }
 }

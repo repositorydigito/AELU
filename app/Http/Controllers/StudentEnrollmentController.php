@@ -45,8 +45,8 @@ class StudentEnrollmentController extends Controller
             }
         }
 
-        // 5. Rellenar el calendario con las clases de todas las inscripciones del lote
-        foreach ($enrollmentBatch->enrollments as $enrollment) {
+        // 5. Rellenar el calendario solo con inscripciones activas (no canceladas)
+        foreach ($enrollmentBatch->enrollments->whereNull('cancelled_at') as $enrollment) {
             if ($enrollment->enrollmentClasses) {
                 foreach ($enrollment->enrollmentClasses as $enrollmentClass) {
                     $workshopClass = $enrollmentClass->workshopClass;

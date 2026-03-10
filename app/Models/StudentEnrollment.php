@@ -28,6 +28,9 @@ class StudentEnrollment extends Model
         'renewal_status',
         'renewal_deadline',
         'is_renewal',
+        'cancelled_at',
+        'cancelled_by_user_id',
+        'cancellation_reason',
     ];
 
     protected $casts = [

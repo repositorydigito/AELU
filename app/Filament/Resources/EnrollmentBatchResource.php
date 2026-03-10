@@ -399,13 +399,41 @@ class EnrollmentBatchResource extends Resource
                     ->label('Motivo')
                     ->icon('heroicon-o-document-text')
                     ->color('gray')
-                    ->modalHeading('Motivo de Anulación')
+                    ->modalHeading(fn (EnrollmentBatch $record) => $record->payment_status === 'completed'
+                        ? 'Inscripciones Anuladas Automáticamente'
+                        : 'Motivo de Anulación'
+                    )
                     ->modalContent(function (EnrollmentBatch $record) {
+                        $reason     = $record->cancellation_reason ?: 'No se especificó motivo';
+                        $reasonHtml = nl2br(e($reason));
+
+                        // Lote con pago parcial: solo se anularon inscripciones sin pago
+                        if ($record->payment_status === 'completed') {
+                            return new \Illuminate\Support\HtmlString("
+                                <div class='space-y-4'>
+                                    <div class='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
+                                        <p class='text-sm text-yellow-800'>
+                                            Este lote tenía inscripciones sin pago al llegar al día límite.
+                                            Las inscripciones pagadas se mantienen vigentes.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <h4 class='font-medium text-gray-900 mb-2'>Detalle:</h4>
+                                        <div class='bg-gray-50 border border-gray-200 rounded-lg p-3'>
+                                            <p class='text-sm text-gray-700'>{$reasonHtml}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ");
+                        }
+
+                        // Lote anulado completamente
                         $cancelledBy = $record->cancelled_by_user_id
                             ? ($record->cancelledBy->name ?? 'Usuario eliminado')
                             : 'Sistema';
-                        $cancelledAt = $record->cancelled_at ? $record->cancelled_at->format('d/m/Y H:i') : 'Fecha no disponible';
-                        $reason = $record->cancellation_reason ?: 'No se especificó motivo';
+                        $cancelledAt = $record->cancelled_at
+                            ? $record->cancelled_at->format('d/m/Y H:i')
+                            : 'Fecha no disponible';
 
                         return new \Illuminate\Support\HtmlString("
                             <div class='space-y-4'>
@@ -427,7 +455,10 @@ class EnrollmentBatchResource extends Resource
                     })
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
-                    ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status === 'refunded'),
+                    ->visible(fn (EnrollmentBatch $record): bool =>
+                        $record->payment_status === 'refunded' ||
+                        ($record->payment_status === 'completed' && ! empty($record->cancellation_reason))
+                    ),
                 \App\Filament\Resources\EnrollmentBatchResource\Actions\RegisterPaymentAction::make(),
                 Tables\Actions\Action::make('cancel_enrollment')
                     ->label('Anular')
@@ -485,14 +516,19 @@ class EnrollmentBatchResource extends Resource
 
                             DB::transaction(function () use ($record, $data) {
                                 // Actualizar el estado del lote
+                                $newEntry = 'Anulación manual el ' . now()->format('d/m/Y H:i:s')
+                                    . ' por ' . auth()->user()->name . ':'
+                                    . "\n" . ($data['cancellation_reason'] ?? 'Sin motivo especificado');
+
+                                $cancellationReason = $record->cancellation_reason
+                                    ? $record->cancellation_reason . "\n\n---\n\n" . $newEntry
+                                    : $newEntry;
+
                                 $record->update([
                                     'payment_status' => 'refunded',
                                     'cancelled_at' => now(),
                                     'cancelled_by_user_id' => auth()->id(),
-                                    'cancellation_reason' => $data['cancellation_reason'],
-                                    'notes' => ($record->notes ? $record->notes."\n\n" : '').
-                                            'Anulación registrada por '.auth()->user()->name.' el '.now()->format('d/m/Y H:i').
-                                            ":\nMotivo: ".$data['cancellation_reason'],
+                                    'cancellation_reason' => $cancellationReason,
                                 ]);
 
                                 // Actualizar cada inscripción individualmente (estado y fecha de anulación)
