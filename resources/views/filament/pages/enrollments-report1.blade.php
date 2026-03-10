@@ -40,7 +40,7 @@
             </x-slot>
 
             <x-slot name="description">
-                Total de tickets encontrados: {{ count($studentEnrollments) }}
+                Total de tickets: {{ $ticketsCount }} &nbsp;|&nbsp; Total de inscripciones: {{ count($studentEnrollments) }}
             </x-slot>
 
             <div class="overflow-x-auto">

@@ -33,6 +33,7 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
     public $selectedPeriod = null;
     public $studentEnrollments = [];
     public $studentData = null;
+    public $ticketsCount = 0;
 
     public function mount(): void
     {
@@ -68,16 +69,14 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
                     ->label('Período Mensual (Opcional)')
                     ->placeholder('Selecciona un período (opcional)...')
                     ->options(
-                        MonthlyPeriod::where('year', '>=', now()->year - 2)
-                            ->where('year', '<=', now()->year + 1)
-                            ->orderBy('year', 'asc')
-                            ->orderBy('month', 'asc')
+                        MonthlyPeriod::where('year', '>=', 2026)
+                            ->where('start_date', '<=', now())
+                            ->orderBy('year', 'desc')
+                            ->orderBy('month', 'desc')
                             ->get()
-                            ->mapWithKeys(function ($period) {
-                                return [
-                                    $period->id => $this->generatePeriodName($period->month, $period->year),
-                                ];
-                            })
+                            ->mapWithKeys(fn ($period) => [
+                                $period->id => $this->generatePeriodName($period->month, $period->year),
+                            ])
                             ->toArray()
                     )
                     ->searchable()
@@ -97,6 +96,7 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         if (! $this->selectedStudent) {
             $this->studentEnrollments = [];
             $this->studentData = null;
+            $this->ticketsCount = 0;
             return;
         }
 
@@ -125,6 +125,8 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         $tickets = $ticketsQuery
             ->orderBy('issued_at', 'desc')
             ->get();
+
+        $this->ticketsCount = $tickets->count();
 
         // Desglosar por inscripción individual (un taller por fila)
         $this->studentEnrollments = [];
