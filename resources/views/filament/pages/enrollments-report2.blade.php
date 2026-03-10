@@ -15,6 +15,47 @@
             </div>
         </x-filament::section>
 
+        <!-- Resumen de encabezado -->
+        @if(!empty($monthlyEnrollments))
+        <x-filament::section>
+            <x-slot name="heading">
+                Resumen del Mes
+            </x-slot>
+
+            <div class="space-y-3">
+                <div class="flex justify-between items-center text-center">
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Total de Inscripciones</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ $summaryData['total_inscripciones'] }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Inscripciones por Link</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ $summaryData['inscripciones_link'] }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Inscripciones por Efectivo</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ $summaryData['inscripciones_efectivo'] }}</span>
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                <div class="flex justify-between items-center text-center">
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Total de Inscritos</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ $summaryData['total_inscritos'] }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Inscritos por Link</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ $summaryData['inscritos_link'] }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Inscritos por Efectivo</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ $summaryData['inscritos_efectivo'] }}</span>
+                    </div>
+                </div>
+            </div>
+        </x-filament::section>
+        @endif
+
         <!-- Tabla de inscripciones -->
         @if(!empty($monthlyEnrollments))
         <x-filament::section>

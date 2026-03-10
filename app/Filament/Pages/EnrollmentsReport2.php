@@ -46,10 +46,10 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
                     ->label('Seleccionar Período Mensual')
                     ->placeholder('Selecciona un período...')
                     ->options(
-                        MonthlyPeriod::where('year', '>=', now()->year - 2) // Últimos 2 años
-                            ->where('year', '<=', now()->year + 1) // Hasta el próximo año
-                            ->orderBy('year', 'asc')
-                            ->orderBy('month', 'asc')
+                        MonthlyPeriod::where('year', '>=', 2026)
+                            ->where('start_date', '<=', now())
+                            ->orderBy('year', 'desc')
+                            ->orderBy('month', 'desc')
                             ->get()
                             ->mapWithKeys(function ($period) {
                                 $periodName = $this->generatePeriodName($period->month, $period->year);
@@ -154,16 +154,21 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
     public function calculateSummary(): void
     {
         $tickets = collect($this->monthlyEnrollments);
+        $activeTickets = $tickets->where('ticket_status', 'Activo');
 
         $this->summaryData = [
-            'total_tickets' => $tickets->count(),
-            'total_students' => $tickets->pluck('student_name')->unique()->count(),
-            'total_enrollments' => $tickets->sum('enrollments_count'),
-            'total_amount' => $tickets->sum('total_amount'),
-            'cash_payments' => $tickets->where('payment_method', 'Efectivo')->count(),
-            'link_payments' => $tickets->where('payment_method', 'Link')->count(),
-            'active_tickets' => $tickets->where('ticket_status', 'Activo')->count(),
-            'cancelled_tickets' => $tickets->where('ticket_status', 'Anulado')->count(),
+            'total_tickets'          => $tickets->count(),
+            'active_tickets'         => $activeTickets->count(),
+            'cancelled_tickets'      => $tickets->where('ticket_status', 'Anulado')->count(),
+            'total_amount'           => $activeTickets->sum('total_amount'),
+
+            // 6 campos de encabezado (solo tickets activos)
+            'total_inscripciones'    => $activeTickets->sum('enrollments_count'),
+            'inscripciones_link'     => $activeTickets->where('payment_method', 'Link')->sum('enrollments_count'),
+            'inscripciones_efectivo' => $activeTickets->where('payment_method', 'Efectivo')->sum('enrollments_count'),
+            'total_inscritos'        => $activeTickets->pluck('student_code')->unique()->count(),
+            'inscritos_link'         => $activeTickets->where('payment_method', 'Link')->pluck('student_code')->unique()->count(),
+            'inscritos_efectivo'     => $activeTickets->where('payment_method', 'Efectivo')->pluck('student_code')->unique()->count(),
         ];
     }
 
