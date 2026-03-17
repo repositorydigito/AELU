@@ -48,14 +48,12 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                     ->label('Periodo Mensual')
                     ->placeholder('Selecciona un periodo...')
                     ->options(function () {
-                        // Obtener todos los periodos hasta 2 meses adelante del mes actual
-                        $twoMonthsAhead = now()->addMonths(2)->endOfMonth();
-
-                        return MonthlyPeriod::where('start_date', '<=', $twoMonthsAhead)
-                            ->orderBy('start_date', 'desc')
+                        return MonthlyPeriod::where('year', '>=', 2026)
+                            ->where('start_date', '<=', now())
+                            ->orderBy('year', 'desc')
+                            ->orderBy('month', 'desc')
                             ->get()
                             ->mapWithKeys(function ($period) {
-                                // Formatear como "Octubre 2025"
                                 $startDate = \Carbon\Carbon::parse($period->start_date);
                                 $monthName = ucfirst($startDate->locale('es')->isoFormat('MMMM YYYY'));
 
@@ -155,65 +153,71 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 return;
             }
 
-            // Obtener todos los tickets que contienen inscripciones para este taller en el periodo
-            $tickets = \App\Models\Ticket::whereHas('studentEnrollments', function ($query) {
-                    $query->whereHas('instructorWorkshop', function ($subQuery) {
-                        $subQuery->where('workshop_id', $this->selectedWorkshop);
-                    })
-                    ->where('monthly_period_id', $this->selectedPeriod);
+            // Consultar directamente las inscripciones del taller en el periodo
+            // Esto evita la desincronización de fechas que ocurría al partir desde Tickets
+            $enrollments = \App\Models\StudentEnrollment::whereHas('instructorWorkshop', function ($query) {
+                    $query->where('workshop_id', $this->selectedWorkshop);
                 })
+                ->where('monthly_period_id', $this->selectedPeriod)
+                ->whereNull('cancelled_at')
                 ->with([
                     'student',
-                    'studentEnrollments' => function ($query) {
-                        $query->whereHas('instructorWorkshop', function ($subQuery) {
-                            $subQuery->where('workshop_id', $this->selectedWorkshop);
-                        })
-                        ->where('monthly_period_id', $this->selectedPeriod);
-                    },
-                    'studentEnrollments.instructorWorkshop',
                     'enrollmentBatch.paymentRegisteredByUser',
-                    'issuedByUser'
+                    'payments.registeredByUser',
+                    'tickets',
                 ])
-                ->orderBy('issued_at', 'desc')
                 ->get();
 
             $this->scheduleEnrollments = [];
 
-            foreach ($tickets as $ticket) {
-                $student = $ticket->student ?? null;
-                $cashier = $ticket->enrollmentBatch->paymentRegisteredByUser ?? $ticket->issuedByUser ?? null;
+            foreach ($enrollments as $enrollment) {
+                $student = $enrollment->student;
+                $batch = $enrollment->enrollmentBatch;
 
-                // Calcular datos específicos para este taller en este período
-                $relevantEnrollments = $ticket->studentEnrollments;
-                $totalAmount = 0;
-                $totalClasses = 0;
-                $paymentMethod = '';
-                $enrollmentDate = null;
+                // Fecha de pago: usar EnrollmentPayment.payment_date del pago vinculado
+                // a esta inscripción específica (evita mezclar fechas entre períodos)
+                $paymentDate = null;
+                $cashier = null;
 
-                foreach ($relevantEnrollments as $enrollment) {
-                    $totalAmount += $enrollment->total_amount;
-                    $totalClasses += $enrollment->number_of_classes;
-
-                    if (!$paymentMethod) {
-                        $paymentMethod = $this->getPaymentMethodText($enrollment->payment_method);
-                    }
-
-                    if (!$enrollmentDate) {
-                        $enrollmentDate = $enrollment->enrollment_date;
-                    }
+                $latestPayment = $enrollment->payments->sortByDesc('payment_date')->first();
+                if ($latestPayment) {
+                    $paymentDate = $latestPayment->payment_date;
+                    $cashier = $latestPayment->registeredByUser;
                 }
+
+                // Fallback de cajero: quien registró el pago en el batch
+                if (!$cashier && $batch) {
+                    $cashier = $batch->paymentRegisteredByUser;
+                }
+
+                // Ticket vinculado a esta inscripción (preferir activo)
+                $ticket = $enrollment->tickets->firstWhere('status', 'active')
+                    ?? $enrollment->tickets->first();
+
+                $ticketCode = $ticket ? $ticket->ticket_code : 'N/A';
+                $ticketStatus = $ticket
+                    ? $this->getTicketStatusText($ticket->status)
+                    : ($batch ? $this->getPaymentStatusText($batch->payment_status) : 'N/A');
 
                 $this->scheduleEnrollments[] = [
                     'student_name' => $student ? ($student->last_names . ' ' . $student->first_names) : 'N/A',
                     'student_code' => $student->student_code ?? 'N/A',
-                    'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
-                    'payment_registered_time' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A',
-                    'total_amount' => $totalAmount,
-                    'payment_method' => $paymentMethod,
-                    'payment_status' => $this->getTicketStatusText($ticket->status),
-                    'ticket_code' => $ticket->ticket_code,
+                    'enrollment_date' => $batch && $batch->created_at
+                        ? $batch->created_at->format('d/m/Y')
+                        : ($enrollment->enrollment_date
+                            ? $enrollment->enrollment_date->format('d/m/Y')
+                            : 'N/A'),
+                    'payment_registered_time' => $paymentDate
+                        ? $paymentDate->format('d/m/Y')
+                        : ($batch && $batch->payment_registered_at
+                            ? $batch->payment_registered_at->format('d/m/Y H:i')
+                            : 'N/A'),
+                    'total_amount' => $enrollment->total_amount,
+                    'payment_method' => $this->getPaymentMethodText($enrollment->payment_method),
+                    'payment_status' => $ticketStatus,
+                    'ticket_code' => $ticketCode,
                     'user_name' => $cashier ? $cashier->name : 'N/A',
-                    'number_of_classes' => $totalClasses,
+                    'number_of_classes' => $enrollment->number_of_classes,
                 ];
             }
 
