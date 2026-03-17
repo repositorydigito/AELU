@@ -52,6 +52,21 @@
                         <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">{{ $summaryData['inscritos_efectivo'] }}</span>
                     </div>
                 </div>
+                <div class="border-t border-gray-200 dark:border-gray-700"></div>
+                <div class="flex justify-between items-center text-center">
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto Total del Mes</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">S/ {{ number_format($summaryData['total_amount'], 2) }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto por Link</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">S/ {{ number_format($summaryData['monto_link'], 2) }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto por Efectivo</span>
+                        <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">S/ {{ number_format($summaryData['monto_efectivo'], 2) }}</span>
+                    </div>
+                </div>
             </div>
         </x-filament::section>
         @endif

@@ -162,6 +162,8 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
             'active_tickets'         => $activeTickets->count(),
             'cancelled_tickets'      => $tickets->where('ticket_status', 'Anulado')->count(),
             'total_amount'           => $activeTickets->sum('total_amount'),
+            'monto_link'             => $activeTickets->where('payment_method', 'Link')->sum('total_amount'),
+            'monto_efectivo'         => $activeTickets->where('payment_method', 'Efectivo')->sum('total_amount'),
 
             // 6 campos de encabezado (solo tickets activos)
             'total_inscripciones'    => $activeTickets->sum('enrollments_count'),
