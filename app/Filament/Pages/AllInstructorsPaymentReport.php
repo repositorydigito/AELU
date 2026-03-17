@@ -46,10 +46,10 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                     ->label('Período Mensual')
                     ->placeholder('Selecciona un período...')
                     ->options(function () {
-                        return MonthlyPeriod::where('year', '>=', now()->year - 2)
-                            ->where('year', '<=', now()->year + 1)
-                            ->orderBy('year', 'asc')
-                            ->orderBy('month', 'asc')
+                        return MonthlyPeriod::where('year', '>=', 2026)
+                            ->where('start_date', '<=', now())
+                            ->orderBy('year', 'desc')
+                            ->orderBy('month', 'desc')
                             ->get()
                             ->mapWithKeys(function ($period) {
                                 $monthNames = [
@@ -80,7 +80,6 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
             return;
         }
 
-        // Obtener todos los pagos de instructores del período seleccionado
         $instructorPayments = InstructorPayment::with([
             'instructor',
             'instructorWorkshop.workshop',
@@ -96,11 +95,14 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
             return;
         }
 
-        // Crear un array con todos los pagos (cada registro de InstructorPayment)
-        $this->allInstructorPayments = $instructorPayments->map(function ($payment) {
+        $grouped = ['volunteer' => [], 'hourly' => []];
+
+        foreach ($instructorPayments as $payment) {
             $instructor = $payment->instructor;
             $instructorWorkshop = $payment->instructorWorkshop;
             $workshop = $instructorWorkshop->workshop ?? null;
+            $modality = $payment->payment_type; // 'volunteer' o 'hourly'
+            $instructorId = $instructor->id;
 
             // Formatear horario
             $dayOfWeek = $instructorWorkshop->day_of_week ?? 'N/A';
@@ -111,7 +113,6 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 ];
                 $dayOfWeek = collect($dayOfWeek)->map(fn($day) => $dayNames[$day] ?? $day)->join('/');
             }
-
             $startTime = $instructorWorkshop->start_time
                 ? \Carbon\Carbon::parse($instructorWorkshop->start_time)->format('H:i')
                 : 'N/A';
@@ -119,47 +120,51 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 ? \Carbon\Carbon::parse($instructorWorkshop->end_time)->format('H:i')
                 : 'N/A';
 
-            $schedule = "{$dayOfWeek} {$startTime}-{$endTime}";
-
-            // Determinar modalidad y calcular datos según el tipo de pago
-            $modalityText = '';
-            $hours = 0;
-            $rate = 0;
             $amount = $payment->calculated_amount ?? 0;
 
-            if ($payment->payment_type === 'hourly') {
-                $modalityText = 'Por Horas';
-                $hours = $payment->total_hours ?? 0;
-                $rate = $payment->applied_hourly_rate ?? 0;
-            } elseif ($payment->payment_type === 'volunteer') {
-                $modalityText = 'Voluntario';
-                $hours = 0;
-                $rate = ($payment->applied_volunteer_percentage ?? 0) * 100; // Convertir a porcentaje
-                // El amount ya viene de calculated_amount, no lo sobrescribimos
+            $workshopRow = [
+                'workshop_name'       => $workshop->name ?? 'N/A',
+                'schedule'            => "{$dayOfWeek} {$startTime}-{$endTime}",
+                'total_students'      => $payment->total_students ?? 0,
+                'monthly_revenue'     => $payment->monthly_revenue ?? 0,
+                'amount'              => $amount,
+                'payment_status'      => $this->getPaymentStatusText($payment->payment_status),
+            ];
+
+            if ($modality === 'hourly') {
+                $workshopRow['hours_worked'] = $payment->total_hours ?? 0;
+                $workshopRow['hourly_rate']  = $payment->applied_hourly_rate ?? 0;
+            } else {
+                $workshopRow['volunteer_percentage'] = ($payment->applied_volunteer_percentage ?? 0) * 100;
             }
 
-            return [
-                'instructor_id' => $instructor->id,
-                'instructor_name' => $instructor->last_names . ' ' . $instructor->first_names,
-                'instructor_code' => $instructor->code ?? 'N/A',
-                'workshop_name' => $workshop->name ?? 'N/A',
-                'standard_monthly_fee' => $workshop->standard_monthly_fee ?? 0,
-                'schedule' => $schedule,
-                'modality' => $modalityText,
-                'hours_worked' => $hours,
-                'hourly_rate' => $rate,
-                'amount' => $amount,
-                'payment_status' => $this->getPaymentStatusText($payment->payment_status),
-                'total_students' => $payment->total_students ?? 0,
-                'monthly_revenue' => $payment->monthly_revenue ?? 0,
-                'document_number' => $payment->document_number ?? 'Sin documento',
-            ];
-        })->toArray();
+            if (!isset($grouped[$modality][$instructorId])) {
+                $grouped[$modality][$instructorId] = [
+                    'instructor_id'   => $instructorId,
+                    'instructor_name' => $instructor->last_names . ' ' . $instructor->first_names,
+                    'instructor_code' => $instructor->code ?? 'N/A',
+                    'workshops'       => [],
+                    'subtotal'        => 0,
+                ];
+            }
 
-        // Calcular el total general (solo modalidad 'Por Horas')
-        $this->totalAmount = collect($this->allInstructorPayments)
-            ->where('modality', 'Por Horas')
-            ->sum('amount');
+            $grouped[$modality][$instructorId]['workshops'][] = $workshopRow;
+            $grouped[$modality][$instructorId]['subtotal'] += $amount;
+        }
+
+        $grouped['volunteer'] = array_values($grouped['volunteer']);
+        $grouped['hourly']    = array_values($grouped['hourly']);
+
+        $this->allInstructorPayments = $grouped;
+
+        $volunteerTotal = collect($grouped['volunteer'])->sum('subtotal');
+        $hourlyTotal    = collect($grouped['hourly'])->sum('subtotal');
+
+        $this->totalAmount = [
+            'volunteer'   => $volunteerTotal,
+            'hourly'      => $hourlyTotal,
+            'grand_total' => $volunteerTotal + $hourlyTotal,
+        ];
     }
 
     private function getPaymentStatusText($status): string
@@ -214,10 +219,10 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
             $periodName = $period ? (($monthNames[$period->month] ?? 'Mes ' . $period->month) . ' ' . $period->year) : 'N/A';
 
             $html = View::make('reports.all-instructors-payment', [
-                'all_payments' => $this->allInstructorPayments,
-                'monthly_period' => $periodName,
-                'total_amount' => $this->totalAmount,
-                'generated_at' => now()->format('d/m/Y H:i'),
+                'grouped_payments' => $this->allInstructorPayments,
+                'monthly_period'   => $periodName,
+                'total_amount'     => $this->totalAmount,
+                'generated_at'     => now()->format('d/m/Y H:i'),
             ])->render();
 
             $options = new Options;
