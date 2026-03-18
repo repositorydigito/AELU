@@ -29,6 +29,8 @@ class MonthlyEnrollmentsExport implements FromCollection, ShouldAutoSize, WithHe
         return [
             'Estudiante',
             'Código',
+            'Fecha Nac.',
+            'Edad',
             'Fecha Inscripción',
             'N° Talleres',
             'Monto (S/)',
@@ -44,6 +46,8 @@ class MonthlyEnrollmentsExport implements FromCollection, ShouldAutoSize, WithHe
         return [
             $row['student_name'],
             $row['student_code'],
+            $row['birth_date'],
+            $row['age'],
             $row['enrollment_date'],
             $row['enrollments_count'],
             number_format($row['total_amount'], 2),
@@ -69,7 +73,7 @@ class MonthlyEnrollmentsExport implements FromCollection, ShouldAutoSize, WithHe
                     'startColor' => ['rgb' => '4F46E5'],
                 ],
             ],
-            'A1:I'.$lastRow => [
+            'A1:K'.$lastRow => [
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,

@@ -134,6 +134,8 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
                     'id' => $ticket->id,
                     'student_name' => $student ? ($student->last_names.' '.$student->first_names) : 'N/A',
                     'student_code' => $student ? $student->student_code : 'N/A',
+                    'birth_date' => $student && $student->birth_date ? $student->birth_date->format('d/m/Y') : 'N/A',
+                    'age' => $student && $student->birth_date ? $student->birth_date->age : 'N/A',
                     'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
                     'total_amount' => $totalAmount,
                     'payment_method' => $paymentMethod,
