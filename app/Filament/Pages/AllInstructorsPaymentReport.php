@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\AllInstructorsPaymentExport;
 use App\Models\InstructorPayment;
 use App\Models\MonthlyPeriod;
 use App\Models\InstructorWorkshop;
@@ -254,10 +255,43 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
         }
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => !empty($this->allInstructorPayments))
+            ->action(function () {
+                try {
+                    $period = MonthlyPeriod::find($this->selectedMonthlyPeriodId);
+                    $monthNames = [
+                        1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+                        5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+                        9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+                    ];
+                    $periodName = $period ? (($monthNames[$period->month] ?? 'Mes '.$period->month).' '.$period->year) : 'reporte';
+                    $fileName = 'pago-profesores-general-'.str_replace([' ', '/'], '-', strtolower($periodName)).'.xlsx';
+
+                    return (new AllInstructorsPaymentExport(
+                        $this->allInstructorPayments,
+                        $periodName,
+                    ))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
 }
