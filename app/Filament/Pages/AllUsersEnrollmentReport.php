@@ -30,6 +30,11 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
     public $selectedDateFrom = null;
     public $selectedDateTo = null;
     public $allEnrollments = [];
+    public $summaryData = [
+        'total_amount' => 0,
+        'link_amount'  => 0,
+        'cash_amount'  => 0,
+    ];
 
     public function mount(): void
     {
@@ -70,6 +75,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
     {
         if (!$this->selectedDateFrom || !$this->selectedDateTo) {
             $this->allEnrollments = [];
+            $this->summaryData = ['total_amount' => 0, 'link_amount' => 0, 'cash_amount' => 0];
             return;
         }
 
@@ -95,6 +101,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
         if ($tickets->isEmpty()) {
             $this->allEnrollments = [];
+            $this->summaryData = ['total_amount' => 0, 'link_amount' => 0, 'cash_amount' => 0];
             return;
         }
 
@@ -127,6 +134,13 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
                 'payment_status' => $this->getTicketStatusText($ticket->status),
             ];
         })->toArray();
+
+        $active = collect($this->allEnrollments)->where('payment_status', '!=', 'Anulado');
+        $this->summaryData = [
+            'total_amount' => $active->sum('total_amount'),
+            'link_amount'  => $active->where('payment_method', 'Link')->sum('total_amount'),
+            'cash_amount'  => $active->where('payment_method', 'Efectivo')->sum('total_amount'),
+        ];
     }
 
     private function getTicketStatusText($status): string
@@ -195,6 +209,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
         try {
             $html = View::make('reports.all-users-enrollment', [
                 'all_enrollments' => $this->allEnrollments,
+                'summary' => $this->summaryData,
                 'date_from' => \Carbon\Carbon::parse($this->selectedDateFrom)->format('d/m/Y'),
                 'date_to' => \Carbon\Carbon::parse($this->selectedDateTo)->format('d/m/Y'),
                 'generated_at' => now()->format('d/m/Y H:i'),

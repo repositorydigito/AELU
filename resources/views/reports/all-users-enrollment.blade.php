@@ -79,6 +79,23 @@
         <p><strong>Generado:</strong> {{ $generated_at }}</p>
     </div>
 
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #ccc;">
+        <tr>
+            <td style="width: 33%; padding: 8px 12px; text-align: center; border-right: 1px solid #ccc;">
+                <div style="font-size: 8px; color: #555; text-transform: uppercase; margin-bottom: 3px;">Monto Total Recaudado</div>
+                <div style="font-size: 14px; font-weight: bold;">S/ {{ number_format($summary['total_amount'], 2) }}</div>
+            </td>
+            <td style="width: 33%; padding: 8px 12px; text-align: center; border-right: 1px solid #ccc;">
+                <div style="font-size: 8px; color: #555; text-transform: uppercase; margin-bottom: 3px;">Monto por Link</div>
+                <div style="font-size: 14px; font-weight: bold;">S/ {{ number_format($summary['link_amount'], 2) }}</div>
+            </td>
+            <td style="width: 33%; padding: 8px 12px; text-align: center;">
+                <div style="font-size: 8px; color: #555; text-transform: uppercase; margin-bottom: 3px;">Monto por Efectivo</div>
+                <div style="font-size: 14px; font-weight: bold;">S/ {{ number_format($summary['cash_amount'], 2) }}</div>
+            </td>
+        </tr>
+    </table>
+
     <table class="table">
         <thead>
             <tr>

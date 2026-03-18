@@ -15,6 +15,30 @@
             </div>
         </x-filament::section>
 
+        <!-- Resumen de montos -->
+        @if(!empty($allEnrollments))
+        <x-filament::section>
+            <x-slot name="heading">
+                Resumen de Montos
+            </x-slot>
+
+            <div class="flex justify-between items-center text-center">
+                <div class="flex-1">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto Total Recaudado</span>
+                    <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">S/ {{ number_format($summaryData['total_amount'], 2) }}</span>
+                </div>
+                <div class="flex-1">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto por Link</span>
+                    <span class="text-2xl font-bold text-purple-600 dark:text-purple-400">S/ {{ number_format($summaryData['link_amount'], 2) }}</span>
+                </div>
+                <div class="flex-1">
+                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto por Efectivo</span>
+                    <span class="text-2xl font-bold text-green-600 dark:text-green-400">S/ {{ number_format($summaryData['cash_amount'], 2) }}</span>
+                </div>
+            </div>
+        </x-filament::section>
+        @endif
+
         <!-- Tabla única de inscripciones -->
         @if(!empty($allEnrollments))
         <x-filament::section>
