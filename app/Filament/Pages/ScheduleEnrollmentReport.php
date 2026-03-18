@@ -160,6 +160,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 })
                 ->where('monthly_period_id', $this->selectedPeriod)
                 ->whereNull('cancelled_at')
+                ->whereNotIn('payment_status', ['refunded'])
                 ->with([
                     'student',
                     'enrollmentBatch.paymentRegisteredByUser',

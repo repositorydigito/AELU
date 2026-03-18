@@ -40,7 +40,7 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Profesor: {{ $workshopData->instructor ? ($workshopData->instructor->first_names . ' ' . $workshopData->instructor->last_names) : 'Sin profesor' }} |
                         Modalidad: {{ $workshopData->modality ?? 'N/A' }} |
-                        {{ count($scheduleEnrollments) }} inscripciones
+                        {{ count($scheduleEnrollments) }} inscritos
                     </p>
                 </div>
             </x-slot>
