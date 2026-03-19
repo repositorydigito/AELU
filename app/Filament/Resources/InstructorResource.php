@@ -665,13 +665,35 @@ class InstructorResource extends Resource
                 TextColumn::make('total_schedules')
                     ->label('Horarios')
                     ->getStateUsing(function (Instructor $record) {
-                        $totalSchedules = $record->instructorWorkshops->count();
+                        static $counts = [];
+                        if (! isset($counts[$record->id])) {
+                            $now = now();
+                            $counts[$record->id] = $record->instructorWorkshops()
+                                ->whereHas('workshop', function ($q) use ($now) {
+                                    $q->whereHas('monthlyPeriod', function ($q) use ($now) {
+                                        $q->where('year', $now->year)->where('month', $now->month);
+                                    });
+                                })
+                                ->count();
+                        }
+                        $count = $counts[$record->id];
 
-                        return $totalSchedules.($totalSchedules === 1 ? ' horario' : ' horarios');
+                        return $count.($count === 1 ? ' horario' : ' horarios');
                     })
                     ->badge()
                     ->color(function (Instructor $record) {
-                        $count = $record->instructorWorkshops->count();
+                        static $counts = [];
+                        if (! isset($counts[$record->id])) {
+                            $now = now();
+                            $counts[$record->id] = $record->instructorWorkshops()
+                                ->whereHas('workshop', function ($q) use ($now) {
+                                    $q->whereHas('monthlyPeriod', function ($q) use ($now) {
+                                        $q->where('year', $now->year)->where('month', $now->month);
+                                    });
+                                })
+                                ->count();
+                        }
+                        $count = $counts[$record->id];
 
                         return match (true) {
                             $count === 0 => 'gray',
