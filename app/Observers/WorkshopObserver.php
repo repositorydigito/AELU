@@ -120,8 +120,7 @@ class WorkshopObserver
                     $q->where('name', $workshop->name)
                       ->where('id', '!=', $workshop->id)
                       ->where('start_time', $workshop->start_time)
-                      ->where('modality', $workshop->modality)
-                      ->where('place', $workshop->place);
+                      ->where('modality', $workshop->modality);
                 })
                 ->latest()
                 ->first();
