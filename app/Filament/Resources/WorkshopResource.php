@@ -612,21 +612,25 @@ class WorkshopResource extends Resource
             ])
             ->defaultSort('name', 'asc')
             ->filters([
-                Tables\Filters\SelectFilter::make('monthly_period')
+                Tables\Filters\SelectFilter::make('monthly_period_id')
                     ->label('Mes')
-                    ->relationship('monthlyPeriod', 'id')
-                    ->getOptionLabelFromRecordUsing(function ($record) {
+                    ->options(function () {
                         $monthNames = [
-                            1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
-                            5 => 'mayo', 6 => 'junio', 7 => 'julio', 8 => 'agosto',
-                            9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
+                            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+                            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+                            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
                         ];
 
-                        $monthName = $monthNames[$record->month] ?? 'mes_' . $record->month;
-                        return $monthName . ' ' . $record->year;
+                        return \App\Models\MonthlyPeriod::where('year', '>=', 2026)
+                            ->where('year', '<=', now()->year + 2)
+                            ->orderBy('year', 'asc')
+                            ->orderBy('month', 'asc')
+                            ->get()
+                            ->mapWithKeys(fn ($p) => [
+                                $p->id => ($monthNames[$p->month] ?? 'Mes '.$p->month).' '.$p->year,
+                            ]);
                     })
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
