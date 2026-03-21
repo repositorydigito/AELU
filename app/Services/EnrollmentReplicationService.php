@@ -69,8 +69,24 @@ class EnrollmentReplicationService
 
         Log::info("Pre-loaded {$this->nextPeriodInstructorWorkshops->count()} instructor workshops for next period");
 
-        // Buscar batches completados del período actual
-        $completedBatches = EnrollmentBatch::where('payment_status', 'completed')
+        // Contar batches para logging
+        $totalBatches = EnrollmentBatch::where('payment_status', 'completed')
+            ->whereHas('enrollments', function ($query) use ($currentPeriod) {
+                $query->where('monthly_period_id', $currentPeriod->id)
+                    ->whereNull('cancelled_at');
+            })
+            ->count();
+
+        if ($totalBatches === 0) {
+            Log::info('No completed enrollment batches found for replication');
+
+            return $this->getStats();
+        }
+
+        Log::info("Found {$totalBatches} completed batches to process");
+
+        // Procesar en chunks para evitar agotamiento de memoria
+        EnrollmentBatch::where('payment_status', 'completed')
             ->whereHas('enrollments', function ($query) use ($currentPeriod) {
                 $query->where('monthly_period_id', $currentPeriod->id)
                     ->whereNull('cancelled_at');
@@ -80,29 +96,21 @@ class EnrollmentReplicationService
                 'enrollments.enrollmentClasses.workshopClass',
                 'student',
             ])
-            ->get();
+            ->chunk(50, function ($batches) use ($currentPeriod, $nextPeriod) {
+                foreach ($batches as $batch) {
+                    $this->stats['batches_processed']++;
 
-        if ($completedBatches->isEmpty()) {
-            Log::info('No completed enrollment batches found for replication');
-
-            return $this->getStats();
-        }
-
-        Log::info("Found {$completedBatches->count()} completed batches to process");
-
-        foreach ($completedBatches as $batch) {
-            $this->stats['batches_processed']++;
-
-            try {
-                $this->replicateBatch($batch, $currentPeriod, $nextPeriod);
-            } catch (\Exception $e) {
-                $this->stats['errors'][] = "Batch ID {$batch->id} (Student: {$batch->student->full_name}): {$e->getMessage()}";
-                Log::error("Error replicating batch {$batch->id}", [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-        }
+                    try {
+                        $this->replicateBatch($batch, $currentPeriod, $nextPeriod);
+                    } catch (\Exception $e) {
+                        $this->stats['errors'][] = "Batch ID {$batch->id} (Student: {$batch->student->full_name}): {$e->getMessage()}";
+                        Log::error("Error replicating batch {$batch->id}", [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                        ]);
+                    }
+                }
+            });
 
         Log::info('Enrollment replication completed', $this->getStats());
 

@@ -18,6 +18,8 @@ class AutoGenerateNextMonthEnrollments extends Command
 
     public function handle()
     {
+        ini_set('memory_limit', '512M');
+
         $this->info('Iniciando proceso de replicación de inscripciones...');
 
         // Verificar si la funcionalidad está habilitada
