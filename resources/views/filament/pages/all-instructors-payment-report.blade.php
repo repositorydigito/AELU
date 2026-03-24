@@ -55,17 +55,19 @@
                             <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Taller</th>
                             <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Horario</th>
                             <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Inscritos</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Tarifa Mensual</th>
                             <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Ingresos del Taller</th>
                             <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">%</th>
                             <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Monto a Pagar</th>
                             <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Estado</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Recibo</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($allInstructorPayments['volunteer'] as $instructor)
                             {{-- Fila agrupadora del instructor --}}
                             <tr class="bg-purple-50 dark:bg-purple-900/20">
-                                <td colspan="7" class="px-3 py-2 font-semibold text-purple-800 dark:text-purple-300">
+                                <td colspan="9" class="px-3 py-2 font-semibold text-purple-800 dark:text-purple-300">
                                     {{ $instructor['instructor_name'] }}
                                 </td>
                             </tr>
@@ -73,8 +75,28 @@
                             @foreach($instructor['workshops'] as $workshop)
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                 <td class="px-3 py-2 pl-6 text-gray-900 dark:text-white">{{ $workshop['workshop_name'] }}</td>
-                                <td class="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{{ $workshop['schedule'] }}</td>
-                                <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ $workshop['total_students'] }}</td>
+                                <td class="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">
+                                    {{ $workshop['schedule'] }}
+                                    @if(!empty($workshop['modality']))
+                                        <div class="text-xs text-indigo-500 dark:text-indigo-400 font-medium mt-0.5">{{ $workshop['modality'] }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-center text-gray-900 dark:text-white">
+                                    <span class="font-medium">{{ $workshop['total_students'] }}</span>
+                                    @php
+                                        $breakdown = $workshop['students_by_classes'] ?? [];
+                                        $parts = [];
+                                        foreach ($breakdown as $n => $count) {
+                                            if ($count > 0) {
+                                                $parts[] = ($n > 0 ? $n . 'c' : '?c') . ':' . $count;
+                                            }
+                                        }
+                                    @endphp
+                                    @if(!empty($parts))
+                                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ implode(' | ', $parts) }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">S/ {{ number_format($workshop['standard_fee'], 2) }}</td>
                                 <td class="px-3 py-2 text-right text-gray-900 dark:text-white">S/ {{ number_format($workshop['monthly_revenue'], 2) }}</td>
                                 <td class="px-3 py-2 text-center text-purple-600 dark:text-purple-400 font-medium">{{ number_format($workshop['volunteer_percentage'], 0) }}%</td>
                                 <td class="px-3 py-2 text-right font-semibold text-purple-600 dark:text-purple-400">S/ {{ number_format($workshop['amount'], 2) }}</td>
@@ -86,11 +108,14 @@
                                         {{ $workshop['payment_status'] }}
                                     </span>
                                 </td>
+                                <td class="px-3 py-2 text-center text-xs text-gray-600 dark:text-gray-400">
+                                    {{ $workshop['document_number'] ?? '—' }}
+                                </td>
                             </tr>
                             @endforeach
                             {{-- Subtotal del instructor --}}
                             <tr class="bg-purple-50/50 dark:bg-purple-900/10 border-t border-purple-200 dark:border-purple-800">
-                                <td colspan="5" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
+                                <td colspan="7" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
                                     Subtotal {{ $instructor['instructor_name'] }}:
                                 </td>
                                 <td class="px-3 py-2 text-right font-bold text-purple-700 dark:text-purple-300">
@@ -102,7 +127,7 @@
                     </tbody>
                     <tfoot>
                         <tr class="bg-purple-100 dark:bg-purple-900/40 font-bold border-t-2 border-purple-300">
-                            <td colspan="5" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL VOLUNTARIOS:</td>
+                            <td colspan="7" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL VOLUNTARIOS:</td>
                             <td class="px-3 py-3 text-right text-purple-700 dark:text-purple-300">S/ {{ number_format($totalAmount['volunteer'], 2) }}</td>
                             <td></td>
                         </tr>
@@ -124,17 +149,20 @@
                         <tr class="bg-gray-50 dark:bg-gray-800">
                             <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Taller</th>
                             <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Horario</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Inscritos</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Tarifa Mensual</th>
                             <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Horas</th>
                             <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Tarifa/hora</th>
                             <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Monto a Pagar</th>
                             <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Estado</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Recibo</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($allInstructorPayments['hourly'] as $instructor)
                             {{-- Fila agrupadora del instructor --}}
                             <tr class="bg-green-50 dark:bg-green-900/20">
-                                <td colspan="6" class="px-3 py-2 font-semibold text-green-800 dark:text-green-300">
+                                <td colspan="9" class="px-3 py-2 font-semibold text-green-800 dark:text-green-300">
                                     {{ $instructor['instructor_name'] }}
                                 </td>
                             </tr>
@@ -142,7 +170,28 @@
                             @foreach($instructor['workshops'] as $workshop)
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                 <td class="px-3 py-2 pl-6 text-gray-900 dark:text-white">{{ $workshop['workshop_name'] }}</td>
-                                <td class="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{{ $workshop['schedule'] }}</td>
+                                <td class="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">
+                                    {{ $workshop['schedule'] }}
+                                    @if(!empty($workshop['modality']))
+                                        <div class="text-xs text-indigo-500 dark:text-indigo-400 font-medium mt-0.5">{{ $workshop['modality'] }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-center text-gray-900 dark:text-white">
+                                    <span class="font-medium">{{ $workshop['total_students'] }}</span>
+                                    @php
+                                        $breakdown = $workshop['students_by_classes'] ?? [];
+                                        $parts = [];
+                                        foreach ($breakdown as $n => $count) {
+                                            if ($count > 0) {
+                                                $parts[] = ($n > 0 ? $n . 'c' : '?c') . ':' . $count;
+                                            }
+                                        }
+                                    @endphp
+                                    @if(!empty($parts))
+                                        <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ implode(' | ', $parts) }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">S/ {{ number_format($workshop['standard_fee'], 2) }}</td>
                                 <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ number_format($workshop['hours_worked'], 1) }}</td>
                                 <td class="px-3 py-2 text-center text-green-600 dark:text-green-400 font-medium">S/ {{ number_format($workshop['hourly_rate'], 2) }}</td>
                                 <td class="px-3 py-2 text-right font-semibold text-green-600 dark:text-green-400">S/ {{ number_format($workshop['amount'], 2) }}</td>
@@ -154,11 +203,14 @@
                                         {{ $workshop['payment_status'] }}
                                     </span>
                                 </td>
+                                <td class="px-3 py-2 text-center text-xs text-gray-600 dark:text-gray-400">
+                                    {{ $workshop['document_number'] ?? '—' }}
+                                </td>
                             </tr>
                             @endforeach
                             {{-- Subtotal del instructor --}}
                             <tr class="bg-green-50/50 dark:bg-green-900/10 border-t border-green-200 dark:border-green-800">
-                                <td colspan="4" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
+                                <td colspan="7" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
                                     Subtotal {{ $instructor['instructor_name'] }}:
                                 </td>
                                 <td class="px-3 py-2 text-right font-bold text-green-700 dark:text-green-300">
@@ -170,7 +222,7 @@
                     </tbody>
                     <tfoot>
                         <tr class="bg-green-100 dark:bg-green-900/40 font-bold border-t-2 border-green-300">
-                            <td colspan="4" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL POR HORAS:</td>
+                            <td colspan="7" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL POR HORAS:</td>
                             <td class="px-3 py-3 text-right text-green-700 dark:text-green-300">S/ {{ number_format($totalAmount['hourly'], 2) }}</td>
                             <td></td>
                         </tr>

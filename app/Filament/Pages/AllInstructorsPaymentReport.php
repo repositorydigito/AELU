@@ -6,6 +6,7 @@ use App\Exports\AllInstructorsPaymentExport;
 use App\Models\InstructorPayment;
 use App\Models\MonthlyPeriod;
 use App\Models\InstructorWorkshop;
+use App\Models\StudentEnrollment;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Filament\Actions\Action;
@@ -123,13 +124,32 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
 
             $amount = $payment->calculated_amount ?? 0;
 
+            $classBreakdown = StudentEnrollment::where('instructor_workshop_id', $payment->instructor_workshop_id)
+                ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
+                ->whereNotIn('payment_status', ['refunded'])
+                ->select('student_id', 'number_of_classes', 'id')
+                ->get()
+                ->groupBy('student_id')
+                ->map(fn($rows) => $rows->sortByDesc('id')->first())
+                ->groupBy(fn($row) => $row->number_of_classes ?? 0)
+                ->map(fn($group) => $group->count())
+                ->toArray();
+
+            krsort($classBreakdown);
+
+            $workshopModality = $workshop->modality ?? null;
+
             $workshopRow = [
                 'workshop_name'       => $workshop->name ?? 'N/A',
                 'schedule'            => "{$dayOfWeek} {$startTime}-{$endTime}",
-                'total_students'      => $payment->total_students ?? 0,
+                'modality'            => $workshopModality,
+                'standard_fee'        => $workshop->standard_monthly_fee ?? 0,
+                'total_students'      => array_sum($classBreakdown),
+                'students_by_classes' => $classBreakdown,
                 'monthly_revenue'     => $payment->monthly_revenue ?? 0,
                 'amount'              => $amount,
                 'payment_status'      => $this->getPaymentStatusText($payment->payment_status),
+                'document_number'     => $payment->document_number ?? null,
             ];
 
             if ($modality === 'hourly') {
@@ -151,6 +171,14 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
 
             $grouped[$modality][$instructorId]['workshops'][] = $workshopRow;
             $grouped[$modality][$instructorId]['subtotal'] += $amount;
+        }
+
+        foreach (['volunteer', 'hourly'] as $type) {
+            foreach ($grouped[$type] as &$instructorData) {
+                usort($instructorData['workshops'], fn($a, $b) => strcmp($a['workshop_name'], $b['workshop_name']));
+            }
+            unset($instructorData);
+            usort($grouped[$type], fn($a, $b) => strcmp($a['instructor_name'], $b['instructor_name']));
         }
 
         $grouped['volunteer'] = array_values($grouped['volunteer']);
