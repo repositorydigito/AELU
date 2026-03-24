@@ -125,14 +125,17 @@ class InstructorPaymentService
      */
     private function getTotalHoursForPeriod(InstructorWorkshop $instructorWorkshop, MonthlyPeriod $monthlyPeriod): float
     {
-        // Contar clases programadas/completadas en el mes
-        $classesCount = $instructorWorkshop->workshopClasses()
+        $classesCount = \App\Models\WorkshopClass::where('workshop_id', $instructorWorkshop->workshop_id)
             ->where('monthly_period_id', $monthlyPeriod->id)
             ->whereIn('status', ['scheduled', 'completed'])
             ->count();
 
-        // Multiplicar por la duración de cada clase
-        return $classesCount * ($instructorWorkshop->duration_hours ?? 0);
+        $durationHours = $instructorWorkshop->duration_hours;
+        if (!$durationHours && $instructorWorkshop->workshop) {
+            $durationHours = ($instructorWorkshop->workshop->duration ?? 60) / 60;
+        }
+
+        return $classesCount * ($durationHours ?? 0);
     }
 
     /**

@@ -130,5 +130,14 @@ class EditWorkshop extends EditRecord
                 }
             });
         }
+
+        // Sincronizar duration_hours en InstructorWorkshops de tipo hourly.
+        // Esto dispara el Observer que recalcula los InstructorPayments pendientes.
+        if ($workshop->duration) {
+            $durationHours = round($workshop->duration / 60, 2);
+            $workshop->instructorWorkshops()
+                ->where('payment_type', 'hourly')
+                ->each(fn ($iw) => $iw->update(['duration_hours' => $durationHours]));
+        }
     }
 }
