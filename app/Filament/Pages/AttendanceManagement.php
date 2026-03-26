@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\AttendanceExport;
 use App\Models\ClassAttendance;
 use App\Models\MonthlyPeriod;
 use App\Models\StudentEnrollment;
@@ -9,6 +10,8 @@ use App\Models\Workshop;
 use App\Models\WorkshopClass;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Carbon\Carbon;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -18,6 +21,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
 
 class AttendanceManagement extends Page implements HasActions, HasForms
 {
@@ -411,9 +415,86 @@ class AttendanceManagement extends Page implements HasActions, HasForms
         $this->attendanceData[$key]['comments'] = $comments;
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => $this->selectedWorkshop && !empty($this->workshopClasses) && !empty($this->studentEnrollments))
+            ->action(function () {
+                try {
+                    $workshopName = $this->selectedWorkshopData['name'] ?? 'taller';
+                    $periodName = $this->selectedWorkshopData['period_name'] ?? 'periodo';
+                    $fileName = 'asistencia-' . str_replace([' ', '/'], '-', strtolower($workshopName)) . '-' . str_replace([' ', '/'], '-', strtolower($periodName)) . '.xlsx';
+
+                    return (new AttendanceExport(
+                        $this->selectedWorkshopData,
+                        $this->workshopClasses,
+                        $this->studentEnrollments,
+                        $this->attendanceData,
+                    ))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: ' . $e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
+    public function exportPdfAction(): Action
+    {
+        return Action::make('exportPdf')
+            ->label('Exportar PDF')
+            ->color('danger')
+            ->icon('heroicon-o-document-text')
+            ->visible(fn () => $this->selectedWorkshop && !empty($this->workshopClasses) && !empty($this->studentEnrollments))
+            ->action(function () {
+                try {
+                    $html = View::make('reports.attendance', [
+                        'workshopData' => $this->selectedWorkshopData,
+                        'workshopClasses' => $this->workshopClasses,
+                        'studentEnrollments' => $this->studentEnrollments,
+                        'attendanceData' => $this->attendanceData,
+                        'generatedAt' => now()->format('d/m/Y H:i'),
+                    ])->render();
+
+                    $options = new Options;
+                    $options->set('isHtml5ParserEnabled', true);
+                    $options->set('isRemoteEnabled', true);
+                    $dompdf = new Dompdf($options);
+
+                    $dompdf->loadHtml($html);
+                    $dompdf->setPaper('A4', count($this->workshopClasses) > 4 ? 'landscape' : 'portrait');
+                    $dompdf->render();
+
+                    $workshopName = $this->selectedWorkshopData['name'] ?? 'taller';
+                    $periodName = $this->selectedWorkshopData['period_name'] ?? 'periodo';
+                    $fileName = 'asistencia-' . str_replace([' ', '/'], '-', strtolower($workshopName)) . '-' . str_replace([' ', '/'], '-', strtolower($periodName)) . '.pdf';
+
+                    return response()->stream(function () use ($dompdf) {
+                        echo $dompdf->output();
+                    }, 200, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                    ]);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al generar PDF')
+                        ->body('Ocurrió un error: ' . $e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
+            $this->exportExcelAction(),
+            $this->exportPdfAction(),
             $this->saveAttendanceAction(),
         ];
     }
