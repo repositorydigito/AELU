@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Exports\MonthlyEnrollmentsExport;
+use App\Models\InstructorPayment;
 use App\Models\MonthlyPeriod;
 use App\Models\StudentEnrollment;
 use Dompdf\Dompdf;
@@ -175,6 +176,12 @@ class EnrollmentsReport2 extends Page implements HasActions, HasForms
             'inscritos_link'         => $activeTickets->where('payment_method', 'Link')->pluck('student_code')->unique()->count(),
             'inscritos_efectivo'     => $activeTickets->where('payment_method', 'Efectivo')->pluck('student_code')->unique()->count(),
         ];
+
+        $instructorTotal = InstructorPayment::where('monthly_period_id', $this->selectedPeriod)
+            ->sum('calculated_amount');
+
+        $this->summaryData['instructor_total'] = (float) $instructorTotal;
+        $this->summaryData['saldo_pama']       = $this->summaryData['total_amount'] - (float) $instructorTotal;
     }
 
     public function generatePDFAction(): Action

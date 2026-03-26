@@ -29,7 +29,8 @@
       "Bash(git -C E:/Digito/aelu/codigo/AELU diff HEAD -- .claude/settings.local.json 2>/dev/null | head -50)",
       "Bash(git -C E:/Digito/aelu/codigo/AELU log --oneline --all --since=\"2026-03-01\" 2>/dev/null | head -30)",
       "Bash(mysql -h 127.0.0.1 -P 3306 -u root -proot aelutest -e \"\nSELECT\n    CONCAT\\(s.last_names, ' ', s.first_names\\) AS alumno,\n    w.name AS taller,\n    w.day_of_week,\n    w.start_time,\n    w.modality,\n    se.id AS enrollment_id,\n    eb.id AS batch_id,\n    eb.payment_status\nFROM student_enrollments se\nJOIN instructor_workshops iw ON se.instructor_workshop_id = iw.id\nJOIN workshops w ON iw.workshop_id = w.id\nJOIN enrollment_batches eb ON se.enrollment_batch_id = eb.id\nJOIN students s ON eb.student_id = s.id\nWHERE w.monthly_period_id = 15\n  AND w.id IN \\(465,466,467,468,469,470,471,472\\)\n  AND eb.payment_status IN \\('pending','to_pay','completed'\\)\nORDER BY w.name, w.day_of_week, CONCAT\\(s.last_names,' ',s.first_names\\);\n\" 2>/dev/null)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(mysql:*)"
     ]
   }
 }
