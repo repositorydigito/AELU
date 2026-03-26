@@ -151,12 +151,12 @@ class InstructorPaymentResource extends Resource
                                         'paid' => 'Pagado',
                                     ])
                                     ->default('pending')
-                                    ->required()
+                                    ->disabled()
                                     ->native(false),
 
                                 Forms\Components\DatePicker::make('payment_date')
                                     ->label('Fecha de Pago')
-                                    ->nullable(),
+                                    ->disabled(),
                             ]),
 
                         Forms\Components\TextInput::make('document_number')
@@ -217,19 +217,33 @@ class InstructorPaymentResource extends Resource
                             $dayName = $daysOfWeek ?? 'N/A';
                         }
                         $startTime = \Carbon\Carbon::parse($workshop->start_time)->format('H:i');
-                        $endTime = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
-                        return "{$dayName} {$startTime}-{$endTime}";
+                        $endTime   = \Carbon\Carbon::parse($workshop->end_time)->format('H:i');
+                        $modality  = $workshop->workshop->modality ?? null;
+                        $modalityLabel = match ($modality) {
+                            'virtual'    => 'Virtual',
+                            'presencial' => 'Presencial',
+                            default      => $modality,
+                        };
+
+                        return "{$dayName} {$startTime}-{$endTime}".($modalityLabel ? " · {$modalityLabel}" : '');
                     })
                     ->weight(FontWeight::Medium),
 
                 Tables\Columns\TextColumn::make('period_info')
                     ->label('Período')
-                    ->getStateUsing(fn (InstructorPayment $record) => \Carbon\Carbon::create()->month($record->monthlyPeriod->month)
-                        ->year($record->monthlyPeriod->year)
-                        ->format('m/Y')
-                ),
+                    ->getStateUsing(function (InstructorPayment $record) {
+                        $monthNames = [
+                            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+                            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+                            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+                        ];
+                        $month = $record->monthlyPeriod->month;
+                        $year  = $record->monthlyPeriod->year;
 
-                Tables\Columns\BadgeColumn::make('payment_type')
+                        return ($monthNames[$month] ?? 'Mes '.$month).' '.$year;
+                    }),
+
+                /* Tables\Columns\BadgeColumn::make('payment_type')
                     ->label('Tipo')
                     ->colors([
                         'success' => 'volunteer',
@@ -308,7 +322,7 @@ class InstructorPaymentResource extends Resource
                     ->label('Monto a Pagar')
                     ->prefix('S/ ')
                     ->weight(FontWeight::Bold)
-                    ->color('success'),
+                    ->color('success'), */
 
                 Tables\Columns\IconColumn::make('payment_status')
                     ->label('Estado')
@@ -336,19 +350,11 @@ class InstructorPaymentResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('monthly_period_id')
-                    ->relationship('monthlyPeriod', 'year')
+                    ->relationship('monthlyPeriod', 'year', fn ($query) => $query->where('year', '>=', 2026)->orderBy('year', 'asc')->orderBy('month', 'asc'))
                     ->getOptionLabelFromRecordUsing(fn ($record) => $record->year.' - '.\Carbon\Carbon::create()->month($record->month)->translatedFormat('F')
                     )
                     ->label('Período')
-                    ->native(false),
-
-                Tables\Filters\SelectFilter::make('payment_type')
-                    ->options([
-                        'volunteer' => 'Voluntario',
-                        'hourly' => 'Por Horas',
-                    ])
-                    ->label('Tipo de Pago')
-                    ->native(false),
+                    ->native(false),                
 
                 Tables\Filters\SelectFilter::make('payment_status')
                     ->options([
@@ -385,7 +391,7 @@ class InstructorPaymentResource extends Resource
                     ->modalSubmitActionLabel('Confirmar Pago')
                     ->modalCancelActionLabel('Cancelar'),
 
-                // Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
 
