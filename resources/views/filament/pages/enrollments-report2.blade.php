@@ -70,18 +70,18 @@
                 <div class="border-t border-gray-200 dark:border-gray-700"></div>
                 <div class="flex justify-between items-center text-center">
                     <div class="flex-1">
-                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Saldo PAMA</span>
-                        <span class="text-2xl font-bold {{ ($summaryData['saldo_pama'] ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
-                            S/ {{ number_format($summaryData['saldo_pama'] ?? 0, 2) }}
-                        </span>
-                    </div>
-                    <div class="flex-1">
                         <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto Total del Mes</span>
                         <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">S/ {{ number_format($summaryData['total_amount'], 2) }}</span>
                     </div>
                     <div class="flex-1">
                         <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Total Pago Profesores</span>
                         <span class="text-2xl font-bold text-gray-700 dark:text-gray-200">S/ {{ number_format($summaryData['instructor_total'] ?? 0, 2) }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Saldo PAMA</span>
+                        <span class="text-2xl font-bold {{ ($summaryData['saldo_pama'] ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                            S/ {{ number_format($summaryData['saldo_pama'] ?? 0, 2) }}
+                        </span>
                     </div>
                 </div>
             </div>

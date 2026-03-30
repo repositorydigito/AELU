@@ -49,7 +49,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                     ->placeholder('Selecciona un período...')
                     ->options(function () {
                         return MonthlyPeriod::where('year', '>=', 2026)
-                            ->where('start_date', '<=', now())
+                            ->where('start_date', '<=', now()->addMonth())
                             ->orderBy('year', 'desc')
                             ->orderBy('month', 'desc')
                             ->get()
