@@ -15,6 +15,7 @@ class Expense extends Model
 
     protected $casts = [
         'is_income' => 'boolean',
+        'voucher_path' => 'array',
     ];
 
     public function expenseDetails()

@@ -39,6 +39,11 @@ class EgresoResource extends Resource
                     ->date('d/m/Y')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('mes_correspondiente')
+                    ->label('Mes correspondiente')
+                    ->badge()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('expense.concept')
                     ->label('Concepto')
                     ->searchable()
@@ -147,35 +152,49 @@ class EgresoResource extends Resource
                             return new HtmlString('<p class="text-gray-500 text-center py-8">No hay vouchers adjuntos.</p>');
                         }
 
-                        // Obtener el voucher (solo uno)
-                        $voucher = is_array($record->expense->voucher_path)
-                            ? $record->expense->voucher_path[0]
-                            : $record->expense->voucher_path;
+                        $vouchers = is_array($record->expense->voucher_path)
+                            ? $record->expense->voucher_path
+                            : [$record->expense->voucher_path];
 
-                        $voucherUrl = asset('storage/' . $voucher);
-                        $isImage = preg_match('/\.(jpg|jpeg|png|gif)$/i', $voucher);
+                        $html = '<div class="space-y-6">';
 
-                        if ($isImage) {
-                            $html = '<div class="text-center">';
-                            $html .= '<img src="' . $voucherUrl . '" alt="Voucher" class="max-w-full h-auto rounded-lg shadow-lg mx-auto" style="max-height: 500px;">';
-                            $html .= '<div class="mt-4">';
-                            $html .= '<a href="' . $voucherUrl . '" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">';
-                            $html .= '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
-                            $html .= 'Ver en nueva pestaña</a>';
-                            $html .= '</div>';
-                            $html .= '</div>';
-                        } else {
-                            $html = '<div class="text-center py-8">';
-                            $html .= '<div class="mb-4">';
-                            $html .= '<svg class="w-16 h-16 text-red-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>';
-                            $html .= '</div>';
-                            $html .= '<h3 class="text-lg font-semibold text-gray-900 mb-2">Documento PDF</h3>';
-                            $html .= '<p class="text-sm text-gray-600 mb-4">' . basename($voucher) . '</p>';
-                            $html .= '<a href="' . $voucherUrl . '" target="_blank" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">';
-                            $html .= '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
-                            $html .= 'Descargar PDF</a>';
+                        foreach ($vouchers as $index => $voucher) {
+                            if (empty($voucher)) {
+                                continue;
+                            }
+
+                            $voucherUrl = asset('storage/' . $voucher);
+                            $isImage = preg_match('/\.(jpg|jpeg|png|gif)$/i', $voucher);
+
+                            $html .= '<div class="border border-gray-200 rounded-lg p-4">';
+                            $html .= '<p class="text-sm text-gray-500 mb-3">Archivo ' . ($index + 1) . '</p>';
+
+                            if ($isImage) {
+                                $html .= '<div class="text-center">';
+                                $html .= '<img src="' . $voucherUrl . '" alt="Voucher" class="max-w-full h-auto rounded-lg shadow-lg mx-auto" style="max-height: 420px;">';
+                                $html .= '<div class="mt-4">';
+                                $html .= '<a href="' . $voucherUrl . '" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">';
+                                $html .= '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
+                                $html .= 'Ver en nueva pestaña</a>';
+                                $html .= '</div>';
+                                $html .= '</div>';
+                            } else {
+                                $html .= '<div class="text-center py-4">';
+                                $html .= '<div class="mb-4">';
+                                $html .= '<svg class="w-16 h-16 text-red-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>';
+                                $html .= '</div>';
+                                $html .= '<h3 class="text-lg font-semibold text-gray-900 mb-2">Documento PDF</h3>';
+                                $html .= '<p class="text-sm text-gray-600 mb-4">' . basename($voucher) . '</p>';
+                                $html .= '<a href="' . $voucherUrl . '" target="_blank" class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">';
+                                $html .= '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
+                                $html .= 'Descargar PDF</a>';
+                                $html .= '</div>';
+                            }
+
                             $html .= '</div>';
                         }
+
+                        $html .= '</div>';
 
                         return new HtmlString($html);
                     })

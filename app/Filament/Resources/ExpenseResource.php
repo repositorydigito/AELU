@@ -54,7 +54,7 @@ class ExpenseResource extends Resource
                                     ->options([
                                         'Taller de Cocina' => '👨‍🍳 Taller de Cocina',
                                         'Compra de materiales' => '📦 Compra de materiales',
-                                        // 'Pago a Profesores' => '👩‍🏫 Pago a profesores',
+                                        'Recibo Profesores' => '👩‍🏫 Recibo Profesores',
                                         'Otros' => '📋 Otros',
                                     ])
                                     ->required()
@@ -80,7 +80,7 @@ class ExpenseResource extends Resource
                         Repeater::make('expense_entries')
                             ->relationship('expenseDetails')
                             ->schema([
-                                Grid::make(3)
+                                Grid::make(4)
                                     ->schema([
                                         DatePicker::make('date')
                                             ->label('Fecha del Gasto')
@@ -89,6 +89,39 @@ class ExpenseResource extends Resource
                                             ->displayFormat('d/m/Y')
                                             ->native(false)
                                             ->prefixIcon('heroicon-o-calendar-days'),
+
+                                        Select::make('mes_correspondiente')
+                                            ->label('Mes correspondiente')
+                                            ->options([
+                                                'Enero' => 'Enero',
+                                                'Febrero' => 'Febrero',
+                                                'Marzo' => 'Marzo',
+                                                'Abril' => 'Abril',
+                                                'Mayo' => 'Mayo',
+                                                'Junio' => 'Junio',
+                                                'Julio' => 'Julio',
+                                                'Agosto' => 'Agosto',
+                                                'Septiembre' => 'Septiembre',
+                                                'Octubre' => 'Octubre',
+                                                'Noviembre' => 'Noviembre',
+                                                'Diciembre' => 'Diciembre',
+                                            ])
+                                            ->required()
+                                            ->default(fn () => match (now()->month) {
+                                                1 => 'Enero',
+                                                2 => 'Febrero',
+                                                3 => 'Marzo',
+                                                4 => 'Abril',
+                                                5 => 'Mayo',
+                                                6 => 'Junio',
+                                                7 => 'Julio',
+                                                8 => 'Agosto',
+                                                9 => 'Septiembre',
+                                                10 => 'Octubre',
+                                                11 => 'Noviembre',
+                                                12 => 'Diciembre',
+                                            })
+                                            ->native(false),
 
                                         TextInput::make('razon_social')
                                             ->label('Razón Social / Proveedor')
@@ -161,6 +194,7 @@ class ExpenseResource extends Resource
                         FileUpload::make('voucher_path')
                             ->label('Recibos y Vouchers')
                             ->helperText('Sube las imágenes o PDFs de los comprobantes (máx. 2MB cada uno)')
+                            ->multiple()
                             ->disk('public')
                             ->directory('vouchers')
                             ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'])
@@ -192,6 +226,16 @@ class ExpenseResource extends Resource
                     ->label('Concepto')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('meses_correspondientes')
+                    ->label('Mes')
+                    ->getStateUsing(fn ($record) => $record->expenseDetails
+                        ->pluck('mes_correspondiente')
+                        ->filter()
+                        ->unique()
+                        ->implode(', '))
+                    ->placeholder('Sin mes')
+                    ->wrap(),
 
                 // Mostrar el monto total de todos los detalles del gasto
                 TextColumn::make('total_amount')

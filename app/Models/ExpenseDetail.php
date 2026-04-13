@@ -9,6 +9,7 @@ class ExpenseDetail extends Model
     protected $fillable = [
         'expense_id',
         'date',
+        'mes_correspondiente',
         'razon_social',
         'document_number',
         'amount',
