@@ -33,6 +33,16 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                         'taller'           => $workshop['workshop_name'],
                         'horario'          => $workshop['schedule'],
                         'alumnos'          => $workshop['total_students'],
+                        'alumnos_categoria'=> (function ($categoryBreakdown) {
+                            $parts = [];
+                            foreach ($categoryBreakdown as $category => $count) {
+                                if ($count > 0) {
+                                    $parts[] = $category . ': ' . $count;
+                                }
+                            }
+
+                            return implode(' | ', $parts);
+                        })($workshop['students_by_category'] ?? []),
                         'detalle_clases'   => (function ($breakdown) {
                             $parts = [];
                             foreach ($breakdown as $n => $count) {
@@ -67,6 +77,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             'Taller',
             'Horario',
             'N° Alumnos',
+            'Inscritos por Categoría',
             'Detalle Clases',
             'Tarifa Mensual (S/)',
             'Ingresos (S/)',
@@ -86,6 +97,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             $row['taller'],
             $row['horario'],
             $row['alumnos'],
+            $row['alumnos_categoria'],
             $row['detalle_clases'],
             number_format($row['tarifa_mensual'], 2),
             number_format($row['ingresos'], 2),
@@ -114,7 +126,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                     'startColor' => ['rgb' => '4F46E5'],
                 ],
             ],
-            'A1:L'.($total + 1) => [
+            'A1:N'.($total + 1) => [
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,

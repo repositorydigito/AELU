@@ -87,20 +87,21 @@
     <table>
         <thead>
             <tr>
-                <th style="width:22%">Taller</th>
-                <th style="width:18%">Horario</th>
-                <th style="width:9%" class="text-center">Inscritos</th>
-                <th style="width:8%" class="text-right">Tarifa</th>
-                <th style="width:15%" class="text-right">Ingresos del Taller</th>
-                <th style="width:7%" class="text-center">%</th>
-                <th style="width:13%" class="text-right">Monto a Pagar</th>
-                <th style="width:8%" class="text-center">Recibo</th>
+                <th style="width:18%">Taller</th>
+                <th style="width:15%">Horario</th>
+                <th style="width:7%" class="text-center">Inscritos</th>
+                <th style="width:16%">Inscritos por categoría</th>
+                <th style="width:7%" class="text-right">Tarifa</th>
+                <th style="width:13%" class="text-right">Ingresos del Taller</th>
+                <th style="width:6%" class="text-center">%</th>
+                <th style="width:11%" class="text-right">Monto a Pagar</th>
+                <th style="width:7%" class="text-center">Recibo</th>
             </tr>
         </thead>
         <tbody>
             @foreach($grouped_payments['volunteer'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="8">{{ $instructor['instructor_name'] }}</td>
+                    <td colspan="9">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 @php
@@ -109,6 +110,14 @@
                     foreach ($breakdown as $n => $count) {
                         if ($count > 0) {
                             $parts[] = ($n > 0 ? $n . 'c' : '?c') . ':' . $count;
+                        }
+                    }
+
+                    $categoryBreakdown = $workshop['students_by_category'] ?? [];
+                    $categoryParts = [];
+                    foreach ($categoryBreakdown as $category => $count) {
+                        if ($count > 0) {
+                            $categoryParts[] = $category . ': ' . $count;
                         }
                     }
                 @endphp
@@ -121,6 +130,13 @@
                             <br><small style="font-size:8px;color:#555">{{ implode(' | ', $parts) }}</small>
                         @endif
                     </td>
+                    <td>
+                        @if(!empty($categoryParts))
+                            <small style="font-size:8px;color:#555">{{ implode(' | ', $categoryParts) }}</small>
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
                     <td class="text-right">S/ {{ number_format($workshop['monthly_revenue'], 2) }}</td>
                     <td class="text-center">{{ number_format($workshop['volunteer_percentage'], 0) }}%</td>
@@ -129,7 +145,7 @@
                 </tr>
                 @endforeach
                 <tr class="subtotal-row">
-                    <td colspan="6" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="7" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td></td>
                 </tr>
@@ -137,7 +153,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="6" class="text-right">TOTAL VOLUNTARIOS:</td>
+                <td colspan="7" class="text-right">TOTAL VOLUNTARIOS:</td>
                 <td class="text-right">S/ {{ number_format($total_amount['volunteer'], 2) }}</td>
                 <td></td>
             </tr>
@@ -151,20 +167,21 @@
     <table>
         <thead>
             <tr>
-                <th style="width:22%">Taller</th>
-                <th style="width:18%">Horario</th>
-                <th style="width:9%" class="text-center">Inscritos</th>
-                <th style="width:8%" class="text-right">Tarifa</th>
-                <th style="width:11%" class="text-center">Horas</th>
-                <th style="width:11%" class="text-center">Tarifa/hora</th>
-                <th style="width:13%" class="text-right">Monto a Pagar</th>
-                <th style="width:8%" class="text-center">Recibo</th>
+                <th style="width:18%">Taller</th>
+                <th style="width:15%">Horario</th>
+                <th style="width:7%" class="text-center">Inscritos</th>
+                <th style="width:16%">Inscritos por categoría</th>
+                <th style="width:7%" class="text-right">Tarifa</th>
+                <th style="width:10%" class="text-center">Horas</th>
+                <th style="width:10%" class="text-center">Tarifa/hora</th>
+                <th style="width:10%" class="text-right">Monto a Pagar</th>
+                <th style="width:7%" class="text-center">Recibo</th>
             </tr>
         </thead>
         <tbody>
             @foreach($grouped_payments['hourly'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="8">{{ $instructor['instructor_name'] }}</td>
+                    <td colspan="9">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 @php
@@ -173,6 +190,14 @@
                     foreach ($breakdown as $n => $count) {
                         if ($count > 0) {
                             $parts[] = ($n > 0 ? $n . 'c' : '?c') . ':' . $count;
+                        }
+                    }
+
+                    $categoryBreakdown = $workshop['students_by_category'] ?? [];
+                    $categoryParts = [];
+                    foreach ($categoryBreakdown as $category => $count) {
+                        if ($count > 0) {
+                            $categoryParts[] = $category . ': ' . $count;
                         }
                     }
                 @endphp
@@ -185,6 +210,13 @@
                             <br><small style="font-size:8px;color:#555">{{ implode(' | ', $parts) }}</small>
                         @endif
                     </td>
+                    <td>
+                        @if(!empty($categoryParts))
+                            <small style="font-size:8px;color:#555">{{ implode(' | ', $categoryParts) }}</small>
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
                     <td class="text-center">{{ number_format($workshop['hours_worked'], 1) }}</td>
                     <td class="text-center">S/ {{ number_format($workshop['hourly_rate'], 2) }}</td>
@@ -193,7 +225,7 @@
                 </tr>
                 @endforeach
                 <tr class="subtotal-row">
-                    <td colspan="6" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="7" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td></td>
                 </tr>
@@ -201,7 +233,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="6" class="text-right">TOTAL POR HORAS:</td>
+                <td colspan="7" class="text-right">TOTAL POR HORAS:</td>
                 <td class="text-right">S/ {{ number_format($total_amount['hourly'], 2) }}</td>
                 <td></td>
             </tr>

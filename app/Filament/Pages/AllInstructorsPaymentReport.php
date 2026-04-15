@@ -124,15 +124,28 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
 
             $amount = $payment->calculated_amount ?? 0;
 
-            $classBreakdown = StudentEnrollment::where('instructor_workshop_id', $payment->instructor_workshop_id)
+            $latestEnrollments = StudentEnrollment::with(['student:id,category_partner'])
+                ->where('instructor_workshop_id', $payment->instructor_workshop_id)
                 ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
                 ->whereNotIn('payment_status', ['refunded'])
                 ->select('student_id', 'number_of_classes', 'id')
                 ->get()
                 ->groupBy('student_id')
-                ->map(fn($rows) => $rows->sortByDesc('id')->first())
+                ->map(fn($rows) => $rows->sortByDesc('id')->first());
+
+            $classBreakdown = $latestEnrollments
                 ->groupBy(fn($row) => $row->number_of_classes ?? 0)
                 ->map(fn($group) => $group->count())
+                ->toArray();
+
+            $categoryBreakdown = $latestEnrollments
+                ->groupBy(function ($row) {
+                    $category = $row->student->category_partner ?? null;
+
+                    return filled($category) ? $category : 'Sin categoría';
+                })
+                ->map(fn($group) => $group->count())
+                ->sortKeys()
                 ->toArray();
 
             krsort($classBreakdown);
@@ -146,6 +159,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 'standard_fee'        => $workshop->standard_monthly_fee ?? 0,
                 'total_students'      => array_sum($classBreakdown),
                 'students_by_classes' => $classBreakdown,
+                'students_by_category'=> $categoryBreakdown,
                 'monthly_revenue'     => $payment->monthly_revenue ?? 0,
                 'amount'              => $amount,
                 'payment_status'      => $this->getPaymentStatusText($payment->payment_status),
