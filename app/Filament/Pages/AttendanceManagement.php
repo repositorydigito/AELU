@@ -421,7 +421,7 @@ class AttendanceManagement extends Page implements HasActions, HasForms
             ->label('Exportar Excel')
             ->color('success')
             ->icon('heroicon-o-arrow-down-tray')
-            ->visible(fn () => $this->selectedWorkshop && !empty($this->workshopClasses) && !empty($this->studentEnrollments))
+            ->visible(fn () => $this->canExportAttendanceReports() && $this->selectedWorkshop && ! empty($this->workshopClasses) && ! empty($this->studentEnrollments))
             ->action(function () {
                 try {
                     $workshopName = $this->selectedWorkshopData['name'] ?? 'taller';
@@ -450,7 +450,7 @@ class AttendanceManagement extends Page implements HasActions, HasForms
             ->label('Exportar PDF')
             ->color('danger')
             ->icon('heroicon-o-document-text')
-            ->visible(fn () => $this->selectedWorkshop && !empty($this->workshopClasses) && !empty($this->studentEnrollments))
+            ->visible(fn () => $this->canExportAttendanceReports() && $this->selectedWorkshop && ! empty($this->workshopClasses) && ! empty($this->studentEnrollments))
             ->action(function () {
                 try {
                     $html = View::make('reports.attendance', [
@@ -497,6 +497,25 @@ class AttendanceManagement extends Page implements HasActions, HasForms
             $this->exportPdfAction(),
             $this->saveAttendanceAction(),
         ];
+    }
+
+    /**
+     * Determine if current user can see attendance export actions.
+     */
+    private function canExportAttendanceReports(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole([
+            'Cajero',
+            'Administrador',
+            'super_admin',
+            'Super Admin',
+        ]);
     }
 
     /**
