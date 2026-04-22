@@ -33,16 +33,17 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                         'taller'           => $workshop['workshop_name'],
                         'horario'          => $workshop['schedule'],
                         'alumnos'          => $workshop['total_students'],
-                        'alumnos_categoria'=> (function ($categoryBreakdown) {
+                        'alumnos_categoria'=> (function ($categoryBreakdown, $categoryAmounts) {
                             $parts = [];
                             foreach ($categoryBreakdown as $category => $count) {
                                 if ($count > 0) {
-                                    $parts[] = $category . ': ' . $count;
+                                    $categoryAmount = (float) ($categoryAmounts[$category] ?? 0);
+                                    $parts[] = $category . ': ' . $count . ' (S/ ' . number_format($categoryAmount, 2) . ' x 1)';
                                 }
                             }
 
                             return implode(' | ', $parts);
-                        })($workshop['students_by_category'] ?? []),
+                        })($workshop['students_by_category'] ?? [], $workshop['unit_amount_by_category'] ?? []),
                         'detalle_clases'   => (function ($breakdown) {
                             $parts = [];
                             foreach ($breakdown as $n => $count) {

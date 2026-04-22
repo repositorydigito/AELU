@@ -128,7 +128,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 ->where('instructor_workshop_id', $payment->instructor_workshop_id)
                 ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
                 ->whereNotIn('payment_status', ['refunded'])
-                ->select('student_id', 'number_of_classes', 'id')
+                ->select('student_id', 'number_of_classes', 'total_amount', 'id')
                 ->get()
                 ->groupBy('student_id')
                 ->map(fn($rows) => $rows->sortByDesc('id')->first());
@@ -148,6 +148,32 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 ->sortKeys()
                 ->toArray();
 
+            $categoryUnitAmountBreakdown = $latestEnrollments
+                ->groupBy(function ($row) {
+                    $category = $row->student->category_partner ?? null;
+
+                    return filled($category) ? $category : 'Sin categoría';
+                })
+                ->map(function ($group) {
+                    // Precio de referencia por persona para la categoría (valor más frecuente).
+                    $amounts = $group
+                        ->map(fn($row) => round((float) ($row->total_amount ?? 0), 2))
+                        ->filter(fn($amount) => $amount > 0)
+                        ->values();
+
+                    if ($amounts->isEmpty()) {
+                        return 0;
+                    }
+
+                    return (float) $amounts
+                        ->countBy()
+                        ->sortDesc()
+                        ->keys()
+                        ->first();
+                })
+                ->sortKeys()
+                ->toArray();
+
             krsort($classBreakdown);
 
             $workshopModality = $workshop->modality ?? null;
@@ -160,6 +186,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 'total_students'      => array_sum($classBreakdown),
                 'students_by_classes' => $classBreakdown,
                 'students_by_category'=> $categoryBreakdown,
+                'unit_amount_by_category' => $categoryUnitAmountBreakdown,
                 'monthly_revenue'     => $payment->monthly_revenue ?? 0,
                 'amount'              => $amount,
                 'payment_status'      => $this->getPaymentStatusText($payment->payment_status),

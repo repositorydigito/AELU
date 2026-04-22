@@ -100,10 +100,12 @@
                                 <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
                                     @php
                                         $categoryBreakdown = $workshop['students_by_category'] ?? [];
+                                        $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
                                         $categoryParts = [];
                                         foreach ($categoryBreakdown as $category => $count) {
                                             if ($count > 0) {
-                                                $categoryParts[] = $category . ': ' . $count;
+                                                $categoryAmount = (float) ($categoryAmounts[$category] ?? 0);
+                                                $categoryParts[] = $category . ': ' . $count . ' (S/ ' . number_format($categoryAmount, 2) . ' x 1)';
                                             }
                                         }
                                     @endphp
@@ -212,10 +214,12 @@
                                 <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
                                     @php
                                         $categoryBreakdown = $workshop['students_by_category'] ?? [];
+                                        $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
                                         $categoryParts = [];
                                         foreach ($categoryBreakdown as $category => $count) {
                                             if ($count > 0) {
-                                                $categoryParts[] = $category . ': ' . $count;
+                                                $categoryAmount = (float) ($categoryAmounts[$category] ?? 0);
+                                                $categoryParts[] = $category . ': ' . $count . ' (S/ ' . number_format($categoryAmount, 2) . ' x 1)';
                                             }
                                         }
                                     @endphp
