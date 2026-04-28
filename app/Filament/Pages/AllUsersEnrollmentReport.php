@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -29,6 +30,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
     public ?array $data = [];
     public $selectedDateFrom = null;
     public $selectedDateTo = null;
+    public $selectedStatus = null;
     public $allEnrollments = [];
     public $summaryData = [
         'total_amount' => 0,
@@ -66,9 +68,24 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
                         $this->selectedDateTo = $state;
                         $this->loadAllUsersEnrollments();
                     }),
+
+                Select::make('status')
+                    ->label('Estado')
+                    ->placeholder('Todos los estados')
+                    ->options([
+                        'active'    => 'Inscrito',
+                        'cancelled' => 'Anulado',
+                        'refunded'  => 'Reembolsado',
+                    ])
+                    ->native(false)
+                    ->live()
+                    ->afterStateUpdated(function ($state) {
+                        $this->selectedStatus = $state;
+                        $this->loadAllUsersEnrollments();
+                    }),
             ])
             ->statePath('data')
-            ->columns(2);
+            ->columns(3);
     }
 
     public function loadAllUsersEnrollments(): void
@@ -96,6 +113,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             })
             ->whereDate('issued_at', '>=', $dateFromForQuery)
             ->whereDate('issued_at', '<=', $dateToForQuery)
+            ->when($this->selectedStatus, fn($q) => $q->where('status', $this->selectedStatus))
             ->orderBy('issued_at', 'desc')
             ->get();
 
