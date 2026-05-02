@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\WorkshopResource\Pages;
+use App\Models\StudentEnrollment;
 use App\Models\Workshop;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -51,8 +52,8 @@ class WorkshopResource extends Resource
                                             $q->where('year', $currentDate->year)
                                                 ->where('month', '>=', $currentDate->month);
                                         })
-                                        ->orWhere('year', $currentDate->year + 1) // Todo el próximo año
-                                        ->orWhere('id', $currentWorkshopPeriodId); // Mantener el período actual si está editando
+                                            ->orWhere('year', $currentDate->year + 1) // Todo el próximo año
+                                            ->orWhere('id', $currentWorkshopPeriodId); // Mantener el período actual si está editando
                                     });
                                 } else {
                                     // Para crear nuevo taller
@@ -62,7 +63,7 @@ class WorkshopResource extends Resource
                                             $q->where('year', $currentDate->year)
                                                 ->where('month', '>=', $currentDate->month);
                                         })
-                                        ->orWhere('year', $currentDate->year + 1); // Todo el próximo año
+                                            ->orWhere('year', $currentDate->year + 1); // Todo el próximo año
                                     });
                                 }
 
@@ -71,6 +72,7 @@ class WorkshopResource extends Resource
                                     ->get()
                                     ->mapWithKeys(function ($period) {
                                         $date = \Carbon\Carbon::create($period->year, $period->month, 1);
+
                                         return [$period->id => $date->translatedFormat('F Y')];
                                     });
                             })
@@ -149,12 +151,12 @@ class WorkshopResource extends Resource
                                 function ($livewire) {
                                     return function (string $attribute, $value, \Closure $fail) use ($livewire) {
                                         // Solo validar al editar, no al crear
-                                        if (!($livewire instanceof \Filament\Resources\Pages\EditRecord)) {
+                                        if (! ($livewire instanceof \Filament\Resources\Pages\EditRecord)) {
                                             return;
                                         }
 
                                         $workshop = $livewire->record;
-                                        if (!$workshop || !$workshop->exists) {
+                                        if (! $workshop || ! $workshop->exists) {
                                             return;
                                         }
 
@@ -186,6 +188,7 @@ class WorkshopResource extends Resource
                                         return "⚠️ Actualmente hay {$currentEnrollments} estudiantes inscritos. No puedes reducir los cupos por debajo de este número.";
                                     }
                                 }
+
                                 return 'Establece el número máximo de estudiantes para este taller';
                             }),
                         Forms\Components\TextInput::make('number_of_classes')
@@ -193,7 +196,8 @@ class WorkshopResource extends Resource
                             ->numeric()
                             ->minValue(1)
                             ->required()
-                            ->live(),
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::calculateScheduleDates($get, $set)),
                         Forms\Components\TextInput::make('standard_monthly_fee')
                             ->label('Tarifa del Mes')
                             ->prefix('S/.')
@@ -270,6 +274,7 @@ class WorkshopResource extends Resource
                                         // Al editar, tomar la primera fecha de workshop_classes
                                         if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
                                             $firstClass = $livewire->record->workshopClasses()
+                                                ->whereIn('status', ['scheduled', 'completed'])
                                                 ->orderBy('class_date', 'asc')
                                                 ->first();
 
@@ -305,29 +310,17 @@ class WorkshopResource extends Resource
                                             };
                                         },
                                     ]),
-                                /* ->disabled(fn ($livewire) =>
-                                        $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                        $livewire->record->hasEnrollments()
-                                    ), */
-
-                                Forms\Components\Actions::make([
-                                    Forms\Components\Actions\Action::make('calcular_horarios')
-                                        ->label('Calcular Horarios')
-                                        ->color('success')
-                                        ->action(function (Get $get, Set $set) {
-                                            self::calculateScheduleDates($get, $set);
-                                        }),
-                                    /* ->disabled(fn ($livewire) =>
-                                            $livewire instanceof \Filament\Resources\Pages\EditRecord &&
-                                            $livewire->record->hasEnrollments()
-                                        ), */
-                                ])->extraAttributes(['class' => 'flex items-end justify-end']),
                             ]),
 
                         Forms\Components\Placeholder::make('schedule_table')
                             ->label('Clases')
                             ->content(function (Get $get) {
-                                return new \Illuminate\Support\HtmlString(self::generateScheduleTable($get));
+                                return new \Illuminate\Support\HtmlString(
+                                    view('filament.resources.workshop-resource.schedule-table', [
+                                        'scheduleData' => $get('schedule_data') ?? [],
+                                        'daysOfWeek' => $get('day_of_week') ?? [],
+                                    ])->render()
+                                );
                             })
                             ->columnSpanFull()
                             ->live(),
@@ -382,8 +375,8 @@ class WorkshopResource extends Resource
                                                 // Campo para marcar la clase como cancelada
                                                 Forms\Components\Checkbox::make("is_cancelled_{$index}")
                                                     ->label('Cancelada')
-                                                    ->default($class['status'] === 'cancelled')
-                                                    // ->helperText('Marcar si esta clase está cancelada')
+                                                    ->default($class['status'] === 'cancelled'),
+                                                // ->helperText('Marcar si esta clase está cancelada')
                                             ]);
                                     }
 
@@ -436,9 +429,9 @@ class WorkshopResource extends Resource
 
                         Forms\Components\Hidden::make('schedule_data')
                             ->default(function ($livewire) {
-                                // Al editar, cargar las clases existentes
                                 if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
                                     $classes = $livewire->record->workshopClasses()
+                                        ->whereIn('status', ['scheduled', 'completed'])
                                         ->orderBy('class_date', 'asc')
                                         ->get();
 
@@ -449,6 +442,7 @@ class WorkshopResource extends Resource
                                             'raw_date' => $class->class_date,
                                             'day' => $livewire->record->day_of_week,
                                             'is_holiday' => false,
+                                            'status' => $class->status,
                                         ];
                                     })->toArray();
                                 }
@@ -550,7 +544,7 @@ class WorkshopResource extends Resource
                 Tables\Columns\TextColumn::make('day_of_week')
                     ->label('Día')
                     ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->whereRaw('LOWER(day_of_week) LIKE LOWER(?)', ['%' . $search . '%']);
+                        return $query->whereRaw('LOWER(day_of_week) LIKE LOWER(?)', ['%'.$search.'%']);
                     }),
                 Tables\Columns\TextColumn::make('start_time')
                     ->label('Hora de Inicio')
@@ -576,38 +570,23 @@ class WorkshopResource extends Resource
                 Tables\Columns\TextColumn::make('current_period_enrollments')
                     ->label('Cupos Actuales')
                     ->getStateUsing(function (Workshop $record) {
-                        // Obtener el período actual
-                        $currentPeriod = \App\Models\MonthlyPeriod::where('year', now()->year)
-                            ->where('month', now()->month)
-                            ->first();
+                        $enrolled = $record->current_enrollments_count ?? 0;
+                        $available = max(0, $record->capacity - $enrolled);
 
-                        if (! $currentPeriod) {
-                            return 'N/A';
-                        }
-
-                        $capacityInfo = $record->getCapacityInfoForPeriod($record->monthly_period_id);
-
-                        return "{$capacityInfo['available_spots']}/{$capacityInfo['total_capacity']}";
+                        return "{$available}/{$record->capacity}";
                     })
                     ->badge()
                     ->color(function (Workshop $record) {
-                        $currentPeriod = \App\Models\MonthlyPeriod::where('year', now()->year)
-                            ->where('month', now()->month)
-                            ->first();
+                        $enrolled = $record->current_enrollments_count ?? 0;
+                        $available = max(0, $record->capacity - $enrolled);
 
-                        if (! $currentPeriod) {
-                            return 'gray';
-                        }
-
-                        $capacityInfo = $record->getCapacityInfoForPeriod($record->monthly_period_id);
-
-                        if ($capacityInfo['is_full']) {
+                        if ($available <= 0) {
                             return 'danger';
-                        } elseif ($capacityInfo['is_almost_full']) {
+                        } elseif ($available <= 3) {
                             return 'warning';
-                        } else {
-                            return 'success';
                         }
+
+                        return 'success';
                     }),
             ])
             ->defaultSort('name', 'asc')
@@ -668,6 +647,19 @@ class WorkshopResource extends Resource
         ];
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['monthlyPeriod', 'instructor'])
+            ->addSelect([
+                'current_enrollments_count' => StudentEnrollment::selectRaw('COUNT(DISTINCT student_enrollments.student_id)')
+                    ->join('instructor_workshops', 'student_enrollments.instructor_workshop_id', '=', 'instructor_workshops.id')
+                    ->whereColumn('instructor_workshops.workshop_id', 'workshops.id')
+                    ->whereColumn('student_enrollments.monthly_period_id', 'workshops.monthly_period_id')
+                    ->whereIn('student_enrollments.payment_status', ['completed', 'pending']),
+            ]);
+    }
+
     public static function getBadgeCount(): int
     {
         return Workshop::count();
@@ -702,11 +694,17 @@ class WorkshopResource extends Resource
             'Domingo' => 0,
         ];
 
+        $allHolidays = \App\Models\Holiday::where('affects_classes', true)->get();
+        $exactHolidayDates = $allHolidays->where('is_recurring', false)
+            ->keyBy(fn ($h) => $h->date->format('Y-m-d'));
+        $recurringHolidays = $allHolidays->where('is_recurring', true)
+            ->keyBy(fn ($h) => $h->date->format('m-d'));
+
         $dates = [];
         $start = \Carbon\Carbon::parse($startDate);
 
         // Ordenar los días de la semana seleccionados
-        $targetDays = array_map(fn($day) => $dias[$day], $daysOfWeek);
+        $targetDays = array_map(fn ($day) => $dias[$day], $daysOfWeek);
         sort($targetDays);
 
         // Ajustar al primer día válido
@@ -716,12 +714,13 @@ class WorkshopResource extends Resource
         }
 
         $current = $start->copy();
-        $classCount = 0;
+        $scheduledCount = 0;
+        $maxDates = $numberOfClasses + 30;
 
-        // Generar las fechas basándose en el número de clases
-        while ($classCount < $numberOfClasses) {
+        // Generar fechas hasta alcanzar N clases programadas (saltando feriados)
+        while ($scheduledCount < $numberOfClasses && count($dates) < $maxDates) {
             foreach ($targetDays as $targetDay) {
-                if ($classCount >= $numberOfClasses) {
+                if ($scheduledCount >= $numberOfClasses || count($dates) >= $maxDates) {
                     break;
                 }
 
@@ -730,145 +729,31 @@ class WorkshopResource extends Resource
                     $current->next($targetDay);
                 }
 
+                $dateStr = $current->format('Y-m-d');
+                $isHoliday = $exactHolidayDates->has($dateStr)
+                    || $recurringHolidays->has($current->format('m-d'));
                 $dayName = array_search($targetDay, $dias);
 
+                $current->addDay();
+
+                if ($isHoliday) {
+                    continue;
+                }
+
+                $scheduledCount++;
                 $dates[] = [
-                    'class_number' => $classCount + 1,
-                    'date' => $current->format('d/m/Y'),
-                    'raw_date' => $current->format('Y-m-d'),
+                    'class_number' => $scheduledCount,
+                    'date' => \Carbon\Carbon::parse($dateStr)->format('d/m/Y'),
+                    'raw_date' => $dateStr,
                     'day' => $dayName,
                     'is_holiday' => false,
                     'status' => 'scheduled',
                 ];
-
-                $classCount++;
-                $current->addDay();
             }
         }
 
         // Actualizar el campo schedule_data
         $set('schedule_data', $dates);
-    }
-
-    private static function generateScheduleTable(Get $get): string
-    {
-        $scheduleData = $get('schedule_data') ?? [];
-        $daysOfWeek = $get('day_of_week') ?? 'Lunes';
-        $dayOfWeekDisplay = is_array($daysOfWeek) ? implode('/', $daysOfWeek) : $daysOfWeek;
-
-        if (empty($scheduleData)) {
-            return '<div class="text-gray-500 italic p-4">Configure la fecha de inicio para generar el horario automáticamente</div>';
-        }
-
-        $totalClasses = count($scheduleData);
-        $totalColumns = 2 + $totalClasses; // Día + Nro. de Clases + todas las clases
-
-        $html = '<div class="border rounded-lg overflow-hidden">';
-
-        // Header de la tabla
-        $html .= '<div class="bg-gray-50 border-b">';
-        $html .= '<div class="grid gap-px" style="grid-template-columns: repeat('.$totalColumns.', minmax(0, 1fr));">';
-        $html .= '<div class="p-3 font-semibold text-sm">Día</div>';
-        $html .= '<div class="p-3 font-semibold text-sm">Nro. de Clases</div>';
-
-        // Generar headers dinámicamente para todas las clases
-        for ($i = 1; $i <= $totalClasses; $i++) {
-            $html .= '<div class="p-3 font-semibold text-sm">Clase '.$i.'</div>';
-        }
-
-        $html .= '</div>';
-        $html .= '</div>';
-
-        // Fila de datos
-        $html .= '<div class="bg-white">';
-        $html .= '<div class="grid gap-px border-b" style="grid-template-columns: repeat('.$totalColumns.', minmax(0, 1fr));">';
-
-        // Día
-        $html .= '<div class="p-3 text-sm">'.$dayOfWeekDisplay.'</div>';
-
-        // Número de clases (con botón de ajustes)
-        $html .= '<div class="p-3 text-sm">';
-        $html .= '<div class="flex items-center gap-2">';
-        $html .= '<span class="text-blue-600 underline cursor-pointer">'.$totalClasses.' clases</span>';
-        // $html .= '<button type="button" class="text-gray-400 hover:text-gray-600" onclick="openAdjustmentsModal()">';
-        // $html .= '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">';
-        $html .= '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>';
-        $html .= '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>';
-        $html .= '</svg>';
-        $html .= '</button>';
-        $html .= '</div>';
-        $html .= '</div>';
-
-        // Fechas de todas las clases
-        foreach ($scheduleData as $class) {
-            $isCancelled = isset($class['status']) && $class['status'] === 'cancelled';
-            $classStyle = $isCancelled ? 'text-red-500 line-through' : '';
-            $statusText = $isCancelled ? ' (Cancelada)' : '';
-
-            // $html .= '<div class="p-3 text-sm">'.$class['date'].'</div>';
-            $html .= '<div class="p-3 text-sm ' . $classStyle . '">' . $class['date'] . $statusText . '</div>';
-        }
-
-        $html .= '</div>';
-        $html .= '</div>';
-
-        // Sin botones de acción - se usa el botón general "Guardar cambios"
-
-        $html .= '</div>';
-
-        // Modal de ajustes (oculto por defecto)
-        $html .= self::generateAdjustmentsModal($scheduleData);
-
-        // JavaScript para el modal
-        $html .= '<script>
-        function openAdjustmentsModal() {
-            document.getElementById("adjustments-modal").classList.remove("hidden");
-        }
-        function closeAdjustmentsModal() {
-            document.getElementById("adjustments-modal").classList.add("hidden");
-        }
-        </script>';
-
-        return $html;
-    }
-
-    private static function generateAdjustmentsModal(array $scheduleData): string
-    {
-        $html = '<div id="adjustments-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">';
-        $html .= '<div class="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">';
-
-        // Header del modal
-        $html .= '<div class="flex justify-between items-center mb-4">';
-        $html .= '<h3 class="text-lg font-semibold">Ajustes</h3>';
-        $html .= '<button type="button" onclick="closeAdjustmentsModal()" class="text-gray-400 hover:text-gray-600">';
-        $html .= '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">';
-        $html .= '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>';
-        $html .= '</svg>';
-        $html .= '</button>';
-        $html .= '</div>';
-
-        // Contenido del modal
-        $html .= '<div class="space-y-4">';
-
-        foreach ($scheduleData as $index => $class) {
-            $html .= '<div>';
-            $html .= '<label class="block text-sm font-medium text-gray-700 mb-1">Clase '.($index + 1).' *</label>';
-            $html .= '<input type="date" value="'.$class['raw_date'].'" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">';
-            $html .= '</div>';
-        }
-
-        $html .= '</div>';
-
-        // Footer del modal
-        $html .= '<div class="flex justify-end gap-2 mt-6">';
-        $html .= '<button type="button" onclick="closeAdjustmentsModal()" class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-100">Cancelar</button>';
-        $html .= '<button type="button" class="px-4 py-2 text-sm text-white bg-green-600 rounded hover:bg-green-700">Aplicar</button>';
-        $html .= '</div>';
-
-        $html .= '</div>';
-        $html .= '</div>';
-
-        return $html;
     }
 
     private static function updateWorkshopClassesInDatabase(Workshop $workshop, array $scheduleData): void

@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\EnrollmentBatch;
 use App\Models\InstructorPayment;
 use App\Models\InstructorWorkshop;
 use App\Models\Student;
 use App\Models\StudentEnrollment;
 use App\Models\Workshop;
+use App\Observers\EnrollmentBatchObserver;
 use App\Observers\InstructorPaymentObserver;
 use App\Observers\InstructorWorkshopObserver;
 use App\Observers\StudentEnrollmentObserver;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        EnrollmentBatch::observe(EnrollmentBatchObserver::class);
         Workshop::observe(WorkshopObserver::class);
         StudentEnrollment::observe(StudentEnrollmentObserver::class);
         Student::observe(StudentObserver::class);

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Holiday;
 use App\Models\MonthlyPeriod;
 use App\Models\Workshop;
 use App\Models\WorkshopClass;
@@ -83,6 +84,23 @@ class WorkshopReplicationService
         $startDate = Carbon::parse($period->start_date)->startOfDay();
         $endDate = Carbon::parse($period->end_date)->endOfDay();
 
+        // Feriados exactos del período (no recurrentes)
+        $exactHolidays = Holiday::query()
+            ->where('affects_classes', true)
+            ->where('is_recurring', false)
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->pluck('date')
+            ->mapWithKeys(fn ($d) => [$d->toDateString() => true])
+            ->all();
+
+        // Feriados recurrentes (mismo mes/día todos los años)
+        $recurringHolidays = Holiday::query()
+            ->where('affects_classes', true)
+            ->where('is_recurring', true)
+            ->pluck('date')
+            ->mapWithKeys(fn ($d) => [$d->format('m-d') => true])
+            ->all();
+
         $createdCount = 0;
 
         // Encontrar todas las fechas del período que coinciden con los días configurados
@@ -95,23 +113,27 @@ class WorkshopReplicationService
             $cursor->addDay();
         }
 
-        // Actualizar number_of_classes del workshop con la cantidad real de clases que se van a generar
-        $workshop->update(['number_of_classes' => count($dates)]);
-
         $startTime = Carbon::parse($workshop->start_time);
         $endTime = $startTime->copy()->addMinutes((int) ($workshop->duration ?? 60));
 
         foreach ($dates as $date) {
+            $isHoliday = isset($exactHolidays[$date->toDateString()])
+                || isset($recurringHolidays[$date->format('m-d')]);
+
+            if ($isHoliday) {
+                continue;
+            }
+
             WorkshopClass::create([
-                'workshop_id' => $workshop->id,
+                'workshop_id'       => $workshop->id,
                 'monthly_period_id' => $period->id,
-                'class_date' => $date->toDateString(),
-                'start_time' => $startTime->format('H:i:s'),
-                'end_time' => $endTime->format('H:i:s'),
-                'max_capacity' => (int) ($workshop->capacity ?? 0),
-                'status' => 'scheduled',
-                'notes' => null,
+                'class_date'        => $date->toDateString(),
+                'start_time'        => $startTime->format('H:i:s'),
+                'end_time'          => $endTime->format('H:i:s'),
+                'max_capacity'      => (int) ($workshop->capacity ?? 0),
+                'status'            => 'scheduled',
             ]);
+
             $createdCount++;
         }
 

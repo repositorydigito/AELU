@@ -96,19 +96,31 @@ class EnrollmentBatch extends Model
     // Métodos auxiliares
     public function getWorkshopsCountAttribute()
     {
-        return $this->enrollments()->count();
+        if (array_key_exists('workshops_count_raw', $this->attributes)) {
+            return (int) $this->attributes['workshops_count_raw'];
+        }
+
+        return $this->enrollments->count();
     }
     public function getWorkshopsListAttribute()
     {
-        return $this->enrollments()
-            ->with(['instructorWorkshop.workshop'])
-            ->get()
+        if (array_key_exists('workshops_names_raw', $this->attributes)) {
+            return $this->attributes['workshops_names_raw'] ?? '';
+        }
+
+        $this->loadMissing('enrollments.instructorWorkshop.workshop');
+
+        return $this->enrollments
             ->pluck('instructorWorkshop.workshop.name')
             ->join(', ');
     }
     public function getTotalClassesAttribute()
     {
-        return $this->enrollments()->sum('number_of_classes');
+        if (array_key_exists('total_classes_raw', $this->attributes)) {
+            return (int) $this->attributes['total_classes_raw'];
+        }
+
+        return $this->enrollments->sum('number_of_classes');
     }
     public function getFormattedPaymentStatusAttribute()
     {
@@ -131,11 +143,11 @@ class EnrollmentBatch extends Model
     }
     public function getCreatedByNameAttribute()
     {
-        if ($this->creator) {
-            return $this->creator->name;
+        if (array_key_exists('creator_agg_name', $this->attributes)) {
+            return $this->attributes['creator_agg_name'] ?? 'Sistema';
         }
 
-        return 'Sistema';
+        return $this->creator?->name ?? 'Sistema';
     }
     public function getPaymentRegisteredByDisplayAttribute(): ?string
     {

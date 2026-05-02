@@ -15,76 +15,6 @@ AELU is a workshop enrollment and management system for PAMA (Programa del Adult
 
 ## Development Commands
 
-### Setup & Installation
-```bash
-# Install PHP dependencies
-composer install
-
-# Install Node dependencies
-npm install
-
-# Setup environment file (copy .env.example to .env and configure)
-cp .env.example .env
-
-# Generate application key
-php artisan key:generate
-
-# Run migrations
-php artisan migrate
-
-# Seed database (if seeders exist)
-php artisan db:seed
-```
-
-### Development Server
-```bash
-# Run full development stack (server + queue + logs + vite)
-composer dev
-
-# Or run individual services:
-php artisan serve              # Development server at http://localhost:8000
-php artisan queue:listen       # Queue worker
-php artisan pail               # Log viewer
-npm run dev                    # Vite dev server for assets
-```
-
-### Testing
-```bash
-# Run all tests
-composer test
-# Or: php artisan test
-
-# Run specific test file
-php artisan test tests/Feature/ExampleTest.php
-
-# Run with coverage (requires Xdebug)
-php artisan test --coverage
-```
-
-### Code Quality
-```bash
-# Format code with Laravel Pint
-./vendor/bin/pint
-
-# Check specific files
-./vendor/bin/pint app/Models/Student.php
-```
-
-### Asset Building
-```bash
-# Build for production
-npm run build
-
-# Development mode with hot reload
-npm run dev
-```
-
-### Scheduled Tasks (Cron)
-The system requires Laravel's scheduler to run. In production, add this cron entry:
-```bash
-* * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
-```
-
 Active scheduled commands:
 - `enrollments:auto-cancel` - Auto-cancels pending enrollments on configured day
 - `workshops:auto-replicate` - Replicates workshops to next month
@@ -214,12 +144,23 @@ php artisan pail
 - Generates `WorkshopClass` instances based on schedule
 - Creates classes for all dates matching `day_of_week` within period
 
-**2. Auto-Generate Enrollments** (Currently disabled)
+**2. Enrollment Replication** (Currently disabled in scheduler — run manually)
 - Command: `AutoGenerateNextMonthEnrollments.php`
-- Service: `app/Services/WorkshopAutoCreationService.php`
-- Finds all `completed` batches from current month
-- For students with current maintenance, creates new batches for next month
-- Replicates workshop selections automatically
+- Service: `app/Services/EnrollmentReplicationService.php`
+- Finds all `completed` batches from current month and creates `pending` batches for next month
+- Prices are **recalculated** at replication time (not copied from original)
+- Skips students who already have a manual batch for the next period
+- Skips students not current with maintenance
+- **Must run AFTER `WorkshopReplicationService`** — depends on next period's `WorkshopClass` records existing
+
+**Mandatory execution order for enrollment replication:**
+1. `WorkshopReplicationService` runs → generates all `workshop_classes` for next period; dates that match a `Holiday` with `affects_classes = true` are created with `status = 'cancelled'` automatically (notes = 'Cancelada por feriado')
+2. Admin revisa y cancela manualmente suspensiones puntuales no registradas como feriado (usa el botón "Cancelar clases" en la sección Feriados o edita directo en `workshop_classes`)
+3. `EnrollmentReplicationService` runs → assigns students only to `scheduled` classes
+
+**Workshop.number_of_classes** refleja solo clases `scheduled` (feriados excluidos) — afecta pricing de inscripciones del siguiente período.
+
+**Known bug (fixed):** When run during Easter week, `EnrollmentClass` records were created pointing to Viernes/Sábado Santo. Root cause: `createDefaultEnrollmentClasses()` and `findEquivalentWorkshopClass()` did not filter `status = 'cancelled'` workshop classes. Fix applied: both methods now include `->where('status', '!=', 'cancelled')`. See `HU-I07` in `docs/user-stories.md` for full detail.
 
 **3. Auto-Cancel Pending Enrollments** (`AutoCancelPendingEnrollments.php`)
 - Runs: Every minute (checks for configured day/time)
@@ -267,8 +208,9 @@ php artisan pail
 
 Key business logic services (in `app/Services/`):
 - `InstructorPaymentService.php` - Calculate instructor payments
-- `WorkshopReplicationService.php` - Clone workshops monthly
-- `WorkshopAutoCreationService.php` - Auto-generate enrollments
+- `WorkshopReplicationService.php` - Clone workshops and generate `WorkshopClass` records for next period
+- `EnrollmentReplicationService.php` - Replicate `completed` batches to next period as `pending`; depends on `WorkshopReplicationService` having run first and admin having cancelled holidays
+- `EnrollmentPaymentService.php` - Process payments (partial/full), update batch status, generate tickets
 - `EnrollmentBatchService.php` - Enrollment batch operations
 
 ### Controllers & Routes
@@ -305,6 +247,17 @@ Key business logic services (in `app/Services/`):
 **Status Management**:
 - Status enums rather than soft deletes
 - Common statuses: `pending`, `completed`, `refunded`, `cancelled`
+
+## UI & Language Convention
+
+**All user-facing text must be in Spanish.** This applies to:
+- Filament labels (`->label()`, `->placeholder()`, `->hint()`)
+- Table column headers, filter labels, action labels
+- Modal headings, descriptions, submit/cancel button labels
+- Validation messages and notifications
+- Navigation labels, group names, breadcrumbs
+
+Code identifiers (variable names, method names, DB columns) stay in English.
 
 ## Important Development Notes
 
@@ -414,3 +367,4 @@ if ($workshop->isFullForPeriod($periodId)) {
 - Filament Documentation: https://filamentphp.com/docs
 - Laravel Documentation: https://laravel.com/docs/12.x
 - Spatie Permissions: https://spatie.be/docs/laravel-permission
+- User Stories: `docs/user-stories.md`

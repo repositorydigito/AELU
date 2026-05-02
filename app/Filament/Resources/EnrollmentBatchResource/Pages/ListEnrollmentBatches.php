@@ -53,7 +53,7 @@ class ListEnrollmentBatches extends ListRecords
                     // Exportar con filtros aplicados
                     return (new EnrollmentBatchExport($filters))->download($fileName);
                 }),
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()->label('Nueva Inscripción'),
         ];
     }
 }

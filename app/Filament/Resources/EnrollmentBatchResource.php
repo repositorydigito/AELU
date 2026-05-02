@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class EnrollmentBatchResource extends Resource
@@ -28,6 +29,78 @@ class EnrollmentBatchResource extends Resource
     protected static ?string $navigationGroup = 'Gestión';
 
     protected static ?string $navigationIcon = 'heroicon-o-pencil-square';
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->select([
+                'enrollment_batches.id',
+                'enrollment_batches.student_id',
+                'enrollment_batches.created_by',
+                'enrollment_batches.cancelled_by_user_id',
+                'enrollment_batches.cancelled_at',
+                'enrollment_batches.cancellation_reason',
+                'enrollment_batches.batch_code',
+                'enrollment_batches.total_amount',
+                'enrollment_batches.payment_status',
+                'enrollment_batches.payment_method',
+                'enrollment_batches.notes',
+                'enrollment_batches.updated_at',
+                'enrollment_batches.created_at',
+            ])
+            // Subquery: nombres de talleres (reemplaza 2 queries: instructor_workshops + workshops)
+            ->addSelect([
+                DB::raw('(
+                    SELECT GROUP_CONCAT(w.name ORDER BY w.name SEPARATOR ", ")
+                    FROM student_enrollments se
+                    JOIN instructor_workshops iw ON iw.id = se.instructor_workshop_id
+                    JOIN workshops w ON w.id = iw.workshop_id
+                    WHERE se.enrollment_batch_id = enrollment_batches.id
+                    AND se.cancelled_at IS NULL
+                ) as workshops_names_raw'),
+                DB::raw('(
+                    SELECT CONCAT(mp.year, "-", mp.month)
+                    FROM student_enrollments se
+                    JOIN monthly_periods mp ON mp.id = se.monthly_period_id
+                    WHERE se.enrollment_batch_id = enrollment_batches.id
+                    LIMIT 1
+                ) as first_period_raw'),
+                // Reemplaza 1 query a student_enrollments
+                DB::raw('(
+                    SELECT COUNT(*)
+                    FROM student_enrollments se
+                    WHERE se.enrollment_batch_id = enrollment_batches.id
+                    AND se.cancelled_at IS NULL
+                ) as workshops_count_raw'),
+                DB::raw('(
+                    SELECT COALESCE(SUM(se.number_of_classes), 0)
+                    FROM student_enrollments se
+                    WHERE se.enrollment_batch_id = enrollment_batches.id
+                    AND se.cancelled_at IS NULL
+                ) as total_classes_raw'),
+            ])
+            // Reemplaza 2 queries a users (creator + cancelledBy)
+            ->withAggregate('creator as creator_agg_name', 'name')
+            ->withAggregate('cancelledBy as cancelled_by_agg_name', 'name')
+            ->with([
+                'student:id,first_names,last_names',
+                // JOIN inline para evitar query extra de registeredByUser
+                'payments' => fn ($q) => $q->select([
+                    'enrollment_payments.id',
+                    'enrollment_payments.enrollment_batch_id',
+                    'enrollment_payments.amount',
+                    'enrollment_payments.registered_at',
+                    'enrollment_payments.registered_by_user_id',
+                    DB::raw('(SELECT name FROM users WHERE id = enrollment_payments.registered_by_user_id LIMIT 1) as registered_by_name'),
+                ]),
+            ])
+            ->withCount([
+                'tickets',
+                'enrollments as pending_enrollments_count' => function (Builder $q) {
+                    $q->whereNull('cancelled_at')->where('payment_status', 'pending');
+                },
+            ]);
+    }
 
     public static function form(Form $form): Form
     {
@@ -184,17 +257,13 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('cobrado_por')
                     ->label('Cobrado por')
                     ->getStateUsing(function (EnrollmentBatch $record): string {
-                        $payments = $record->payments()
-                            ->with('registeredByUser')
-                            ->get();
-
-                        if ($payments->isEmpty()) {
+                        if ($record->payments->isEmpty()) {
                             return '-';
                         }
 
-                        $users = $payments
-                            ->pluck('registeredByUser.name')
-                            ->filter() // Remover nulls
+                        $users = $record->payments
+                            ->map(fn ($p) => $p->registered_by_name)
+                            ->filter()
                             ->unique()
                             ->values();
 
@@ -202,29 +271,24 @@ class EnrollmentBatchResource extends Resource
                             return '-';
                         }
 
-                        // Si es un solo usuario, mostrar nombre simple
                         if ($users->count() === 1) {
                             return $users->first();
                         }
 
-                        // Si son múltiples usuarios, mostrar separados por comas
                         return $users->join(', ');
                     })
                     ->wrap()
                     ->toggleable()
                     ->tooltip(function (EnrollmentBatch $record): ?string {
-                        $payments = $record->payments()
-                            ->with('registeredByUser')
-                            ->orderBy('registered_at')
-                            ->get();
+                        $payments = $record->payments->sortBy('registered_at');
 
                         if ($payments->isEmpty()) {
                             return null;
                         }
 
                         $details = $payments->map(function ($payment) {
-                            $user = $payment->registeredByUser?->name ?? 'Usuario desconocido';
-                            $date = $payment->registered_at?->format('d/m/Y H:i') ?? '-';
+                            $user   = $payment->registered_by_name ?? 'Usuario desconocido';
+                            $date   = $payment->registered_at?->format('d/m/Y H:i') ?? '-';
                             $amount = 'S/ '.number_format($payment->amount, 2);
 
                             return "{$user} - {$date} - {$amount}";
@@ -233,15 +297,14 @@ class EnrollmentBatchResource extends Resource
                         return "Detalle de pagos:\n".$details;
                     }),
 
-                Tables\Columns\TextColumn::make('cancelledBy.name')
+                Tables\Columns\TextColumn::make('cancelled_by_agg_name')
                     ->label('Anulado Por')
                     ->formatStateUsing(function ($state, \App\Models\EnrollmentBatch $record) {
-                        // Si se anuló y no hay usuario asociado, fue el sistema
                         if ($record->cancelled_at && empty($record->cancelled_by_user_id)) {
                             return 'Sistema';
                         }
 
-                        return $record->cancelledBy?->name;
+                        return $state;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
 
@@ -270,13 +333,9 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('mes_inscripcion')
                     ->label('Mes')
                     ->getStateUsing(function ($record) {
-                        $firstEnrollment = $record->enrollments->first();
-                        if ($firstEnrollment && $firstEnrollment->monthlyPeriod) {
-                            return ucfirst(\Carbon\Carbon::create(
-                                $firstEnrollment->monthlyPeriod->year,
-                                $firstEnrollment->monthlyPeriod->month,
-                                1
-                            )->translatedFormat('F Y'));
+                        if ($record->first_period_raw) {
+                            [$year, $month] = explode('-', $record->first_period_raw, 2);
+                            return ucfirst(\Carbon\Carbon::create((int) $year, (int) $month, 1)->translatedFormat('F Y'));
                         }
 
                         return ucfirst(\Carbon\Carbon::parse($record->updated_at)->translatedFormat('F Y'));
@@ -317,13 +376,15 @@ class EnrollmentBatchResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('created_by')
                     ->label('Usuario')
-                    ->relationship('creator', 'name', function (Builder $query) {
-                        return $query->whereDoesntHave('roles', function (Builder $roleQuery) {
-                            $roleQuery->where('name', 'Delegado');
-                        });
-                    })
-                    ->searchable()
-                    ->preload(),
+                    ->options(fn () => Cache::remember(
+                        'enrollment_batches:filter:creators',
+                        now()->addMinutes(30),
+                        fn () => \App\Models\User::whereDoesntHave('roles', fn (Builder $q) => $q->where('name', 'Delegado'))
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->toArray()
+                    ))
+                    ->searchable(),
 
                 Tables\Filters\SelectFilter::make('payment_status')
                     ->label('Estado de Pago')
@@ -343,26 +404,30 @@ class EnrollmentBatchResource extends Resource
 
                 Tables\Filters\SelectFilter::make('monthly_period')
                     ->label('Mes de Inscripción')
-                    ->options(function () {
-                        $currentYear = now()->year;
-                        $previousYear = $currentYear - 1;
+                    ->options(fn () => Cache::remember(
+                        'enrollment_batches:filter:periods',
+                        now()->addMinutes(30),
+                        function () {
+                            $currentYear = now()->year;
+                            $previousYear = $currentYear - 1;
 
-                        return \App\Models\MonthlyPeriod::query()
-                            ->whereIn('year', [$previousYear, $currentYear])
-                            ->orderBy('year', 'desc')
-                            ->orderBy('month', 'desc')
-                            ->get()
-                            ->mapWithKeys(function ($period) {
-                                $monthName = ucfirst(\Carbon\Carbon::create(
-                                    $period->year,
-                                    $period->month,
-                                    1
-                                )->translatedFormat('F Y'));
+                            return \App\Models\MonthlyPeriod::query()
+                                ->whereIn('year', [$previousYear, $currentYear])
+                                ->orderBy('year', 'desc')
+                                ->orderBy('month', 'desc')
+                                ->get()
+                                ->mapWithKeys(function ($period) {
+                                    $monthName = ucfirst(\Carbon\Carbon::create(
+                                        $period->year,
+                                        $period->month,
+                                        1
+                                    )->translatedFormat('F Y'));
 
-                                return [$period->id => $monthName];
-                            })
-                            ->toArray();
-                    })
+                                    return [$period->id => $monthName];
+                                })
+                                ->toArray();
+                        }
+                    ))
                     ->query(function (Builder $query, array $data): Builder {
                         if (isset($data['value'])) {
                             return $query->whereHas('enrollments', function (Builder $enrollmentQuery) use ($data) {
@@ -379,8 +444,7 @@ class EnrollmentBatchResource extends Resource
                 Tables\Actions\Action::make('download_ticket')
                     ->label('Ver Tickets')
                     ->icon('heroicon-o-ticket')
-                    ->visible(fn (EnrollmentBatch $record): bool => $record->tickets()->exists()
-                    )
+                    ->visible(fn (EnrollmentBatch $record): bool => $record->tickets_count > 0)
                     ->modalHeading(fn (EnrollmentBatch $record) => 'Tickets de '.($record->student->full_name ?? 'N/A'))
                     ->modalDescription(fn (EnrollmentBatch $record) => 'Total de tickets emitidos: '.$record->tickets()->where('status', 'active')->count()
                     )
@@ -679,7 +743,7 @@ class EnrollmentBatchResource extends Resource
                         $currentUserName = auth()->user()->name ?? '';
 
                         return $record->payment_status === 'to_pay'
-                            && $record->enrollments()->whereNull('cancelled_at')->where('payment_status', 'pending')->exists()
+                            && $record->pending_enrollments_count > 0
                             && in_array($currentUserName, $authorizedUsers);
                     }),
                 Tables\Actions\Action::make('edit_full')
@@ -701,7 +765,10 @@ class EnrollmentBatchResource extends Resource
             ->bulkActions([
 
             ])
-            ->defaultSort('updated_at', 'desc');
+            ->defaultSort('updated_at', 'desc')
+            ->paginated([10, 25, 50])
+            ->defaultPaginationPageOption(25)
+            ->deferLoading();
     }
 
     public static function getRelations(): array

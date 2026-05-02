@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\EnrollmentBatch;
+use App\Models\MonthlyPeriod;
 use App\Models\SystemSetting;
 use App\Services\EnrollmentPaymentService;
 use Carbon\Carbon;
@@ -40,19 +41,30 @@ class AutoCancelPendingEnrollments extends Command
 
         $this->info("Running auto-cancellation for day {$cancelDay} at {$today->format('H:i:s')}");
 
+        // Solo cancelar batches de períodos actuales o pasados (no futuros)
+        $currentPeriod = MonthlyPeriod::where('year', $today->year)
+            ->where('month', $today->month)
+            ->first();
+
+        if (! $currentPeriod) {
+            $this->error('No monthly period found for current date. Aborting.');
+            return;
+        }
+
         // Anular lotes sin ningún pago
-        $this->cancelPendingBatches();
+        $this->cancelPendingBatches($currentPeriod->id);
 
         // Anular solo las inscripciones sin pago dentro de lotes con pago parcial
-        $this->cancelUnpaidEnrollmentsInPartialBatches();
+        $this->cancelUnpaidEnrollmentsInPartialBatches($currentPeriod->id);
     }
 
     /**
      * Anula completamente los lotes en estado 'pending' (sin ningún pago registrado).
      */
-    private function cancelPendingBatches(): void
+    private function cancelPendingBatches(int $currentPeriodId): void
     {
         $batches = EnrollmentBatch::where('payment_status', 'pending')
+            ->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', '<=', $currentPeriodId))
             ->with(['enrollments', 'student', 'tickets'])
             ->get();
 
@@ -121,9 +133,10 @@ class AutoCancelPendingEnrollments extends Command
      * Para lotes con pago parcial ('to_pay'), anula solo las inscripciones
      * que siguen sin pagar, dejando intactas las ya pagadas.
      */
-    private function cancelUnpaidEnrollmentsInPartialBatches(): void
+    private function cancelUnpaidEnrollmentsInPartialBatches(int $currentPeriodId): void
     {
         $batches = EnrollmentBatch::where('payment_status', 'to_pay')
+            ->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', '<=', $currentPeriodId))
             ->with(['enrollments.instructorWorkshop.workshop', 'student'])
             ->get();
 

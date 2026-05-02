@@ -36,13 +36,17 @@ class CreateWorkshop extends CreateRecord
 
         if (! empty($scheduleData) && is_array($scheduleData)) {
             foreach ($scheduleData as $classData) {
+                if (($classData['status'] ?? 'scheduled') === 'cancelled') {
+                    continue;
+                }
+
                 WorkshopClass::create([
                     'workshop_id' => $workshop->id,
                     'monthly_period_id' => $workshop->monthly_period_id,
                     'class_date' => $classData['raw_date'],
                     'start_time' => $workshop->start_time,
                     'end_time' => $workshop->end_time,
-                    'status' => $classData['status'] ?? 'scheduled',
+                    'status' => 'scheduled',
                     'max_capacity' => $workshop->capacity,
                 ]);
             }

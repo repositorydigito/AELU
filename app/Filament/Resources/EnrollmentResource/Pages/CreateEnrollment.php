@@ -265,10 +265,16 @@ class CreateEnrollment extends CreateRecord
         $student = \App\Models\Student::find($data['student_id']);
         $isPrepama = $student && in_array($student->category_partner, ['PRE PAMA 50+', 'PRE PAMA 55+']);
 
+        // Pre-cargar InstructorWorkshops para evitar N+1 en validaciones y cálculos
+        $instructorWorkshopsById = \App\Models\InstructorWorkshop::with('workshop')
+            ->whereIn('id', $selectedWorkshops)
+            ->get()
+            ->keyBy('id');
+
         // VALIDACIÓN PREVIA DE CUPOS PARA TODOS LOS TALLERES SELECCIONADOS
         $capacityErrors = [];
         foreach ($selectedWorkshops as $workshopId) {
-            $instructorWorkshop = \App\Models\InstructorWorkshop::with('workshop')->find($workshopId);
+            $instructorWorkshop = $instructorWorkshopsById->get($workshopId);
             if ($instructorWorkshop && $instructorWorkshop->isFullForPeriod($selectedMonthlyPeriodId)) {
                 $capacityErrors[] = $instructorWorkshop->workshop->name;
             }

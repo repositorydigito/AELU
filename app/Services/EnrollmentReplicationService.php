@@ -380,6 +380,7 @@ class EnrollmentReplicationService
 
         $query = WorkshopClass::where('workshop_id', $newWorkshop->id)
             ->where('monthly_period_id', $nextPeriod->id)
+            ->where('status', '!=', 'cancelled')
             ->whereRaw('DAYOFWEEK(class_date) - 1 = ?', [$originalWeekday])
             ->where('start_time', $originalClass->start_time)
             ->where('end_time', $originalClass->end_time);
@@ -399,6 +400,7 @@ class EnrollmentReplicationService
     {
         $workshopClasses = WorkshopClass::where('workshop_id', $enrollment->instructorWorkshop->workshop->id)
             ->where('monthly_period_id', $period->id)
+            ->where('status', '!=', 'cancelled')
             ->orderBy('class_date', 'asc')
             ->limit($enrollment->number_of_classes)
             ->get();

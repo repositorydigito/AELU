@@ -24,7 +24,6 @@ class ReplicateWorkshopsForNextMonth extends Command
         $isEnabled = SystemSetting::get('auto_generate_enabled', false);
         if (! $isEnabled) {
             $this->info('Auto-generación deshabilitada. Saliendo...');
-
             return Command::SUCCESS;
         }
 

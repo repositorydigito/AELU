@@ -90,11 +90,10 @@ class InstructorWorkshop extends Model
      */
     public function getEffectiveCapacity(): int
     {
-        // Recargar la relación workshop para obtener el valor más reciente de la BD
-        // Esto asegura que los cambios de capacidad se reflejen inmediatamente
-        $workshop = $this->workshop()->first();
+        $workshop = $this->relationLoaded('workshop')
+            ? $this->workshop
+            : $this->workshop()->first();
 
-        // Priorizar la capacidad del workshop, luego max_capacity del instructor_workshop
         return $workshop->capacity ?? $this->max_capacity ?? 0;
     }
 
