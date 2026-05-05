@@ -90,9 +90,10 @@
                 <th style="width:18%">Taller</th>
                 <th style="width:15%">Horario</th>
                 <th style="width:7%" class="text-center">Inscritos</th>
-                <th style="width:16%">Inscritos por categoría</th>
+                <th style="width:8%" class="text-center">Cant. por categoría</th>
+                <th style="width:11%" class="text-right">Monto por categoría</th>
                 <th style="width:7%" class="text-right">Tarifa</th>
-                <th style="width:13%" class="text-right">Ingresos del Taller</th>
+                <th style="width:10%" class="text-right">Ingresos del Taller</th>
                 <th style="width:6%" class="text-center">%</th>
                 <th style="width:11%" class="text-right">Monto a Pagar</th>
                 <th style="width:7%" class="text-center">Recibo</th>
@@ -101,7 +102,7 @@
         <tbody>
             @foreach($grouped_payments['volunteer'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="9">{{ $instructor['instructor_name'] }}</td>
+                    <td colspan="10">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 @php
@@ -115,11 +116,12 @@
 
                     $categoryBreakdown = $workshop['students_by_category'] ?? [];
                     $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
-                    $categoryParts = [];
+                    $categoryCounts = [];
+                    $categoryAmountValues = [];
                     foreach ($categoryBreakdown as $category => $count) {
                         if ($count > 0) {
-                            $categoryAmount = (float) ($categoryAmounts[$category] ?? 0);
-                            $categoryParts[] = $category . ': ' . $count . ' (S/ ' . number_format($categoryAmount, 2) . ' x 1)';
+                            $categoryCounts[] = $count;
+                            $categoryAmountValues[] = 'S/ ' . number_format((float) ($categoryAmounts[$category] ?? 0), 2);
                         }
                     }
                 @endphp
@@ -132,9 +134,16 @@
                             <br><small style="font-size:8px;color:#555">{{ implode(' | ', $parts) }}</small>
                         @endif
                     </td>
-                    <td>
-                        @if(!empty($categoryParts))
-                            <small style="font-size:8px;color:#555">{{ implode(' | ', $categoryParts) }}</small>
+                    <td class="text-center">
+                        @if(!empty($categoryCounts))
+                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryCounts) !!}</small>
+                        @else
+                            —
+                        @endif
+                    </td>
+                    <td class="text-right">
+                        @if(!empty($categoryAmountValues))
+                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryAmountValues) !!}</small>
                         @else
                             —
                         @endif
@@ -147,7 +156,7 @@
                 </tr>
                 @endforeach
                 <tr class="subtotal-row">
-                    <td colspan="7" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="8" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td></td>
                 </tr>
@@ -155,7 +164,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="7" class="text-right">TOTAL VOLUNTARIOS:</td>
+                <td colspan="8" class="text-right">TOTAL VOLUNTARIOS:</td>
                 <td class="text-right">S/ {{ number_format($total_amount['volunteer'], 2) }}</td>
                 <td></td>
             </tr>
@@ -172,7 +181,8 @@
                 <th style="width:18%">Taller</th>
                 <th style="width:15%">Horario</th>
                 <th style="width:7%" class="text-center">Inscritos</th>
-                <th style="width:16%">Inscritos por categoría</th>
+                <th style="width:8%" class="text-center">Cant. por categoría</th>
+                <th style="width:11%" class="text-right">Monto por categoría</th>
                 <th style="width:7%" class="text-right">Tarifa</th>
                 <th style="width:10%" class="text-center">Horas</th>
                 <th style="width:10%" class="text-center">Tarifa/hora</th>
@@ -183,7 +193,7 @@
         <tbody>
             @foreach($grouped_payments['hourly'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="9">{{ $instructor['instructor_name'] }}</td>
+                    <td colspan="10">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 @php
@@ -197,11 +207,12 @@
 
                     $categoryBreakdown = $workshop['students_by_category'] ?? [];
                     $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
-                    $categoryParts = [];
+                    $categoryCounts = [];
+                    $categoryAmountValues = [];
                     foreach ($categoryBreakdown as $category => $count) {
                         if ($count > 0) {
-                            $categoryAmount = (float) ($categoryAmounts[$category] ?? 0);
-                            $categoryParts[] = $category . ': ' . $count . ' (S/ ' . number_format($categoryAmount, 2) . ' x 1)';
+                            $categoryCounts[] = $count;
+                            $categoryAmountValues[] = 'S/ ' . number_format((float) ($categoryAmounts[$category] ?? 0), 2);
                         }
                     }
                 @endphp
@@ -214,9 +225,16 @@
                             <br><small style="font-size:8px;color:#555">{{ implode(' | ', $parts) }}</small>
                         @endif
                     </td>
-                    <td>
-                        @if(!empty($categoryParts))
-                            <small style="font-size:8px;color:#555">{{ implode(' | ', $categoryParts) }}</small>
+                    <td class="text-center">
+                        @if(!empty($categoryCounts))
+                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryCounts) !!}</small>
+                        @else
+                            —
+                        @endif
+                    </td>
+                    <td class="text-right">
+                        @if(!empty($categoryAmountValues))
+                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryAmountValues) !!}</small>
                         @else
                             —
                         @endif
@@ -229,7 +247,7 @@
                 </tr>
                 @endforeach
                 <tr class="subtotal-row">
-                    <td colspan="7" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="8" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td></td>
                 </tr>
@@ -237,7 +255,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="7" class="text-right">TOTAL POR HORAS:</td>
+                <td colspan="8" class="text-right">TOTAL POR HORAS:</td>
                 <td class="text-right">S/ {{ number_format($total_amount['hourly'], 2) }}</td>
                 <td></td>
             </tr>
