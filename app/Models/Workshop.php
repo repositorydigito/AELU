@@ -23,6 +23,7 @@ class Workshop extends Model
         'place',
         'modality',
         'monthly_period_id',
+        'workshop_template_id',
         'additional_comments',
     ];
 
@@ -34,6 +35,11 @@ class Workshop extends Model
         'number_of_classes' => 'integer',
         'day_of_week' => 'array',
     ];
+
+    public function workshopTemplate()
+    {
+        return $this->belongsTo(WorkshopTemplate::class);
+    }
 
     public function instructorWorkshops()
     {
