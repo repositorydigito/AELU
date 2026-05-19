@@ -88,6 +88,12 @@ class WorkshopReplicationService
 
             if ($next->auto_generate_classes) {
                 $createdClasses += $this->generateClassesForWorkshopAndPeriod($workshop, $next);
+
+                // Actualizar number_of_classes con clases reales generadas (feriados excluidos)
+                $actualClasses = $workshop->workshopClasses()->where('status', 'scheduled')->count();
+                if ($actualClasses > 0 && $actualClasses !== $workshop->number_of_classes) {
+                    $workshop->update(['number_of_classes' => $actualClasses]);
+                }
             }
         }
 

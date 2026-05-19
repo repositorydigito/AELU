@@ -15,7 +15,7 @@ class StudentEnrollmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_enrollment');
+        return $user->can('view_any_income');
     }
 
     /**
@@ -23,7 +23,7 @@ class StudentEnrollmentPolicy
      */
     public function view(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('view_enrollment');
+        return $user->can('view_income');
     }
 
     /**
@@ -31,7 +31,7 @@ class StudentEnrollmentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_enrollment');
+        return $user->can('create_income');
     }
 
     /**
@@ -39,7 +39,7 @@ class StudentEnrollmentPolicy
      */
     public function update(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('update_enrollment');
+        return $user->can('update_income');
     }
 
     /**
@@ -47,7 +47,7 @@ class StudentEnrollmentPolicy
      */
     public function delete(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('delete_enrollment');
+        return $user->can('delete_income');
     }
 
     /**
@@ -55,7 +55,7 @@ class StudentEnrollmentPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_enrollment');
+        return $user->can('delete_any_income');
     }
 
     /**
@@ -63,7 +63,7 @@ class StudentEnrollmentPolicy
      */
     public function forceDelete(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('force_delete_enrollment');
+        return $user->can('force_delete_income');
     }
 
     /**
@@ -71,7 +71,7 @@ class StudentEnrollmentPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_enrollment');
+        return $user->can('force_delete_any_income');
     }
 
     /**
@@ -79,7 +79,7 @@ class StudentEnrollmentPolicy
      */
     public function restore(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('restore_enrollment');
+        return $user->can('restore_income');
     }
 
     /**
@@ -87,7 +87,7 @@ class StudentEnrollmentPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_enrollment');
+        return $user->can('restore_any_income');
     }
 
     /**
@@ -95,7 +95,7 @@ class StudentEnrollmentPolicy
      */
     public function replicate(User $user, StudentEnrollment $studentEnrollment): bool
     {
-        return $user->can('replicate_enrollment');
+        return $user->can('replicate_income');
     }
 
     /**
@@ -103,6 +103,6 @@ class StudentEnrollmentPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_enrollment');
+        return $user->can('reorder_income');
     }
 }

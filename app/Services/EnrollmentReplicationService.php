@@ -243,11 +243,21 @@ class EnrollmentReplicationService
         // Recalcular precio (puede haber cambiado)
         $student = $enrollment->student;
         $workshop = $newInstructorWorkshop->workshop;
-        $numberOfClasses = $enrollment->number_of_classes;
+        $numberOfClasses = $workshop->number_of_classes; // clases reales del mes (puede diferir por feriados)
+        $templateClasses = $workshop->workshopTemplate?->number_of_classes ?? $numberOfClasses;
+        $surchargeMultiplier = 1 + (((float) $workshop->pricing_surcharge_percentage ?? 20) / 100);
 
-        $basePrice = $workshop->standard_monthly_fee;
-        $finalPrice = $basePrice * $student->inscription_multiplier;
-        $pricePerClass = $finalPrice / $numberOfClasses;
+        if ($numberOfClasses >= $templateClasses) {
+            // Mes completo sin feriados → tarifa plana sin recargo
+            $finalPrice = (float) $workshop->standard_monthly_fee * $student->inscription_multiplier;
+        } else {
+            // Mes con feriados → aplica recargo sobre clases reales
+            $pricePerClassBase = (float) $workshop->standard_monthly_fee / $templateClasses;
+            $finalPrice = $pricePerClassBase * $surchargeMultiplier * $numberOfClasses * $student->inscription_multiplier;
+        }
+
+        $finalPrice = round($finalPrice, 2);
+        $pricePerClass = $numberOfClasses > 0 ? $finalPrice / $numberOfClasses : 0;
 
         // Crear nueva inscripción
         $newEnrollment = StudentEnrollment::create([
@@ -256,14 +266,17 @@ class EnrollmentReplicationService
             'enrollment_batch_id' => $newBatch->id,
             'monthly_period_id' => $nextPeriod->id,
             'enrollment_type' => $enrollment->enrollment_type,
-            'number_of_classes' => $numberOfClasses,
+            'number_of_classes' => $numberOfClasses, // clases reales del nuevo período
+
             'price_per_quantity' => $pricePerClass,
             'total_amount' => $finalPrice,
             'payment_status' => 'pending',
             'payment_method' => $enrollment->payment_method,
             'enrollment_date' => now()->timezone(config('app.timezone', 'America/Lima'))->format('Y-m-d'),
             'payment_due_date' => $this->adjustDateToNextMonth($enrollment->payment_due_date, $nextPeriod),
-            'pricing_notes' => 'Replicación automática - precio recalculado',
+            'pricing_notes' => $numberOfClasses < $templateClasses
+                ? "Replicación automática - {$numberOfClasses} clases (feriados: mes con {$templateClasses} clases base)"
+                : 'Replicación automática - precio recalculado',
             'previous_enrollment_id' => $enrollment->id, // Mantener cadena de renovación
             'renewal_status' => 'not_applicable',
             'is_renewal' => false,
