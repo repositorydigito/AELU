@@ -39,7 +39,7 @@ class AttendanceManagement extends Page implements HasActions, HasForms
 
     protected static ?string $navigationGroup = 'Gestión';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
 
     public ?array $data = [];
 

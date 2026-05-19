@@ -14,7 +14,7 @@ class ReplicateWorkshopsForNextMonth extends Command
 {
     protected $signature = 'workshops:auto-replicate {--force : Ejecuta aunque ya se haya replicado este período}';
 
-    protected $description = 'Replica los talleres del período actual al siguiente y genera sus clases según configuración';
+    protected $description = 'Replica los talleres desde plantillas activas al siguiente período y genera sus clases';
 
     public function handle()
     {
@@ -52,16 +52,6 @@ class ReplicateWorkshopsForNextMonth extends Command
             $this->info('Ejecución forzada: omitiendo validación de día/hora.');
         }
 
-        $currentPeriod = MonthlyPeriod::where('year', $now->year)
-            ->where('month', $now->month)
-            ->first();
-
-        if (! $currentPeriod) {
-            $this->error('No se encontró período mensual actual.');
-
-            return Command::FAILURE;
-        }
-
         // Calcular próximo mes
         $nextMonth = (clone $now)->addMonthNoOverflow();
         $nextPeriod = MonthlyPeriod::firstOrCreate(
@@ -91,7 +81,7 @@ class ReplicateWorkshopsForNextMonth extends Command
 
         DB::beginTransaction();
         try {
-            $replicated = $service->replicateFromPeriodToNext($currentPeriod, $nextPeriod);
+            $replicated = $service->replicateFromTemplates($nextPeriod);
 
             // Marcar como replicado
             $nextPeriod->update(['workshops_replicated_at' => now()]);
@@ -99,8 +89,9 @@ class ReplicateWorkshopsForNextMonth extends Command
             DB::commit();
 
             $this->info('Replicación completa');
-            $this->info("- Talleres replicados: {$replicated['workshops']}");
+            $this->info("- Talleres creados: {$replicated['workshops']}");
             $this->info("- Clases generadas: {$replicated['classes']}");
+            $this->info("- Plantillas omitidas (ya existen): {$replicated['skipped']}");
 
             return Command::SUCCESS;
         } catch (\Exception $e) {

@@ -37,6 +37,11 @@ class WorkshopTemplateResource extends Resource
                             ->label('Nombre del taller')
                             ->required()
                             ->maxLength(255),
+                        Forms\Components\Select::make('instructor_id')
+                            ->label('Profesor')
+                            ->options(\App\Models\Instructor::orderBy('last_names')->get()->pluck('full_name', 'id'))
+                            ->searchable()
+                            ->nullable(),
                         Forms\Components\Select::make('day_of_week')
                             ->label('Día del taller')
                             ->multiple()
@@ -122,6 +127,10 @@ class WorkshopTemplateResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('instructor.full_name')
+                    ->label('Profesor')
+                    ->searchable(['first_names', 'last_names'])
+                    ->default('—'),
                 Tables\Columns\TextColumn::make('day_of_week')
                     ->label('Días')
                     ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state),

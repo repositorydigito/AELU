@@ -20,7 +20,7 @@ class HolidayResource extends Resource
     protected static ?string $navigationGroup = 'Gestión';
     protected static ?string $navigationLabel = 'Feriados';
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 6;
 
     public static function form(Form $form): Form
     {

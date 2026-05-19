@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkshopTemplate extends Model
 {
     protected $fillable = [
         'name',
+        'instructor_id',
         'description',
         'standard_monthly_fee',
         'pricing_surcharge_percentage',
@@ -32,6 +34,11 @@ class WorkshopTemplate extends Model
         'day_of_week' => 'array',
         'is_active' => 'boolean',
     ];
+
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(Instructor::class);
+    }
 
     public function workshops(): HasMany
     {

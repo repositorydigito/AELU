@@ -14,6 +14,10 @@ return new class extends Migration
         Schema::create('workshop_templates', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->foreignId('instructor_id')
+                ->nullable()
+                ->constrained('instructors')
+                ->nullOnDelete();
             $table->text('description')->nullable();
             $table->decimal('standard_monthly_fee', 8, 2);
             $table->decimal('pricing_surcharge_percentage', 5, 2)->default(20);

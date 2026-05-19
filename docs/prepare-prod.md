@@ -1,0 +1,140 @@
+# Preparación del Servidor para Producción
+
+## Migración a PHP 8.3
+
+El proyecto requiere PHP 8.3+ debido a la dependencia `openspout/openspout ^4.30`.
+
+### Extensiones actuales en PHP 8.2 (verificadas)
+
+- curl, gd, intl, mbstring, mysqli, pdo_mysql, xml, zip
+- **Faltante:** pdo_sqlite (requerida por `calebporzio/sushi`)
+
+---
+
+### 1. Agregar repositorio de PHP 8.3 (Ubuntu/Debian)
+
+```bash
+sudo apt-get install -y software-properties-common
+sudo add-apt-repository ppa:ondrej/php
+sudo apt-get update
+```
+
+### 2. Instalar PHP 8.3 y extensiones necesarias
+
+```bash
+sudo apt-get install -y \
+  php8.3 \
+  php8.3-cli \
+  php8.3-fpm \
+  php8.3-common \
+  php8.3-curl \
+  php8.3-gd \
+  php8.3-intl \
+  php8.3-mbstring \
+  php8.3-mysql \
+  php8.3-sqlite3 \
+  php8.3-xml \
+  php8.3-zip \
+  php8.3-opcache
+```
+
+### 3. Verificar instalación
+
+```bash
+php8.3 --version
+php8.3 -m | grep -E "pdo_mysql|pdo_sqlite|mbstring|xml|curl|zip|gd|intl"
+```
+
+### 4. Cambiar versión activa de PHP (CLI)
+
+```bash
+sudo update-alternatives --set php /usr/bin/php8.3
+sudo update-alternatives --set php-config /usr/bin/php-config8.3
+sudo update-alternatives --set phpize /usr/bin/phpize8.3
+```
+
+### 5. Configurar el servidor web
+
+**Si usas Apache con mod_php:**
+```bash
+sudo a2dismod php8.2
+sudo a2enmod php8.3
+sudo systemctl restart apache2
+```
+
+**Si usas Nginx con PHP-FPM:**
+
+Actualizar el socket en la configuración del sitio (`/etc/nginx/sites-available/aelu` o similar):
+```nginx
+# Cambiar de:
+fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+# A:
+fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+```
+
+```bash
+sudo systemctl stop php8.2-fpm
+sudo systemctl enable php8.3-fpm
+sudo systemctl start php8.3-fpm
+sudo systemctl reload nginx
+```
+
+### 6. Reinstalar dependencias del proyecto
+
+```bash
+cd /var/www/AELU
+composer install --no-dev --optimize-autoloader
+```
+
+### 7. Generar permisos de Filament Shield
+
+Si se desplegaron nuevos módulos (resources/policies), registrar sus permisos:
+
+```bash
+# Resource específico (genera permisos + policy automáticamente)
+php artisan shield:generate --resource=NombreResource
+
+# Múltiples resources a la vez
+php artisan shield:generate --resource=WorkshopTemplate,OtroResource
+
+# Solo si es un deploy inicial o se requiere regenerar todo
+php artisan shield:generate --all
+```
+
+> **Nota:** Usar `--all` en producción puede pisar asignaciones manuales de permisos a roles. Preferir `--resource` del módulo nuevo.
+
+---
+
+### 8. Verificar que todo funciona
+
+```bash
+php artisan config:clear
+php artisan cache:clear
+php artisan route:clear
+php artisan view:clear
+php artisan about
+```
+
+---
+
+## Checklist de validación post-migración
+
+- [ ] `php --version` muestra 8.3.x
+- [ ] `php -m | grep pdo_sqlite` devuelve resultado
+- [ ] `php -m | grep pdo_mysql` devuelve resultado
+- [ ] `composer install` sin errores
+- [ ] `php artisan about` sin errores
+- [ ] Panel de Filament carga correctamente
+- [ ] Exportaciones Excel funcionan (openspout)
+- [ ] Importaciones Excel funcionan (maatwebsite/excel)
+- [ ] Logs del visor (filament-log-viewer / sushi) funcionan
+- [ ] Cron de Laravel ejecuta sin errores: `php artisan schedule:run`
+
+---
+
+## Notas
+
+- El servidor actualmente tiene PHP **8.2.30** con OPcache habilitado.
+- `pdo_sqlite` no está instalada en PHP 8.2 actual — debe instalarse en 8.3.
+- `openspout ^4.30` requiere PHP ~8.3.0 || ~8.4.0 (incompatible con 8.2).
+- `calebporzio/sushi ^2.5` (usado por filament-log-viewer) requiere `ext-pdo_sqlite`.

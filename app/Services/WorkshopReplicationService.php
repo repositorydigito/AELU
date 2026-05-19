@@ -6,6 +6,7 @@ use App\Models\Holiday;
 use App\Models\MonthlyPeriod;
 use App\Models\Workshop;
 use App\Models\WorkshopClass;
+use App\Models\WorkshopTemplate;
 use Carbon\Carbon;
 
 class WorkshopReplicationService
@@ -38,6 +39,62 @@ class WorkshopReplicationService
         return [
             'workshops' => $createdWorkshops,
             'classes' => $createdClasses,
+        ];
+    }
+
+    /**
+     * Replicar talleres desde plantillas activas al siguiente período.
+     *
+     * @return array{workshops:int, classes:int, skipped:int}
+     */
+    public function replicateFromTemplates(MonthlyPeriod $next): array
+    {
+        $createdWorkshops = 0;
+        $createdClasses   = 0;
+        $skipped          = 0;
+
+        $templates = WorkshopTemplate::where('is_active', true)->get();
+
+        $existingNames = Workshop::where('monthly_period_id', $next->id)
+            ->pluck('name')
+            ->map(fn ($n) => strtolower($n))
+            ->toArray();
+
+        foreach ($templates as $template) {
+            if (in_array(strtolower($template->name), $existingNames)) {
+                $skipped++;
+                continue;
+            }
+
+            $workshop = Workshop::create([
+                'name'                         => $template->name,
+                'description'                  => $template->description,
+                'instructor_id'                => $template->instructor_id,
+                'standard_monthly_fee'         => $template->standard_monthly_fee,
+                'pricing_surcharge_percentage' => $template->pricing_surcharge_percentage,
+                'day_of_week'                  => $template->day_of_week,
+                'start_time'                   => $template->start_time,
+                'duration'                     => $template->duration,
+                'capacity'                     => $template->capacity,
+                'number_of_classes'            => $template->number_of_classes,
+                'place'                        => $template->place,
+                'modality'                     => $template->modality,
+                'additional_comments'          => $template->additional_comments,
+                'monthly_period_id'            => $next->id,
+                'workshop_template_id'         => $template->id,
+            ]);
+
+            $createdWorkshops++;
+
+            if ($next->auto_generate_classes) {
+                $createdClasses += $this->generateClassesForWorkshopAndPeriod($workshop, $next);
+            }
+        }
+
+        return [
+            'workshops' => $createdWorkshops,
+            'classes'   => $createdClasses,
+            'skipped'   => $skipped,
         ];
     }
 

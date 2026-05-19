@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\StudentEnrollment;
+use App\Models\WorkshopTemplate;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class StudentEnrollmentPolicy
+class WorkshopTemplatePolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class StudentEnrollmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_enrollment');
+        return $user->can('view_any_workshop::template');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, StudentEnrollment $studentEnrollment): bool
+    public function view(User $user, WorkshopTemplate $workshopTemplate): bool
     {
-        return $user->can('view_enrollment');
+        return $user->can('view_workshop::template');
     }
 
     /**
@@ -31,23 +31,23 @@ class StudentEnrollmentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_enrollment');
+        return $user->can('create_workshop::template');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, StudentEnrollment $studentEnrollment): bool
+    public function update(User $user, WorkshopTemplate $workshopTemplate): bool
     {
-        return $user->can('update_enrollment');
+        return $user->can('update_workshop::template');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, StudentEnrollment $studentEnrollment): bool
+    public function delete(User $user, WorkshopTemplate $workshopTemplate): bool
     {
-        return $user->can('delete_enrollment');
+        return $user->can('delete_workshop::template');
     }
 
     /**
@@ -55,15 +55,15 @@ class StudentEnrollmentPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_enrollment');
+        return $user->can('delete_any_workshop::template');
     }
 
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, StudentEnrollment $studentEnrollment): bool
+    public function forceDelete(User $user, WorkshopTemplate $workshopTemplate): bool
     {
-        return $user->can('force_delete_enrollment');
+        return $user->can('force_delete_workshop::template');
     }
 
     /**
@@ -71,15 +71,15 @@ class StudentEnrollmentPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_enrollment');
+        return $user->can('force_delete_any_workshop::template');
     }
 
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, StudentEnrollment $studentEnrollment): bool
+    public function restore(User $user, WorkshopTemplate $workshopTemplate): bool
     {
-        return $user->can('restore_enrollment');
+        return $user->can('restore_workshop::template');
     }
 
     /**
@@ -87,15 +87,15 @@ class StudentEnrollmentPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_enrollment');
+        return $user->can('restore_any_workshop::template');
     }
 
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, StudentEnrollment $studentEnrollment): bool
+    public function replicate(User $user, WorkshopTemplate $workshopTemplate): bool
     {
-        return $user->can('replicate_enrollment');
+        return $user->can('replicate_workshop::template');
     }
 
     /**
@@ -103,6 +103,6 @@ class StudentEnrollmentPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_enrollment');
+        return $user->can('reorder_workshop::template');
     }
 }

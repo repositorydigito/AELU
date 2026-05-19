@@ -40,6 +40,7 @@ $next->update(['enrollments_replicated_at' => null]);
 // Contar workshop_classes del período siguiente
 \App\Models\WorkshopClass::where('monthly_period_id', $next->id)->count();
 
+
 // Ver clases por status del período siguiente
 \App\Models\WorkshopClass::where('monthly_period_id', $next->id)
     ->selectRaw('status, COUNT(*) as total')

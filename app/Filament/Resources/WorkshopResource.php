@@ -99,6 +99,37 @@ class WorkshopResource extends Resource
 
                 Forms\Components\Section::make('Información del Taller')
                     ->schema([
+                        Forms\Components\Select::make('workshop_template_id')
+                            ->label('Plantilla')
+                            ->placeholder('Seleccionar plantilla (opcional)')
+                            ->options(fn () => \App\Models\WorkshopTemplate::where('is_active', true)->orderBy('name')->pluck('name', 'id'))
+                            ->searchable()
+                            ->nullable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if (! $state) {
+                                    return;
+                                }
+                                $template = \App\Models\WorkshopTemplate::find($state);
+                                if (! $template) {
+                                    return;
+                                }
+                                $set('name', $template->name);
+                                $set('instructor_id', $template->instructor_id);
+                                $set('standard_monthly_fee', $template->standard_monthly_fee);
+                                $set('pricing_surcharge_percentage', $template->pricing_surcharge_percentage);
+                                $set('number_of_classes', $template->number_of_classes);
+                                $set('day_of_week', $template->day_of_week);
+                                $set('start_time', $template->start_time);
+                                $set('duration', $template->duration);
+                                $set('capacity', $template->capacity);
+                                $set('modality', $template->modality);
+                                $set('place', $template->place);
+                                $set('additional_comments', $template->additional_comments);
+                                $set('schedule_data', []);
+                                $set('temp_start_date', null);
+                            })
+                            ->columnSpanFull(),
                         Forms\Components\Hidden::make('pricing_surcharge_percentage')
                             ->default(20),
                         Forms\Components\TextInput::make('name')
@@ -114,7 +145,12 @@ class WorkshopResource extends Resource
                             ->required(),
                         Forms\Components\Select::make('delegate_user_id')
                             ->label('Elegir delegado')
-                            ->options(\App\Models\User::role('Delegado')->pluck('name', 'id'))
+                            ->options(function () {
+                                if (! \Spatie\Permission\Models\Role::where('name', 'Delegado')->where('guard_name', 'web')->exists()) {
+                                    return [];
+                                }
+                                return \App\Models\User::role('Delegado')->pluck('name', 'id');
+                            })
                             ->searchable()
                             ->placeholder('Seleccionar delegado')
                             ->nullable(),
@@ -609,7 +645,8 @@ class WorkshopResource extends Resource
                                 $p->id => ($monthNames[$p->month] ?? 'Mes '.$p->month).' '.$p->year,
                             ]);
                     })
-                    ->searchable(),
+                    ->searchable()
+                    ->default(fn () => \App\Models\MonthlyPeriod::where('year', now()->year)->where('month', now()->month)->value('id')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

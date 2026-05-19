@@ -24,7 +24,7 @@ class EnrollmentBatchResource extends Resource
 
     protected static ?string $modelLabel = 'Inscripción';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
 
     protected static ?string $navigationGroup = 'Gestión';
 
