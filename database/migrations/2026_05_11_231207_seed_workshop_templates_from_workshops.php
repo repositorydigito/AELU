@@ -7,25 +7,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $existing = DB::table('workshop_templates')
-            ->pluck('name')
-            ->map(fn ($n) => strtolower($n))
-            ->toArray();
+        $mayPeriodId = DB::table('monthly_periods')
+            ->where('year', 2026)
+            ->where('month', 5)
+            ->value('id');
 
         $workshops = DB::table('workshops')
-            ->select('name', 'instructor_id', 'day_of_week', 'start_time', 'duration', 'capacity', 'modality', 'place')
+            ->select('name', 'instructor_id', 'day_of_week', 'start_time', 'duration', 'capacity', 'modality', 'place', 'standard_monthly_fee', 'pricing_surcharge_percentage', 'number_of_classes', 'additional_comments')
             ->whereNotNull('name')
+            ->where('monthly_period_id', $mayPeriodId)
             ->orderByDesc('id')
-            ->get()
-            ->unique(fn ($w) => strtolower(trim($w->name)));
+            ->get();
 
         $now = now();
 
         foreach ($workshops as $workshop) {
-            if (in_array(strtolower($workshop->name), $existing)) {
-                continue;
-            }
-
             DB::table('workshop_templates')->insert([
                 'name'                         => $workshop->name,
                 'instructor_id'                => $workshop->instructor_id,
@@ -36,10 +32,10 @@ return new class extends Migration
                 'modality'                     => $workshop->modality,
                 'place'                        => $workshop->place,
                 'description'                  => null,
-                'additional_comments'          => null,
-                'standard_monthly_fee'         => 60,
-                'number_of_classes'            => 4,
-                'pricing_surcharge_percentage' => 20,
+                'additional_comments'          => $workshop->additional_comments,
+                'standard_monthly_fee'         => $workshop->standard_monthly_fee,
+                'number_of_classes'            => $workshop->number_of_classes,
+                'pricing_surcharge_percentage' => $workshop->pricing_surcharge_percentage,
                 'is_active'                    => true,
                 'created_at'                   => $now,
                 'updated_at'                   => $now,
