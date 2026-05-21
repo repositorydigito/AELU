@@ -64,7 +64,10 @@ class EditWorkshop extends EditRecord
         }
 
         // Verificar si hay clases existentes
+        // Filtrar igual que mutateFormDataBeforeFill: solo scheduled/completed
+        // Las clases cancelled no están en scheduleData y causarían conflicto unique_class
         $existingClasses = $workshop->workshopClasses()
+            ->where('status', 'scheduled')
             ->orderBy('class_date', 'asc')
             ->get();
 

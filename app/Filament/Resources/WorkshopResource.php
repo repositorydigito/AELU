@@ -744,11 +744,28 @@ class WorkshopResource extends Resource
         $targetDays = array_map(fn ($day) => $dias[$day], $daysOfWeek);
         sort($targetDays);
 
-        // Ajustar al primer día válido
-        $firstTargetDay = $targetDays[0];
-        if ($start->dayOfWeek !== $firstTargetDay) {
-            $start->next($firstTargetDay);
+        // Ajustar al día objetivo más cercano a la fecha de inicio elegida
+        $currentDow = $start->dayOfWeek;
+        $bestDay = null;
+        $bestDiff = 7;
+        foreach ($targetDays as $targetDay) {
+            $diff = ($targetDay - $currentDow + 7) % 7;
+            if ($diff < $bestDiff) {
+                $bestDiff = $diff;
+                $bestDay = $targetDay;
+            }
         }
+
+        if ($bestDiff > 0) {
+            $start->addDays($bestDiff);
+        }
+
+        // Rotar targetDays para iterar desde el día más cercano
+        $startIndex = array_search($bestDay, $targetDays);
+        $targetDays = array_merge(
+            array_slice($targetDays, $startIndex),
+            array_slice($targetDays, 0, $startIndex)
+        );
 
         $current = $start->copy();
         $scheduledCount = 0;
