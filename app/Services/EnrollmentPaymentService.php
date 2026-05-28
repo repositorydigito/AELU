@@ -15,6 +15,7 @@ class EnrollmentPaymentService
     {
         return DB::transaction(function () use ($batch, $studentEnrollmentIds, $paymentMethod, $paymentDate, $notes) {
 
+            // 1. Validar que las inscripciones pertenezcan al batch
             $enrollments = StudentEnrollment::whereIn('id', $studentEnrollmentIds)
                 ->where('enrollment_batch_id', $batch->id)
                 ->get();
@@ -23,6 +24,7 @@ class EnrollmentPaymentService
                 throw new \Exception('Algunas inscripciones no pertenecen a este lote.');
             }
 
+            // 2. Validar que ninguna esté ya pagada o cancelada
             foreach ($enrollments as $enrollment) {
                 if ($enrollment->payment_status === 'completed') {
                     throw new \Exception("La inscripción {$enrollment->id} ya está pagada.");
@@ -32,8 +34,10 @@ class EnrollmentPaymentService
                 }
             }
 
+            // 3. Calcular el monto total a pagar
             $totalAmount = $enrollments->sum('total_amount');
 
+            // 4. Crear el registro de pago
             $payment = EnrollmentPayment::create([
                 'enrollment_batch_id' => $batch->id,
                 'amount' => $totalAmount,
@@ -43,12 +47,15 @@ class EnrollmentPaymentService
                 'notes' => $notes,
             ]);
 
+            // 5. Crear los items de pago y actualizar cada inscripción
             foreach ($enrollments as $enrollment) {
+                // Crear item de pago
                 $payment->paymentItems()->create([
                     'student_enrollment_id' => $enrollment->id,
                     'amount' => $enrollment->total_amount,
                 ]);
 
+                // Actualizar estado de la inscripción individual
                 $enrollment->update([
                     'payment_status' => 'completed',
                     'payment_method' => $paymentMethod,
@@ -56,11 +63,13 @@ class EnrollmentPaymentService
                 ]);
             }
 
+            // 6. Crear el ticket para este pago
             if (! Auth::check()) {
                 throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
             }
 
             if ($paymentMethod === 'link') {
+                // Para pagos por link, agregar el prefijo del usuario al código ingresado manualmente
                 $ticketCode = $this->generateTicketCodeForLink(Auth::id(), $batch->batch_code);
             } else {
                 $ticketCode = $this->generateTicketCode(Auth::id());
@@ -76,8 +85,10 @@ class EnrollmentPaymentService
                 'status' => 'active',
             ]);
 
+            // 7. Relacionar el ticket con las inscripciones pagadas
             $ticket->studentEnrollments()->attach($enrollments->pluck('id'));
 
+            // 8. Actualizar el batch
             $this->updateBatchStatus($batch);
 
             return $payment;
@@ -94,11 +105,14 @@ class EnrollmentPaymentService
             ->where('payment_status', 'completed')
             ->count();
 
+        // Actualizar campos legacy del batch
         $batch->amount_paid = $batch->total_paid;
 
+        // Si todas las inscripciones están pagadas, el batch está completo
         if ($totalEnrollments > 0 && $completedEnrollments === $totalEnrollments) {
             $batch->payment_status = 'completed';
 
+            // Actualizar con info del último pago
             $lastPayment = $batch->payments()->latest()->first();
             if ($lastPayment) {
                 $batch->payment_method = $lastPayment->payment_method;
@@ -107,8 +121,12 @@ class EnrollmentPaymentService
                 $batch->payment_registered_at = $lastPayment->registered_at;
             }
         } elseif ($completedEnrollments > 0) {
+            // Si hay PAGOS PARCIALES (algunas completed, otras pending)
+            // Cambiar a 'to_pay' para proteger del cronjob auto-cancel
             $batch->payment_status = 'to_pay';
         } else {
+            // Si NO hay ningún pago, mantener en 'pending'
+            // (estos sí serán cancelados por el cronjob)
             $batch->payment_status = 'pending';
         }
 
@@ -140,6 +158,7 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
+        // Contar solo los tickets que son pago en efectivo
         $lastTicketNumber = \App\Models\Ticket::whereHas('enrollmentPayment', function ($query) {
             $query->where('payment_method', 'cash');
         })
@@ -147,6 +166,7 @@ class EnrollmentPaymentService
             ->where('ticket_code', 'LIKE', $user->enrollment_code.'-%')
             ->get()
             ->map(function ($ticket) {
+                // Extraer el número del código (ej: de "002-000019" extraer 19)
                 $parts = explode('-', $ticket->ticket_code);
 
                 return isset($parts[1]) ? intval($parts[1]) : 0;
@@ -158,26 +178,26 @@ class EnrollmentPaymentService
         return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Genera el código de ticket para pagos por link
+     * Agrega el prefijo del usuario al código ingresado manualmente
+     *
+     * @param  int  $userId  ID del usuario
+     * @param  string  $manualCode  Código ingresado manualmente (ej: "B001-9827")
+     * @return string Código completo con prefijo (ej: "002-B001-9827")
+     */
     private function generateTicketCodeForLink(int $userId, string $manualCode): string
     {
+        $user = \App\Models\User::find($userId);
+
+        if (! $user || empty($user->enrollment_code)) {
+            throw new \Exception('El usuario no tiene código de inscripción configurado.');
+        }
+
+        // Limpiar espacios del código manual
         $manualCode = trim($manualCode);
 
-        $lastTicketNumber = \App\Models\Ticket::whereHas('enrollmentPayment', function ($query) {
-            $query->where('payment_method', 'link');
-        })
-            ->get()
-            ->filter(function ($ticket) {
-                $parts = explode('-', $ticket->ticket_code, 2);
-                return isset($parts[0]) && strlen($parts[0]) === 3 && ctype_digit($parts[0]);
-            })
-            ->map(function ($ticket) {
-                $parts = explode('-', $ticket->ticket_code, 2);
-                return isset($parts[0]) ? intval($parts[0]) : 0;
-            })
-            ->max();
-
-        $nextNumber = ($lastTicketNumber ?? 0) + 1;
-
-        return str_pad($nextNumber, 3, '0', STR_PAD_LEFT).'-'.$manualCode;
+        // Combinar el código del usuario con el código manual
+        return $user->enrollment_code.'-'.$manualCode;
     }
 }
