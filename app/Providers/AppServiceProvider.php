@@ -14,7 +14,11 @@ use App\Observers\InstructorWorkshopObserver;
 use App\Observers\StudentEnrollmentObserver;
 use App\Observers\StudentObserver;
 use App\Observers\WorkshopObserver;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\ServiceProvider;
+use TomatoPHP\FilamentUsers\Resources\UserResource\Form\UserForm;
+use TomatoPHP\FilamentUsers\Resources\UserResource\Table\UserTable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -37,5 +41,25 @@ class AppServiceProvider extends ServiceProvider
         Student::observe(StudentObserver::class);
         InstructorPayment::observe(InstructorPaymentObserver::class);
         InstructorWorkshop::observe(InstructorWorkshopObserver::class);
+
+        UserTable::register(
+            TextColumn::make('enrollment_code')
+                ->label('Código')
+                ->badge()
+                ->sortable()
+                ->searchable()
+                ->toggleable()
+                ->placeholder('—')
+        );
+
+        UserForm::register(
+            TextInput::make('enrollment_code')
+                ->label('Código de inscripción')
+                ->maxLength(3)
+                ->disabled()
+                ->dehydrated(false)
+                ->placeholder('Auto-generado')
+                ->helperText('Asignado automáticamente al crear el usuario.')
+        );
     }
 }

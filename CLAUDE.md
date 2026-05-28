@@ -85,6 +85,15 @@ php artisan pail
   - Payment type: `volunteer` (percentage of revenue) or `hourly` (fixed rate)
   - Has `custom_volunteer_percentage` to override defaults
 
+**User Model Management**
+- `enrollment_code`: código 3 dígitos auto-asignado al crear usuario (no aplica a rol `Delegado`)
+  - Secuencial, único, sirve como prefijo de todos los tickets emitidos por ese usuario
+  - Formato ticket cash: `{enrollment_code}-{6-digit-seq}` (ej: `002-000019`)
+  - Formato ticket link: `{enrollment_code}-{batch_code}`
+  - Lógica auto-generación: `app/Models/User.php` → `boot()` → evento `created`
+  - Consumido por: `app/Services/EnrollmentPaymentService.php` → `generateTicketCode()`, `generateTicketCodeForLink()`
+  - Docs detallados: `docs/user_model.md`
+
 **Student Management**
 - **Student** (`app/Models/Student.php`): Core student info with medical records
   - Has `maintenance_period_id` tracking membership dues status

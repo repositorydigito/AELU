@@ -645,8 +645,7 @@ class WorkshopResource extends Resource
                                 $p->id => ($monthNames[$p->month] ?? 'Mes '.$p->month).' '.$p->year,
                             ]);
                     })
-                    ->searchable()
-                    ->default(fn () => \App\Models\MonthlyPeriod::where('year', now()->year)->where('month', now()->month)->value('id')),
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -688,6 +687,7 @@ class WorkshopResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with(['monthlyPeriod', 'instructor'])
+            ->orderByDesc('monthly_period_id')
             ->addSelect([
                 'current_enrollments_count' => StudentEnrollment::selectRaw('COUNT(DISTINCT student_enrollments.student_id)')
                     ->join('instructor_workshops', 'student_enrollments.instructor_workshop_id', '=', 'instructor_workshops.id')
