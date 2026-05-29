@@ -12,14 +12,16 @@ use Illuminate\Support\Facades\DB;
 
 class AutoCancelPendingEnrollments extends Command
 {
-    protected $signature = 'enrollments:auto-cancel';
+    protected $signature = 'enrollments:auto-cancel {--force : Omitir verificaciones de fecha/hora y configuración}';
 
     protected $description = 'Automatically cancel pending enrollments on the configured day of each month';
 
     public function handle()
     {
+        $force = $this->option('force');
+
         $isEnabled = SystemSetting::get('auto_cancel_enabled', false);
-        if (! $isEnabled) {
+        if (! $isEnabled && ! $force) {
             $this->info('Auto-cancel is disabled. Skipping...');
             return;
         }
@@ -29,14 +31,18 @@ class AutoCancelPendingEnrollments extends Command
         $today = Carbon::now();
         $targetTime = Carbon::today()->setTimeFromTimeString($cancelTime);
 
-        if ($today->day !== $cancelDay) {
+        if (! $force && $today->day !== $cancelDay) {
             $this->info("Today is day {$today->day}, waiting for day {$cancelDay}");
             return;
         }
 
-        if ($today->lt($targetTime)) {
+        if (! $force && $today->lt($targetTime)) {
             $this->info("Current time {$today->format('H:i:s')} is before target time {$cancelTime}");
             return;
+        }
+
+        if ($force) {
+            $this->warn('Modo forzado activo — omitiendo verificaciones de fecha/hora y configuración.');
         }
 
         $this->info("Running auto-cancellation for day {$cancelDay} at {$today->format('H:i:s')}");

@@ -7,11 +7,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Día 19 — auto-cancel corre antes de replicar talleres
+        // Día 28 — auto-cancel corre antes de replicar talleres
         DB::table('system_settings')
             ->where('key', 'auto_cancel_day')
             ->update([
-                'value' => '14',
+                'value' => '28',
                 'description' => 'Día del mes para anular inscripciones pendientes (debe correr antes de workshops:auto-replicate)',
             ]);
 
@@ -19,7 +19,7 @@ return new class extends Migration
             ->where('key', 'auto_cancel_time')
             ->update(['value' => '23:59:59']);
 
-        // Día 20 — workshops:auto-replicate ya tenía el valor correcto, solo se actualiza la descripción
+        // Día 15 — workshops:auto-replicate ya tenía el valor correcto, solo se actualiza la descripción
         DB::table('system_settings')
             ->where('key', 'auto_generate_day')
             ->update([
@@ -31,7 +31,7 @@ return new class extends Migration
             ->where('key', 'auto_generate_time')
             ->update(['value' => '23:59:59']);
 
-        // Día 22 — enrollments:auto-generate corre 2 días después para dar tiempo al admin
+        // Día 21 — enrollments:auto-generate corre 2 días después para dar tiempo al admin
         DB::table('system_settings')
             ->where('key', 'auto_replicate_enrollments_day')
             ->update([
