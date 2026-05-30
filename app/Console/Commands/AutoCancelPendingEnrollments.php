@@ -47,29 +47,40 @@ class AutoCancelPendingEnrollments extends Command
 
         $this->info("Running auto-cancellation for day {$cancelDay} at {$today->format('H:i:s')}");
 
-        // Solo cancelar batches de períodos actuales o pasados (no futuros)
-        $currentPeriod = MonthlyPeriod::where('year', $today->year)
-            ->where('month', $today->month)
+        // Cancelar batches del mes siguiente (inscripciones de junio se generan antes de correr este comando)
+        $nextMonth = $today->copy()->addMonth();
+        $currentPeriod = MonthlyPeriod::where('year', $nextMonth->year)
+            ->where('month', $nextMonth->month)
             ->first();
 
         if (! $currentPeriod) {
-            $this->error('No monthly period found for current date. Aborting.');
+            $this->error("No monthly period found for {$nextMonth->format('Y-m')}. Aborting.");
             return;
         }
 
+        // Fecha límite: día configurado del mes actual (ej. 28 de mayo)
+        $cutoffDate = $today->copy()->setDay($cancelDay)->endOfDay();
+
+        $this->info("Cutoff date for cancellations 1: {$cutoffDate}");
+        $this->info("Cutoff date for cancellations 2: {$cutoffDate}");
+        $this->info("Cutoff date for cancellations 3: {$cutoffDate->toDateString()}");
+
+        $this->info("cutoffDate: {$cutoffDate->format('Y-m-d H:i:s')}, currentPeriod: {$currentPeriod->month}/{$currentPeriod->year}");
+
         // Anular lotes sin ningún pago
-        $this->cancelPendingBatches($currentPeriod->id);
+        $this->cancelPendingBatches($currentPeriod->id, $cutoffDate);
 
         // Anular solo las inscripciones sin pago dentro de lotes con pago parcial
-        $this->cancelUnpaidEnrollmentsInPartialBatches($currentPeriod->id);
+        $this->cancelUnpaidEnrollmentsInPartialBatches($currentPeriod->id, $cutoffDate);
     }
 
     /**
      * Anula completamente los lotes en estado 'pending' (sin ningún pago registrado).
      */
-    private function cancelPendingBatches(int $currentPeriodId): void
+    private function cancelPendingBatches(int $currentPeriodId, \Carbon\Carbon $cutoffDate): void
     {
         $batches = EnrollmentBatch::where('payment_status', 'pending')
+            ->where('updated_at', '<=', $cutoffDate)
             ->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', '<=', $currentPeriodId))
             ->with(['enrollments', 'student', 'tickets'])
             ->get();
@@ -139,9 +150,10 @@ class AutoCancelPendingEnrollments extends Command
      * Para lotes con pago parcial ('to_pay'), anula solo las inscripciones
      * que siguen sin pagar, dejando intactas las ya pagadas.
      */
-    private function cancelUnpaidEnrollmentsInPartialBatches(int $currentPeriodId): void
+    private function cancelUnpaidEnrollmentsInPartialBatches(int $currentPeriodId, \Carbon\Carbon $cutoffDate): void
     {
         $batches = EnrollmentBatch::where('payment_status', 'to_pay')
+            ->where('updated_at', '<=', $cutoffDate)
             ->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', '<=', $currentPeriodId))
             ->with(['enrollments.instructorWorkshop.workshop', 'student'])
             ->get();

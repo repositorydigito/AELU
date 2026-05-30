@@ -46,6 +46,7 @@ class EnrollmentBatchResource extends Resource
                 'enrollment_batches.payment_method',
                 'enrollment_batches.notes',
                 'enrollment_batches.updated_at',
+                'enrollment_batches.enrollment_date',
                 'enrollment_batches.created_at',
             ])
             // Subquery: nombres de talleres (reemplaza 2 queries: instructor_workshops + workshops)
@@ -326,9 +327,9 @@ class EnrollmentBatchResource extends Resource
                     ->formatStateUsing(fn (int $state): string => $state.($state === 1 ? ' Clase' : ' Clases'))
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                Tables\Columns\TextColumn::make('updated_at')
+                Tables\Columns\TextColumn::make('enrollment_date')
                     ->label('Fecha de Inscripción')
-                    ->dateTime('d/m/Y H:i'),
+                    ->date('d/m/Y'),
 
                 Tables\Columns\TextColumn::make('mes_inscripcion')
                     ->label('Mes')
@@ -338,7 +339,7 @@ class EnrollmentBatchResource extends Resource
                             return ucfirst(\Carbon\Carbon::create((int) $year, (int) $month, 1)->translatedFormat('F Y'));
                         }
 
-                        return ucfirst(\Carbon\Carbon::parse($record->updated_at)->translatedFormat('F Y'));
+                        return ucfirst(\Carbon\Carbon::parse($record->enrollment_date)->translatedFormat('F Y'));
                     }),
 
                 Tables\Columns\TextColumn::make('payment_status')
@@ -372,6 +373,10 @@ class EnrollmentBatchResource extends Resource
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Total')
                     ->prefix('S/'),
+
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Última Actualización')
+                    ->dateTime('d/m/Y H:i'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('created_by')
@@ -765,7 +770,7 @@ class EnrollmentBatchResource extends Resource
             ->bulkActions([
 
             ])
-            ->defaultSort('updated_at', 'desc')
+            ->defaultSort('enrollment_date', 'desc')
             ->paginated([10, 25, 50])
             ->defaultPaginationPageOption(25)
             ->deferLoading();
