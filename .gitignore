@@ -27,3 +27,5 @@ frankenphp
 frankenphp-worker.php
 rr
 .rr.yaml
+/package-lock.json
+/.claude/*

@@ -11,13 +11,13 @@ return new class extends Migration
         DB::table('system_settings')
             ->where('key', 'auto_cancel_day')
             ->update([
-                'value' => '28',
+                'value' => '29',
                 'description' => 'Día del mes para anular inscripciones pendientes (debe correr antes de workshops:auto-replicate)',
             ]);
 
         DB::table('system_settings')
             ->where('key', 'auto_cancel_time')
-            ->update(['value' => '23:59:59']);
+            ->update(['value' => '01:00:00']);
 
         // Día 15 — workshops:auto-replicate ya tenía el valor correcto, solo se actualiza la descripción
         DB::table('system_settings')
@@ -29,19 +29,19 @@ return new class extends Migration
 
         DB::table('system_settings')
             ->where('key', 'auto_generate_time')
-            ->update(['value' => '23:59:59']);
+            ->update(['value' => '01:00:00']);
 
         // Día 21 — enrollments:auto-generate corre 2 días después para dar tiempo al admin
         DB::table('system_settings')
             ->where('key', 'auto_replicate_enrollments_day')
             ->update([
-                'value' => '20',
+                'value' => '21',
                 'description' => 'Día del mes para replicar inscripciones al siguiente período. Debe correr después de que el admin cancele feriados en workshop_classes.',
             ]);
 
         DB::table('system_settings')
             ->where('key', 'auto_replicate_enrollments_time')
-            ->update(['value' => '23:59:59']);
+            ->update(['value' => '01:00:00']);
 
     }
 
