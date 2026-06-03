@@ -288,8 +288,8 @@ class EnrollmentBatchResource extends Resource
                         }
 
                         $details = $payments->map(function ($payment) {
-                            $user   = $payment->registered_by_name ?? 'Usuario desconocido';
-                            $date   = $payment->registered_at?->format('d/m/Y H:i') ?? '-';
+                            $user = $payment->registered_by_name ?? 'Usuario desconocido';
+                            $date = $payment->registered_at?->format('d/m/Y H:i') ?? '-';
                             $amount = 'S/ '.number_format($payment->amount, 2);
 
                             return "{$user} - {$date} - {$amount}";
@@ -336,6 +336,7 @@ class EnrollmentBatchResource extends Resource
                     ->getStateUsing(function ($record) {
                         if ($record->first_period_raw) {
                             [$year, $month] = explode('-', $record->first_period_raw, 2);
+
                             return ucfirst(\Carbon\Carbon::create((int) $year, (int) $month, 1)->translatedFormat('F Y'));
                         }
 
@@ -473,7 +474,7 @@ class EnrollmentBatchResource extends Resource
                         : 'Motivo de Anulación'
                     )
                     ->modalContent(function (EnrollmentBatch $record) {
-                        $reason     = $record->cancellation_reason ?: 'No se especificó motivo';
+                        $reason = $record->cancellation_reason ?: 'No se especificó motivo';
                         $reasonHtml = nl2br(e($reason));
 
                         // Lote con pago parcial: solo se anularon inscripciones sin pago
@@ -582,12 +583,12 @@ class EnrollmentBatchResource extends Resource
 
                             DB::transaction(function () use ($record, $data) {
                                 // Actualizar el estado del lote
-                                $newEntry = 'Anulación manual el ' . now()->format('d/m/Y H:i:s')
-                                    . ' por ' . auth()->user()->name . ':'
-                                    . "\n" . ($data['cancellation_reason'] ?? 'Sin motivo especificado');
+                                $newEntry = 'Anulación manual el '.now()->format('d/m/Y H:i:s')
+                                    .' por '.auth()->user()->name.':'
+                                    ."\n".($data['cancellation_reason'] ?? 'Sin motivo especificado');
 
                                 $cancellationReason = $record->cancellation_reason
-                                    ? $record->cancellation_reason . "\n\n---\n\n" . $newEntry
+                                    ? $record->cancellation_reason."\n\n---\n\n".$newEntry
                                     : $newEntry;
 
                                 $record->update([
@@ -656,15 +657,15 @@ class EnrollmentBatchResource extends Resource
                             Forms\Components\CheckboxList::make('selected_enrollments')
                                 ->label('Inscripciones a anular')
                                 ->options($pendingEnrollments->mapWithKeys(function ($enrollment) {
-                                    $iw       = $enrollment->instructorWorkshop;
-                                    $name     = $iw->workshop->name ?? 'N/A';
-                                    $days     = is_array($iw->day_of_week)
+                                    $iw = $enrollment->instructorWorkshop;
+                                    $name = $iw->workshop->name ?? 'N/A';
+                                    $days = is_array($iw->day_of_week)
                                                     ? implode('/', $iw->day_of_week)
                                                     : ($iw->day_of_week ?? 'N/A');
-                                    $start    = $iw->start_time
+                                    $start = $iw->start_time
                                                     ? \Carbon\Carbon::parse($iw->start_time)->format('H:i')
                                                     : 'N/A';
-                                    $end      = $iw->end_time
+                                    $end = $iw->end_time
                                                     ? \Carbon\Carbon::parse($iw->end_time)->format('H:i')
                                                     : 'N/A';
                                     $modality = $iw->workshop->modality ?? 'N/A';
@@ -687,6 +688,7 @@ class EnrollmentBatchResource extends Resource
                                 ->body('Debe seleccionar al menos una inscripción.')
                                 ->danger()
                                 ->send();
+
                             return;
                         }
 
@@ -700,10 +702,10 @@ class EnrollmentBatchResource extends Resource
 
                                 foreach ($enrollments as $enrollment) {
                                     $enrollment->update([
-                                        'payment_status'       => 'refunded',
-                                        'cancelled_at'         => now(),
+                                        'payment_status' => 'refunded',
+                                        'cancelled_at' => now(),
                                         'cancelled_by_user_id' => auth()->id(),
-                                        'cancellation_reason'  => $data['cancellation_reason'] ?? null,
+                                        'cancellation_reason' => $data['cancellation_reason'] ?? null,
                                     ]);
                                 }
 
@@ -711,16 +713,16 @@ class EnrollmentBatchResource extends Resource
                                 $newTotal = $record->enrollments()->whereNull('cancelled_at')->sum('total_amount');
 
                                 // Concatenar motivo en el historial del lote
-                                $newEntry = 'Anulación manual de pendientes el ' . now()->format('d/m/Y H:i:s')
-                                    . ' por ' . auth()->user()->name . ':'
-                                    . "\n" . ($data['cancellation_reason'] ?? 'Sin motivo especificado');
+                                $newEntry = 'Anulación manual de pendientes el '.now()->format('d/m/Y H:i:s')
+                                    .' por '.auth()->user()->name.':'
+                                    ."\n".($data['cancellation_reason'] ?? 'Sin motivo especificado');
 
                                 $cancellationReason = $record->cancellation_reason
-                                    ? $record->cancellation_reason . "\n\n---\n\n" . $newEntry
+                                    ? $record->cancellation_reason."\n\n---\n\n".$newEntry
                                     : $newEntry;
 
                                 $record->update([
-                                    'total_amount'        => $newTotal,
+                                    'total_amount' => $newTotal,
                                     'cancellation_reason' => $cancellationReason,
                                 ]);
 
@@ -770,7 +772,7 @@ class EnrollmentBatchResource extends Resource
             ->bulkActions([
 
             ])
-            ->defaultSort('enrollment_date', 'desc')
+            ->defaultSort('updated_at', 'desc')
             ->paginated([10, 25, 50])
             ->defaultPaginationPageOption(25)
             ->deferLoading();
