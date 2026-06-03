@@ -19,6 +19,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\View;
+use Livewire\Attributes\Url;
 
 class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
 {
@@ -31,13 +32,20 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
+    #[Url(as: 'period')]
     public $selectedMonthlyPeriodId = null;
     public $allInstructorPayments = [];
     public $totalAmount = 0;
 
     public function mount(): void
     {
-        $this->form->fill();
+        $this->form->fill([
+            'monthly_period_id' => $this->selectedMonthlyPeriodId,
+        ]);
+
+        if ($this->selectedMonthlyPeriodId) {
+            $this->loadAllInstructorPayments();
+        }
     }
 
     public function form(Form $form): Form

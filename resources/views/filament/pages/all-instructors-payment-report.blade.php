@@ -48,28 +48,26 @@
             <x-slot name="heading">
                 Voluntarios
             </x-slot>
-            <div class="overflow-x-auto">
+            <div class="overflow-auto max-h-[75vh]">
                 <table class="w-full table-auto text-sm">
                     <thead>
-                        <tr class="bg-gray-50 dark:bg-gray-800">
-                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Taller</th>
-                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Horario</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Inscritos</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Cant. por categoría</th>
-                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Monto por categoría</th>
-                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Tarifa Mensual</th>
-                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Ingresos del Taller</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">%</th>
-                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Monto a Pagar</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Estado</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Recibo</th>
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Taller</th>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Horario</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Inscritos</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Tarifa Mensual</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Ingresos del Taller</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">%</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Monto a Pagar</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Estado</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Recibo</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($allInstructorPayments['volunteer'] as $instructor)
                             {{-- Fila agrupadora del instructor --}}
                             <tr class="bg-purple-50 dark:bg-purple-900/20">
-                                <td colspan="11" class="px-3 py-2 font-semibold text-purple-800 dark:text-purple-300">
+                                <td colspan="9" class="px-3 py-2 font-semibold text-purple-800 dark:text-purple-300">
                                     {{ $instructor['instructor_name'] }}
                                 </td>
                             </tr>
@@ -96,36 +94,6 @@
                                     @endphp
                                     @if(!empty($parts))
                                         <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ implode(' | ', $parts) }}</div>
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2 text-center text-xs text-gray-600 dark:text-gray-300">
-                                    @php
-                                        $categoryBreakdown = $workshop['students_by_category'] ?? [];
-                                        $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
-                                        $categoryCounts = [];
-                                        $categoryAmountValues = [];
-                                        foreach ($categoryBreakdown as $category => $count) {
-                                            if ($count > 0) {
-                                                $categoryCounts[] = $count;
-                                                $categoryAmountValues[] = 'S/ ' . number_format((float) ($categoryAmounts[$category] ?? 0), 2);
-                                            }
-                                        }
-                                    @endphp
-                                    @if(!empty($categoryCounts))
-                                        @foreach($categoryCounts as $count)
-                                            <div>{{ $count }}</div>
-                                        @endforeach
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2 text-right text-xs text-gray-600 dark:text-gray-300">
-                                    @if(!empty($categoryAmountValues))
-                                        @foreach($categoryAmountValues as $amountValue)
-                                            <div>{{ $amountValue }}</div>
-                                        @endforeach
-                                    @else
-                                        —
                                     @endif
                                 </td>
                                 <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">S/ {{ number_format($workshop['standard_fee'], 2) }}</td>
@@ -147,7 +115,7 @@
                             @endforeach
                             {{-- Subtotal del instructor --}}
                             <tr class="bg-purple-50/50 dark:bg-purple-900/10 border-t border-purple-200 dark:border-purple-800">
-                                <td colspan="8" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
+                                <td colspan="6" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
                                     Subtotal {{ $instructor['instructor_name'] }}:
                                 </td>
                                 <td class="px-3 py-2 text-right font-bold text-purple-700 dark:text-purple-300">
@@ -160,7 +128,7 @@
                     </tbody>
                     <tfoot>
                         <tr class="bg-purple-100 dark:bg-purple-900/40 font-bold border-t-2 border-purple-300">
-                            <td colspan="8" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL VOLUNTARIOS:</td>
+                            <td colspan="6" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL VOLUNTARIOS:</td>
                             <td class="px-3 py-3 text-right text-purple-700 dark:text-purple-300">S/ {{ number_format($totalAmount['volunteer'], 2) }}</td>
                             <td></td>
                             <td></td>
@@ -177,28 +145,26 @@
             <x-slot name="heading">
                 Por Horas
             </x-slot>
-            <div class="overflow-x-auto">
+            <div class="overflow-auto max-h-[75vh]">
                 <table class="w-full table-auto text-sm">
                     <thead>
-                        <tr class="bg-gray-50 dark:bg-gray-800">
-                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Taller</th>
-                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400">Horario</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Inscritos</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Cant. por categoría</th>
-                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Monto por categoría</th>
-                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Tarifa Mensual</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Horas</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Tarifa/hora</th>
-                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400">Monto a Pagar</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Estado</th>
-                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400">Recibo</th>
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Taller</th>
+                            <th class="px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Horario</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Inscritos</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Tarifa Mensual</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Horas</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Tarifa/hora</th>
+                            <th class="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Monto a Pagar</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Estado</th>
+                            <th class="px-3 py-2 text-center font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">Recibo</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($allInstructorPayments['hourly'] as $instructor)
                             {{-- Fila agrupadora del instructor --}}
                             <tr class="bg-green-50 dark:bg-green-900/20">
-                                <td colspan="11" class="px-3 py-2 font-semibold text-green-800 dark:text-green-300">
+                                <td colspan="9" class="px-3 py-2 font-semibold text-green-800 dark:text-green-300">
                                     {{ $instructor['instructor_name'] }}
                                 </td>
                             </tr>
@@ -227,36 +193,6 @@
                                         <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ implode(' | ', $parts) }}</div>
                                     @endif
                                 </td>
-                                <td class="px-3 py-2 text-center text-xs text-gray-600 dark:text-gray-300">
-                                    @php
-                                        $categoryBreakdown = $workshop['students_by_category'] ?? [];
-                                        $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
-                                        $categoryCounts = [];
-                                        $categoryAmountValues = [];
-                                        foreach ($categoryBreakdown as $category => $count) {
-                                            if ($count > 0) {
-                                                $categoryCounts[] = $count;
-                                                $categoryAmountValues[] = 'S/ ' . number_format((float) ($categoryAmounts[$category] ?? 0), 2);
-                                            }
-                                        }
-                                    @endphp
-                                    @if(!empty($categoryCounts))
-                                        @foreach($categoryCounts as $count)
-                                            <div>{{ $count }}</div>
-                                        @endforeach
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2 text-right text-xs text-gray-600 dark:text-gray-300">
-                                    @if(!empty($categoryAmountValues))
-                                        @foreach($categoryAmountValues as $amountValue)
-                                            <div>{{ $amountValue }}</div>
-                                        @endforeach
-                                    @else
-                                        —
-                                    @endif
-                                </td>
                                 <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">S/ {{ number_format($workshop['standard_fee'], 2) }}</td>
                                 <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ number_format($workshop['hours_worked'], 1) }}</td>
                                 <td class="px-3 py-2 text-center text-green-600 dark:text-green-400 font-medium">S/ {{ number_format($workshop['hourly_rate'], 2) }}</td>
@@ -276,7 +212,7 @@
                             @endforeach
                             {{-- Subtotal del instructor --}}
                             <tr class="bg-green-50/50 dark:bg-green-900/10 border-t border-green-200 dark:border-green-800">
-                                <td colspan="8" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
+                                <td colspan="6" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">
                                     Subtotal {{ $instructor['instructor_name'] }}:
                                 </td>
                                 <td class="px-3 py-2 text-right font-bold text-green-700 dark:text-green-300">
@@ -289,7 +225,7 @@
                     </tbody>
                     <tfoot>
                         <tr class="bg-green-100 dark:bg-green-900/40 font-bold border-t-2 border-green-300">
-                            <td colspan="8" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL POR HORAS:</td>
+                            <td colspan="6" class="px-3 py-3 text-right text-gray-900 dark:text-white">TOTAL POR HORAS:</td>
                             <td class="px-3 py-3 text-right text-green-700 dark:text-green-300">S/ {{ number_format($totalAmount['hourly'], 2) }}</td>
                             <td></td>
                             <td></td>

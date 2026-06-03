@@ -28,12 +28,12 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             foreach ($this->groupedPayments[$type] ?? [] as $instructor) {
                 foreach ($instructor['workshops'] as $workshop) {
                     $rows->push([
-                        'tipo'             => $typeLabel,
-                        'instructor'       => $instructor['instructor_name'],
-                        'taller'           => $workshop['workshop_name'],
-                        'horario'          => $workshop['schedule'],
-                        'alumnos'          => $workshop['total_students'],
-                        'cantidad_categoria'=> (function ($categoryBreakdown) {
+                        'tipo' => $typeLabel,
+                        'instructor' => $instructor['instructor_name'],
+                        'taller' => $workshop['workshop_name'],
+                        'horario' => $workshop['schedule'],
+                        'alumnos' => $workshop['total_students'],
+                        'cantidad_categoria' => (function ($categoryBreakdown) {
                             $parts = [];
                             foreach ($categoryBreakdown as $count) {
                                 if ($count > 0) {
@@ -43,34 +43,35 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
 
                             return implode(' | ', $parts);
                         })($workshop['students_by_category'] ?? []),
-                        'monto_categoria'=> (function ($categoryBreakdown, $categoryAmounts) {
+                        'monto_categoria' => (function ($categoryBreakdown, $categoryAmounts) {
                             $parts = [];
                             foreach ($categoryBreakdown as $category => $count) {
                                 if ($count > 0) {
-                                    $parts[] = 'S/ ' . number_format((float) ($categoryAmounts[$category] ?? 0), 2);
+                                    $parts[] = 'S/ '.number_format((float) ($categoryAmounts[$category] ?? 0), 2);
                                 }
                             }
 
                             return implode(' | ', $parts);
                         })($workshop['students_by_category'] ?? [], $workshop['unit_amount_by_category'] ?? []),
-                        'detalle_clases'   => (function ($breakdown) {
+                        'detalle_clases' => (function ($breakdown) {
                             $parts = [];
                             foreach ($breakdown as $n => $count) {
                                 if ($count > 0) {
-                                    $parts[] = ($n > 0 ? $n . 'c' : '?c') . ':' . $count;
+                                    $parts[] = ($n > 0 ? $n.'c' : '?c').':'.$count;
                                 }
                             }
+
                             return implode(' | ', $parts);
                         })($workshop['students_by_classes'] ?? []),
-                        'tarifa_mensual'   => $workshop['standard_fee'] ?? 0,
-                        'ingresos'         => $workshop['monthly_revenue'],
-                        'tasa'             => $type === 'volunteer'
+                        'tarifa_mensual' => $workshop['standard_fee'] ?? 0,
+                        'ingresos' => $workshop['monthly_revenue'],
+                        'tasa' => $type === 'volunteer'
                                                 ? number_format($workshop['volunteer_percentage'] ?? 0, 1).'%'
                                                 : 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr',
-                        'horas'            => $type === 'hourly' ? ($workshop['hours_worked'] ?? 0) : '-',
-                        'monto'            => $workshop['amount'],
-                        'estado'           => $workshop['payment_status'],
-                        'recibo'           => $workshop['document_number'] ?? '',
+                        'horas' => $type === 'hourly' ? ($workshop['hours_worked'] ?? 0) : '-',
+                        'monto' => $workshop['amount'],
+                        'estado' => $workshop['payment_status'],
+                        'recibo' => $workshop['document_number'] ?? '',
                     ]);
                 }
             }
@@ -87,8 +88,6 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             'Taller',
             'Horario',
             'N° Alumnos',
-            'Cant. por Categoría',
-            'Monto por Categoría',
             'Detalle Clases',
             'Tarifa Mensual (S/)',
             'Ingresos (S/)',
@@ -108,8 +107,6 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             $row['taller'],
             $row['horario'],
             $row['alumnos'],
-            $row['cantidad_categoria'],
-            $row['monto_categoria'],
             $row['detalle_clases'],
             number_format($row['tarifa_mensual'], 2),
             number_format($row['ingresos'], 2),
@@ -124,25 +121,25 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
     public function styles(Worksheet $sheet)
     {
         $total = collect($this->groupedPayments['volunteer'] ?? [])
-                    ->concat($this->groupedPayments['hourly'] ?? [])
-                    ->sum(fn ($i) => count($i['workshops']));
+            ->concat($this->groupedPayments['hourly'] ?? [])
+            ->sum(fn ($i) => count($i['workshops']));
 
         return [
             1 => [
                 'font' => [
-                    'bold'  => true,
+                    'bold' => true,
                     'color' => ['rgb' => 'FFFFFF'],
                 ],
                 'fill' => [
-                    'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
                     'startColor' => ['rgb' => '4F46E5'],
                 ],
             ],
-            'A1:O'.($total + 1) => [
+            'A1:M'.($total + 1) => [
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                        'color'       => ['rgb' => 'CCCCCC'],
+                        'color' => ['rgb' => 'CCCCCC'],
                     ],
                 ],
             ],
