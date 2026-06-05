@@ -196,16 +196,15 @@ class WorkshopResource extends Resource
                                             return;
                                         }
 
-                                        // Obtener el número actual de inscripciones activas
+                                        // Proteger cupos de inscritos con pago confirmado o parcial
                                         $currentEnrollments = $workshop->enrollments()
                                             ->where('monthly_period_id', $workshop->monthly_period_id)
-                                            ->whereIn('payment_status', ['completed', 'pending'])
-                                            ->distinct('student_id')
-                                            ->count();
+                                            ->whereIn('payment_status', ['completed', 'to_pay'])
+                                            ->distinct()
+                                            ->count('student_id');
 
-                                        // Si hay inscripciones y la nueva capacidad es menor
-                                        if ($currentEnrollments > 0 && $value < $currentEnrollments) {
-                                            $fail("No puedes reducir los cupos a {$value} porque actualmente hay {$currentEnrollments} estudiantes inscritos en este taller. Debes cancelar inscripciones primero o establecer una capacidad de al menos {$currentEnrollments} cupos.");
+                                        if ($value < $currentEnrollments) {
+                                            $fail("No puedes reducir los cupos a {$value} porque actualmente hay {$currentEnrollments} estudiantes con pago confirmado o parcial en este taller. Establece una capacidad de al menos {$currentEnrollments} cupos.");
                                         }
                                     };
                                 },
@@ -214,14 +213,33 @@ class WorkshopResource extends Resource
                                 // Mostrar información de inscripciones actuales al editar
                                 if ($livewire instanceof \Filament\Resources\Pages\EditRecord && $livewire->record) {
                                     $workshop = $livewire->record;
-                                    $currentEnrollments = $workshop->enrollments()
+                                    $completedEnrollments = $workshop->enrollments()
                                         ->where('monthly_period_id', $workshop->monthly_period_id)
-                                        ->whereIn('payment_status', ['completed', 'pending'])
-                                        ->distinct('student_id')
-                                        ->count();
+                                        ->where('payment_status', 'completed')
+                                        ->distinct()
+                                        ->count('student_id');
 
-                                    if ($currentEnrollments > 0) {
-                                        return "⚠️ Actualmente hay {$currentEnrollments} estudiantes inscritos. No puedes reducir los cupos por debajo de este número.";
+                                    $toPayEnrollments = $workshop->enrollments()
+                                        ->where('monthly_period_id', $workshop->monthly_period_id)
+                                        ->where('payment_status', 'to_pay')
+                                        ->distinct()
+                                        ->count('student_id');
+
+                                    $pendingEnrollments = $workshop->enrollments()
+                                        ->where('monthly_period_id', $workshop->monthly_period_id)
+                                        ->where('payment_status', 'pending')
+                                        ->distinct()
+                                        ->count('student_id');
+
+                                    if ($completedEnrollments > 0 || $toPayEnrollments > 0 || $pendingEnrollments > 0) {
+                                        $minimum = $completedEnrollments + $toPayEnrollments;
+                                        $parts = [];
+                                        $parts[] = "{$completedEnrollments} pagados";
+                                        if ($toPayEnrollments > 0) {
+                                            $parts[] = "{$toPayEnrollments} con pago parcial";
+                                        }
+                                        $parts[] = "{$pendingEnrollments} pendientes";
+                                        return '⚠️ ' . implode(', ', $parts) . ". No puedes reducir los cupos por debajo de {$minimum}.";
                                     }
                                 }
 
@@ -607,9 +625,8 @@ class WorkshopResource extends Resource
                     ->label('Cupos Actuales')
                     ->getStateUsing(function (Workshop $record) {
                         $enrolled = $record->current_enrollments_count ?? 0;
-                        $available = max(0, $record->capacity - $enrolled);
 
-                        return "{$available}/{$record->capacity}";
+                        return "{$enrolled}/{$record->capacity}";
                     })
                     ->badge()
                     ->color(function (Workshop $record) {
@@ -656,6 +673,27 @@ class WorkshopResource extends Resource
                     ->color('info')
                     ->modalHeading(fn (Workshop $record) => "Tarifas de {$record->name}")
                     ->modalContent(fn (Workshop $record) => view('filament.resources.workshop-resource.pricing-modal', compact('record')))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar'),
+                Tables\Actions\Action::make('view_enrolled')
+                    ->label('Ver Inscritos')
+                    ->icon('heroicon-o-users')
+                    ->color('success')
+                    ->modalHeading(function (Workshop $record) {
+                        $enrolled = $record->current_enrollments_count ?? 0;
+                        return "Inscritos en {$record->name} — {$enrolled}/{$record->capacity}";
+                    })
+                    ->modalContent(function (Workshop $record) {
+                        $students = StudentEnrollment::query()
+                            ->whereHas('instructorWorkshop', fn ($q) => $q->where('workshop_id', $record->id))
+                            ->where('monthly_period_id', $record->monthly_period_id)
+                            ->whereIn('payment_status', ['completed', 'pending'])
+                            ->with('student')
+                            ->orderByRaw("FIELD(payment_status, 'completed', 'pending')")
+                            ->get();
+
+                        return view('filament.resources.workshop-resource.enrolled-students-modal', compact('record', 'students'));
+                    })
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar'),
             ])

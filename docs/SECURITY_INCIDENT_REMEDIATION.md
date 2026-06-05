@@ -23,7 +23,7 @@ El servidor de producción tiene:
 
 ```bash
 # Conectar con credenciales del .env
-mysql -u root -p$(grep DB_PASSWORD /var/www/AELU/.env | cut -d= -f2) aelu_db
+mysql -u root -p$(grep DB_PASSWORD /var/www/projects/aelu/.env | cut -d= -f2) aelu_db
 
 # Dentro de MySQL, ver los jobs (verificar antes de borrar):
 SELECT id, queue, LEFT(payload, 200) FROM jobs;
@@ -34,14 +34,6 @@ TRUNCATE TABLE jobs;
 TRUNCATE TABLE failed_jobs;
 SELECT COUNT(*) FROM jobs; -- debe ser 0
 exit;
-```
-
-**Si el dump `aelu_db.sql` existe en el servidor**, también tiene los jobs maliciosos. Limpiarlos del dump:
-```bash
-# En el servidor donde esté el dump:
-grep -n "INSERT INTO.*\`jobs\`" /var/www/AELU/aelu_db.sql
-# Anota las líneas y elimínalas con sed:
-# sed -i 'LINEA_INICIO,LINEA_FINd' /var/www/AELU/aelu_db.sql
 ```
 
 ---
@@ -121,14 +113,14 @@ crontab -r
 
 ```bash
 # Eliminar web shells
-rm -f /var/www/AELU/public/build/fonts.php
-rm -f /var/www/AELU/public/storage/fonts.php
-rm -f /var/www/AELU/public/build/img.php
-rm -f /var/www/AELU/public/storage/img.php
+rm -f /var/www/projects/aelu/public/build/fonts.php
+rm -f /var/www/projects/aelu/public/storage/fonts.php
+rm -f /var/www/projects/aelu/public/build/img.php
+rm -f /var/www/projects/aelu/public/storage/img.php
 
 # Verificar que no quedan .php sospechosos en public/
-find /var/www/AELU/public -name "*.php" -type f
-# Solo debe aparecer: /var/www/AELU/public/index.php
+find /var/www/projects/aelu/public -name "*.php" -type f
+# Solo debe aparecer: /var/www/projects/aelu/public/index.php
 ```
 
 ---
@@ -160,7 +152,7 @@ grep -E "fonts\.php|img\.php" /var/log/apache2/access.log 2>/dev/null | tail -50
 grep -E "POST.*(fonts|img)\.php" /var/log/nginx/access.log 2>/dev/null
 
 # Ver logs de Laravel en el período del compromiso
-grep -E "error|critical|emergency" /var/www/AELU/storage/logs/laravel.log | tail -100
+grep -E "error|critical|emergency" /var/www/projects/aelu/storage/logs/laravel.log | tail -100
 ```
 
 Guarda las IPs de los atacantes para reportar o bloquear.
@@ -231,7 +223,7 @@ crontab -l | grep -E 'rc-local|cache-sync'
 ls /root/.cache/.fontconfig 2>/dev/null && echo "AÚN EXISTE" || echo "OK - eliminado"
 
 # 5. Sin backdoors en public/
-find /var/www/AELU/public -name "*.php" | grep -v "^/var/www/AELU/public/index.php"
+find /var/www/projects/aelu/public -name "*.php" | grep -v "^/var/www/projects/aelu/public/index.php"
 # Debe estar vacío
 
 # 6. Solo conexiones legítimas
@@ -261,7 +253,7 @@ git log --format="%H %ad %s" --date=short composer.lock | grep "2024-08"
 git show <HASH>:composer.lock | grep -E '"laravel/framework"|"filament/filament"'
 
 # Buscar en el código uploads sin validación de tipo
-grep -r "store\|upload\|move" /var/www/AELU/app --include="*.php" | grep -v "vendor"
+grep -r "store\|upload\|move" /var/www/projects/aelu/app --include="*.php" | grep -v "vendor"
 ```
 
 Revisar si `public/storage` acepta uploads directos sin validar extensión MIME.

@@ -168,9 +168,9 @@ class Workshop extends Model
         // Contar inscripciones activas para este período
         $currentEnrollments = $this->enrollments()
             ->where('monthly_period_id', $monthlyPeriodId)
-            ->whereIn('payment_status', ['completed', 'pending'])
-            ->distinct('student_id')
-            ->count();
+            ->whereIn('payment_status', ['completed', 'pending', 'to_pay'])
+            ->distinct()
+            ->count('student_id');
 
         return max(0, $totalCapacity - $currentEnrollments);
     }
@@ -191,9 +191,9 @@ class Workshop extends Model
         $totalCapacity = $this->capacity;
         $currentEnrollments = $this->enrollments()
             ->where('monthly_period_id', $monthlyPeriodId)
-            ->whereIn('payment_status', ['completed', 'pending'])
-            ->distinct('student_id')
-            ->count();
+            ->whereIn('payment_status', ['completed', 'pending', 'to_pay'])
+            ->distinct()
+            ->count('student_id');
 
         $availableSpots = max(0, $totalCapacity - $currentEnrollments);
 

@@ -7,7 +7,6 @@ El proyecto requiere PHP 8.3+ debido a la dependencia `openspout/openspout ^4.30
 ### Extensiones actuales en PHP 8.2 (verificadas)
 
 - curl, gd, intl, mbstring, mysqli, pdo_mysql, xml, zip
-- **Faltante:** pdo_sqlite (requerida por `calebporzio/sushi`)
 
 ---
 
@@ -32,7 +31,6 @@ sudo apt-get install -y \
   php8.3-intl \
   php8.3-mbstring \
   php8.3-mysql \
-  php8.3-sqlite3 \
   php8.3-xml \
   php8.3-zip \
   php8.3-opcache
@@ -42,7 +40,7 @@ sudo apt-get install -y \
 
 ```bash
 php8.3 --version
-php8.3 -m | grep -E "pdo_mysql|pdo_sqlite|mbstring|xml|curl|zip|gd|intl"
+php8.3 -m | grep -E "pdo_mysql|mbstring|xml|curl|zip|gd|intl"
 ```
 
 ### 4. Cambiar versión activa de PHP (CLI)
@@ -120,7 +118,6 @@ php artisan about
 ## Checklist de validación post-migración
 
 - [ ] `php --version` muestra 8.3.x
-- [ ] `php -m | grep pdo_sqlite` devuelve resultado
 - [ ] `php -m | grep pdo_mysql` devuelve resultado
 - [ ] `composer install` sin errores
 - [ ] `php artisan about` sin errores
@@ -135,6 +132,11 @@ php artisan about
 ## Notas
 
 - El servidor actualmente tiene PHP **8.2.30** con OPcache habilitado.
-- `pdo_sqlite` no está instalada en PHP 8.2 actual — debe instalarse en 8.3.
 - `openspout ^4.30` requiere PHP ~8.3.0 || ~8.4.0 (incompatible con 8.2).
-- `calebporzio/sushi ^2.5` (usado por filament-log-viewer) requiere `ext-pdo_sqlite`.
+
+
+## Elminar una migracion para volver a ejecutarlo
+
+``````
+DB::table('migrations')->where('migration', '2026_04_28_000000_update_system_settings_schedule_days')->delete();
+````````

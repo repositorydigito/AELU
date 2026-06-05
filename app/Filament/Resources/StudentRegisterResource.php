@@ -613,6 +613,7 @@ class StudentRegisterResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('last_names', 'asc')
             ->columns([
                 TextColumn::make('last_names')
                     ->label('Apellidos')
