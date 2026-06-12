@@ -2,7 +2,6 @@
     <style>
         .ipr-row-odd  { background-color: #f0fdf4; }
         .ipr-row-even { background-color: transparent; }
-        .ipr-row-odd:hover, .ipr-row-even:hover { background-color: #dcfce7; }
         .ipr-instructor-header { background-color: #bbf7d0; }
         .ipr-instructor-header td { color: #166534; font-weight: 600; }
     </style>
@@ -87,10 +86,12 @@
                                     </td>
                                 </tr>
                                 {{-- 2. Filas de talleres del instructor --}}
+                                @php $schedGroupIdx = 0; @endphp
                                 @foreach($instructor['workshops'] as $workshop)
-                                <tr class="{{ $loop->odd ? 'ipr-row-odd' : 'ipr-row-even' }}">
-                                    @if(($workshop['name_rowspan'] ?? 1) > 0)
-                                    <td class="px-3 py-2 pl-6 text-gray-900 dark:text-white align-middle" rowspan="{{ $workshop['name_rowspan'] }}">{{ $workshop['workshop_name'] }}</td>
+                                @php if (($workshop['schedule_rowspan'] ?? 0) > 0) $schedGroupIdx++; @endphp
+                                <tr class="{{ $schedGroupIdx % 2 === 1 ? 'ipr-row-odd' : 'ipr-row-even' }}">
+                                    @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                                    <td class="px-3 py-2 pl-6 text-gray-900 dark:text-white align-middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['workshop_name'] }}</td>
                                     @endif
                                     @if(($workshop['schedule_rowspan'] ?? 1) > 0)
                                     <td class="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs align-middle" rowspan="{{ $workshop['schedule_rowspan'] }}">
@@ -107,9 +108,15 @@
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-300">S/ {{ number_format($workshop['standard_fee'], 2) }}</td>
-                                    <td class="px-3 py-2 text-right text-gray-900 dark:text-white">S/ {{ number_format($workshop['monthly_revenue'], 2) }}</td>
-                                    <td class="px-3 py-2 text-center text-purple-600 dark:text-purple-400 font-medium">{{ number_format($workshop['volunteer_percentage'], 0) }}%</td>
-                                    <td class="px-3 py-2 text-right font-semibold text-purple-600 dark:text-purple-400">S/ {{ number_format($workshop['amount'], 2) }}</td>
+                                    @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                                    <td class="px-3 py-2 text-right text-gray-900 dark:text-white align-middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'], 2) }}</td>
+                                    @endif
+                                    @if(($workshop['instructor_pct_rowspan'] ?? 0) > 0)
+                                    <td class="px-3 py-2 text-center text-purple-600 dark:text-purple-400 font-medium align-middle" rowspan="{{ $workshop['instructor_pct_rowspan'] }}">{{ number_format($workshop['volunteer_percentage'], 0) }}%</td>
+                                    @endif
+                                    @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                                    <td class="px-3 py-2 text-right font-semibold text-purple-600 dark:text-purple-400 align-middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_amount'] ?? $workshop['amount'], 2) }}</td>
+                                    @endif
                                     <td class="px-3 py-2 text-center">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
                                             {{ $workshop['payment_status'] === 'Pagado'
@@ -187,10 +194,12 @@
                                 </td>
                             </tr>
                             {{-- 2. Filas de talleres del instructor --}}
+                            @php $schedGroupIdx = 0; @endphp
                             @foreach($instructor['workshops'] as $workshop)
-                            <tr class="{{ $loop->odd ? 'ipr-row-odd' : 'ipr-row-even' }}">
-                                @if(($workshop['name_rowspan'] ?? 1) > 0)
-                                <td class="px-3 py-2 pl-6 text-gray-900 dark:text-white align-middle" rowspan="{{ $workshop['name_rowspan'] }}">{{ $workshop['workshop_name'] }}</td>
+                            @php if (($workshop['schedule_rowspan'] ?? 0) > 0) $schedGroupIdx++; @endphp
+                            <tr class="{{ $schedGroupIdx % 2 === 1 ? 'ipr-row-odd' : 'ipr-row-even' }}">
+                                @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                                <td class="px-3 py-2 pl-6 text-gray-900 dark:text-white align-middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['workshop_name'] }}</td>
                                 @endif
                                 @if(($workshop['schedule_rowspan'] ?? 1) > 0)
                                 <td class="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs align-middle" rowspan="{{ $workshop['schedule_rowspan'] }}">

@@ -31,7 +31,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                         'tipo' => $typeLabel,
                         'instructor' => $instructor['instructor_name'],
                         'taller' => $workshop['workshop_name'],
-                        'horario' => $workshop['schedule'],
+                        'horario' => $workshop['schedule'].(!empty($workshop['modality']) ? ' - '.$workshop['modality'] : ''),
                         'alumnos' => $workshop['total_students'],
                         'cantidad_categoria' => (function ($categoryBreakdown) {
                             $parts = [];
@@ -57,16 +57,22 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                             ? $workshop['class_count'].'c'
                             : '',
                         'tarifa_mensual' => $workshop['standard_fee'] ?? 0,
-                        'ingresos' => $workshop['monthly_revenue'],
-                        'tasa' => $type === 'volunteer'
-                                                ? number_format($workshop['volunteer_percentage'] ?? 0, 1).'%'
-                                                : 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr',
-                        'horas' => $type === 'hourly'
-                            ? (empty($workshop['is_secondary_tier']) ? ($workshop['hours_worked'] ?? 0) : '—')
-                            : '-',
-                        'monto' => !empty($workshop['is_secondary_tier']) ? '—' : $workshop['amount'],
-                        'estado' => $workshop['payment_status'],
-                        'recibo' => $workshop['document_number'] ?? '',
+                        'ingresos' => ($workshop['schedule_rowspan'] ?? 1) > 0
+                            ? ($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
+                            : '',
+                        'tasa' => ($workshop['schedule_rowspan'] ?? 1) > 0
+                            ? ($type === 'volunteer'
+                                ? number_format($workshop['volunteer_percentage'] ?? 0, 1).'%'
+                                : 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr')
+                            : '',
+                        'horas' => ($workshop['schedule_rowspan'] ?? 1) > 0 && $type === 'hourly'
+                            ? ($workshop['hours_worked'] ?? 0)
+                            : ($type === 'hourly' ? '' : '-'),
+                        'monto' => ($workshop['schedule_rowspan'] ?? 1) > 0
+                            ? ($workshop['schedule_amount'] ?? $workshop['amount'])
+                            : '',
+                        'estado' => ($workshop['schedule_rowspan'] ?? 1) > 0 ? $workshop['payment_status'] : '',
+                        'recibo' => ($workshop['schedule_rowspan'] ?? 1) > 0 ? ($workshop['document_number'] ?? '') : '',
                     ]);
                 }
             }
@@ -104,10 +110,10 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             $row['alumnos'],
             $row['detalle_clases'],
             number_format($row['tarifa_mensual'], 2),
-            number_format($row['ingresos'], 2),
+            $row['ingresos'] !== '' ? number_format($row['ingresos'], 2) : '',
             $row['tasa'],
             $row['horas'],
-            $row['monto'] === '—' ? '—' : number_format($row['monto'], 2),
+            $row['monto'] !== '' ? number_format($row['monto'], 2) : '',
             $row['estado'],
             $row['recibo'],
         ];

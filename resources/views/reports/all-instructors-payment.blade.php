@@ -87,68 +87,46 @@
     <table>
         <thead>
             <tr>
-                <th style="width:18%">Taller</th>
-                <th style="width:15%">Horario</th>
-                <th style="width:7%" class="text-center">Inscritos</th>
-                <th style="width:8%" class="text-center">Cant. por categoría</th>
-                <th style="width:11%" class="text-right">Monto por categoría</th>
-                <th style="width:7%" class="text-right">Tarifa</th>
-                <th style="width:10%" class="text-right">Ingresos del Taller</th>
-                <th style="width:6%" class="text-center">%</th>
-                <th style="width:11%" class="text-right">Monto a Pagar</th>
-                <th style="width:7%" class="text-center">Recibo</th>
+                <th style="width:20%">Taller</th>
+                <th style="width:18%">Horario</th>
+                <th style="width:8%" class="text-center">Inscritos</th>
+                <th style="width:10%" class="text-right">Tarifa</th>
+                <th style="width:14%" class="text-right">Ingresos del Taller</th>
+                <th style="width:7%" class="text-center">%</th>
+                <th style="width:13%" class="text-right">Monto a Pagar</th>
+                <th style="width:10%" class="text-center">Recibo</th>
             </tr>
         </thead>
         <tbody>
             @foreach($grouped_payments['volunteer'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="10">{{ $instructor['instructor_name'] }}</td>
+                    <td colspan="8">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
-                @php
-                    $categoryBreakdown = $workshop['students_by_category'] ?? [];
-                    $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
-                    $categoryCounts = [];
-                    $categoryAmountValues = [];
-                    foreach ($categoryBreakdown as $category => $count) {
-                        if ($count > 0) {
-                            $categoryCounts[] = $count;
-                            $categoryAmountValues[] = 'S/ ' . number_format((float) ($categoryAmounts[$category] ?? 0), 2);
-                        }
-                    }
-                @endphp
                 <tr>
-                    <td style="padding-left:14px">{{ $workshop['workshop_name'] }}</td>
-                    <td>{{ $workshop['schedule'] }}@if(!empty($workshop['modality']))<br><small>{{ $workshop['modality'] }}</small>@endif</td>
+                    @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                    <td style="padding-left:14px; vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['workshop_name'] }}</td>
+                    <td style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['schedule'] }}@if(!empty($workshop['modality']))<br><small>{{ $workshop['modality'] }}</small>@endif</td>
+                    @endif
                     <td class="text-center">
                         {{ $workshop['total_students'] }}
                         @if(!empty($workshop['class_count']))
                             <br><small style="font-size:8px;color:#555">{{ $workshop['class_count'] }}c</small>
                         @endif
                     </td>
-                    <td class="text-center">
-                        @if(!empty($categoryCounts))
-                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryCounts) !!}</small>
-                        @else
-                            —
-                        @endif
-                    </td>
-                    <td class="text-right">
-                        @if(!empty($categoryAmountValues))
-                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryAmountValues) !!}</small>
-                        @else
-                            —
-                        @endif
-                    </td>
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
-                    <td class="text-right">S/ {{ number_format($workshop['monthly_revenue'], 2) }}</td>
-                    <td class="text-center">{{ number_format($workshop['volunteer_percentage'], 0) }}%</td>
-                    <td class="text-right text-bold">S/ {{ number_format($workshop['amount'], 2) }}</td>
-                    <td class="text-center">{{ $workshop['document_number'] ?? '—' }}</td>
+                    @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                    <td class="text-right" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'], 2) }}</td>
+                    @if(($workshop['instructor_pct_rowspan'] ?? 0) > 0)
+                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['instructor_pct_rowspan'] }}">{{ number_format($workshop['volunteer_percentage'], 0) }}%</td>
+                    @endif
+                    <td class="text-right text-bold" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_amount'] ?? $workshop['amount'], 2) }}</td>
+                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['document_number'] ?? '—' }}</td>
+                    @endif
                 </tr>
                 @endforeach
                 <tr class="subtotal-row">
-                    <td colspan="8" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="6" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td></td>
                 </tr>
@@ -156,7 +134,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="8" class="text-right">TOTAL VOLUNTARIOS:</td>
+                <td colspan="6" class="text-right">TOTAL VOLUNTARIOS:</td>
                 <td class="text-right">S/ {{ number_format($total_amount['volunteer'], 2) }}</td>
                 <td></td>
             </tr>
@@ -170,80 +148,44 @@
     <table>
         <thead>
             <tr>
-                <th style="width:18%">Taller</th>
-                <th style="width:15%">Horario</th>
-                <th style="width:7%" class="text-center">Inscritos</th>
-                <th style="width:8%" class="text-center">Cant. por categoría</th>
-                <th style="width:11%" class="text-right">Monto por categoría</th>
-                <th style="width:7%" class="text-right">Tarifa</th>
-                <th style="width:10%" class="text-center">Horas</th>
-                <th style="width:10%" class="text-center">Tarifa/hora</th>
-                <th style="width:10%" class="text-right">Monto a Pagar</th>
-                <th style="width:7%" class="text-center">Recibo</th>
+                <th style="width:20%">Taller</th>
+                <th style="width:18%">Horario</th>
+                <th style="width:8%" class="text-center">Inscritos</th>
+                <th style="width:10%" class="text-right">Tarifa</th>
+                <th style="width:12%" class="text-center">Horas</th>
+                <th style="width:12%" class="text-center">Tarifa/hora</th>
+                <th style="width:12%" class="text-right">Monto a Pagar</th>
+                <th style="width:8%" class="text-center">Recibo</th>
             </tr>
         </thead>
         <tbody>
             @foreach($grouped_payments['hourly'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="10">{{ $instructor['instructor_name'] }}</td>
+                    <td colspan="8">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
-                @php
-                    $categoryBreakdown = $workshop['students_by_category'] ?? [];
-                    $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
-                    $categoryCounts = [];
-                    $categoryAmountValues = [];
-                    foreach ($categoryBreakdown as $category => $count) {
-                        if ($count > 0) {
-                            $categoryCounts[] = $count;
-                            $categoryAmountValues[] = 'S/ ' . number_format((float) ($categoryAmounts[$category] ?? 0), 2);
-                        }
-                    }
-                @endphp
                 <tr>
-                    <td style="padding-left:14px">{{ $workshop['workshop_name'] }}</td>
-                    <td>{{ $workshop['schedule'] }}@if(!empty($workshop['modality']))<br><small>{{ $workshop['modality'] }}</small>@endif</td>
+                    @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                    <td style="padding-left:14px; vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['workshop_name'] }}</td>
+                    <td style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['schedule'] }}@if(!empty($workshop['modality']))<br><small>{{ $workshop['modality'] }}</small>@endif</td>
+                    @endif
                     <td class="text-center">
                         {{ $workshop['total_students'] }}
                         @if(!empty($workshop['class_count']))
                             <br><small style="font-size:8px;color:#555">{{ $workshop['class_count'] }}c</small>
                         @endif
                     </td>
-                    <td class="text-center">
-                        @if(!empty($categoryCounts))
-                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryCounts) !!}</small>
-                        @else
-                            —
-                        @endif
-                    </td>
-                    <td class="text-right">
-                        @if(!empty($categoryAmountValues))
-                            <small style="font-size:8px;color:#555">{!! implode('<br>', $categoryAmountValues) !!}</small>
-                        @else
-                            —
-                        @endif
-                    </td>
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
-                    <td class="text-center">
-                        @if(empty($workshop['is_secondary_tier']))
-                            {{ number_format($workshop['hours_worked'], 1) }}
-                        @else
-                            —
-                        @endif
-                    </td>
-                    <td class="text-center">S/ {{ number_format($workshop['hourly_rate'], 2) }}</td>
-                    <td class="text-right text-bold">
-                        @if(empty($workshop['is_secondary_tier']))
-                            S/ {{ number_format($workshop['amount'], 2) }}
-                        @else
-                            —
-                        @endif
-                    </td>
-                    <td class="text-center">{{ $workshop['document_number'] ?? '—' }}</td>
+                    @if(($workshop['schedule_rowspan'] ?? 1) > 0)
+                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ number_format($workshop['hours_worked'] ?? 0, 1) }}</td>
+                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['hourly_rate'] ?? 0, 2) }}</td>
+                    <td class="text-right text-bold" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_amount'] ?? $workshop['amount'], 2) }}</td>
+                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['document_number'] ?? '—' }}</td>
+                    @endif
                 </tr>
                 @endforeach
                 <tr class="subtotal-row">
-                    <td colspan="8" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="6" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td></td>
                 </tr>
@@ -251,7 +193,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="8" class="text-right">TOTAL POR HORAS:</td>
+                <td colspan="6" class="text-right">TOTAL POR HORAS:</td>
                 <td class="text-right">S/ {{ number_format($total_amount['hourly'], 2) }}</td>
                 <td></td>
             </tr>

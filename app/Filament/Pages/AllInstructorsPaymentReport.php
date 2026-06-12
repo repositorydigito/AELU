@@ -154,8 +154,11 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
             }
 
             $tierGroups = $latestEnrollments
-                ->groupBy(fn($row) => (int) ($row->number_of_classes ?? 0))
-                ->sortKeysDesc();
+                ->groupBy(fn($row) => ((int)($row->number_of_classes ?? 0)).'|'.round((float)($row->total_amount ?? 0), 2))
+                ->sortBy(function ($group, $key) {
+                    [$classes, $price] = explode('|', $key);
+                    return [-(int)$classes, (float)$price];
+                });
 
             $appliedVolunteerPct = $payment->applied_volunteer_percentage ?? 0;
             $isFirst = true;
@@ -184,10 +187,12 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 }
                 $grouped[$modality][$instructorId]['workshops'][] = $workshopRow;
             } else {
-                foreach ($tierGroups as $classCount => $tierEnrollments) {
+                foreach ($tierGroups as $tierKey => $tierEnrollments) {
+                    [$classCount, $tierPrice] = explode('|', $tierKey);
+                    $classCount    = (int) $classCount;
+                    $tierPrice     = (float) $tierPrice;
                     $tierRevenue   = (float) $tierEnrollments->sum('total_amount');
                     $tierCount     = $tierEnrollments->count();
-                    $tierUnitPrice = $tierCount > 0 ? round($tierRevenue / $tierCount, 2) : 0;
 
                     $tierCategoryBreakdown = $tierEnrollments
                         ->groupBy(function ($row) {
@@ -224,7 +229,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                         'workshop_name'           => $workshop->name ?? 'N/A',
                         'schedule'                => "{$dayOfWeek} {$startTime}-{$endTime}",
                         'modality'                => $workshopModality,
-                        'standard_fee'            => $tierUnitPrice,
+                        'standard_fee'            => $tierPrice,
                         'class_count'             => $classCount,
                         'total_students'          => $tierCount,
                         'students_by_category'    => $tierCategoryBreakdown,
@@ -258,13 +263,20 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                     if ($n !== 0) return $n;
                     $s = strcmp($a['schedule'], $b['schedule']);
                     if ($s !== 0) return $s;
+                    $m = strcmp($a['modality'] ?? '', $b['modality'] ?? '');
+                    if ($m !== 0) return $m;
                     return ($b['class_count'] ?? 0) <=> ($a['class_count'] ?? 0);
                 });
 
                 // Pre-compute rowspan metadata for table display
                 $ws    = &$instructorData['workshops'];
                 $total = count($ws);
+                // % column spans all rows of this instructor (same pct for all workshops)
+                if ($total > 0) {
+                    $ws[0]['instructor_pct_rowspan'] = $total;
+                }
                 for ($i = 0; $i < $total; $i++) {
+                    if ($i > 0) $ws[$i]['instructor_pct_rowspan'] = 0;
                     // name_rowspan: merge consecutive rows with same workshop_name
                     if ($i === 0 || $ws[$i]['workshop_name'] !== $ws[$i - 1]['workshop_name']) {
                         $span = 1;
@@ -277,31 +289,37 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                         $ws[$i]['name_rowspan'] = 0;
                     }
 
-                    // schedule_rowspan: merge consecutive rows with same name + schedule
+                    // schedule_rowspan: merge consecutive rows with same name + schedule + modality
                     $sameName     = $i === 0 || $ws[$i]['workshop_name'] !== $ws[$i - 1]['workshop_name'];
-                    $sameSched    = $i > 0 && $ws[$i]['schedule'] === $ws[$i - 1]['schedule'];
+                    $sameSched    = $i > 0
+                        && $ws[$i]['schedule'] === $ws[$i - 1]['schedule']
+                        && ($ws[$i]['modality'] ?? null) === ($ws[$i - 1]['modality'] ?? null);
                     $newSchedGroup = $sameName || !$sameSched;
 
                     if ($newSchedGroup) {
-                        $span      = 1;
-                        $modalities = !empty($ws[$i]['modality']) ? [$ws[$i]['modality']] : [];
+                        $span         = 1;
+                        $schedRevenue = $ws[$i]['monthly_revenue'];
+                        $schedAmount  = $ws[$i]['amount'];
                         for ($j = $i + 1; $j < $total; $j++) {
                             if ($ws[$j]['workshop_name'] === $ws[$i]['workshop_name']
-                                && $ws[$j]['schedule'] === $ws[$i]['schedule']) {
+                                && $ws[$j]['schedule'] === $ws[$i]['schedule']
+                                && ($ws[$j]['modality'] ?? null) === ($ws[$i]['modality'] ?? null)) {
                                 $span++;
-                                $mod = $ws[$j]['modality'] ?? null;
-                                if ($mod && ! in_array($mod, $modalities, true)) {
-                                    $modalities[] = $mod;
-                                }
+                                $schedRevenue += $ws[$j]['monthly_revenue'];
+                                $schedAmount  += $ws[$j]['amount'];
                             } else {
                                 break;
                             }
                         }
                         $ws[$i]['schedule_rowspan']    = $span;
-                        $ws[$i]['schedule_modalities'] = $modalities;
+                        $ws[$i]['schedule_modalities'] = !empty($ws[$i]['modality']) ? [$ws[$i]['modality']] : [];
+                        $ws[$i]['schedule_revenue']    = $schedRevenue;
+                        $ws[$i]['schedule_amount']     = $schedAmount;
                     } else {
                         $ws[$i]['schedule_rowspan']    = 0;
                         $ws[$i]['schedule_modalities'] = [];
+                        $ws[$i]['schedule_revenue']    = 0;
+                        $ws[$i]['schedule_amount']     = 0;
                     }
                 }
                 unset($ws);
