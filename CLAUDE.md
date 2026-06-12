@@ -209,6 +209,8 @@ php artisan pail
 - `IncomeExport` / `EgresoExport` - Financial reports
 - `InstructorsTemplateExport` - Template for bulk import
 
+> Mapeo completo Reporte ↔ Excel ↔ PDF: ver `docs/modules/reports/structure-reports.md`
+
 **Imports** (in `app/Imports/`):
 - `InstructorsImport` - Bulk import instructors from Excel
 - `StudentsImport` - Bulk import students from Excel

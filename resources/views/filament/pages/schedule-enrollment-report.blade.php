@@ -19,29 +19,35 @@
         @if(!empty($scheduleEnrollments))
         <x-filament::section>
             <x-slot name="heading">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        {{ $workshopData->name ?? 'N/A' }}
-                    </h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        @php
-                            // Manejar day_of_week como array
-                            $daysOfWeek = $workshopData->day_of_week;
-                            if (is_array($daysOfWeek)) {
-                                $dayName = implode('/', $daysOfWeek);
-                            } else {
-                                $dayName = $daysOfWeek ?? 'N/A';
-                            }
-                            $startTime = $workshopData->start_time ? \Carbon\Carbon::parse($workshopData->start_time)->format('H:i') : 'N/A';
-                            $endTime = $workshopData->end_time ?? 'N/A';
-                        @endphp
-                        {{ $dayName }} | {{ $startTime }}-{{ $endTime }}
-                    </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Profesor: {{ $workshopData->instructor ? ($workshopData->instructor->first_names . ' ' . $workshopData->instructor->last_names) : 'Sin profesor' }} |
-                        Modalidad: {{ $workshopData->modality ?? 'N/A' }} |
-                        {{ count($scheduleEnrollments) }} inscritos
-                    </p>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $workshopData->name ?? 'N/A' }}
+                        </h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            @php
+                                // Manejar day_of_week como array
+                                $daysOfWeek = $workshopData->day_of_week;
+                                if (is_array($daysOfWeek)) {
+                                    $dayName = implode('/', $daysOfWeek);
+                                } else {
+                                    $dayName = $daysOfWeek ?? 'N/A';
+                                }
+                                $startTime = $workshopData->start_time ? \Carbon\Carbon::parse($workshopData->start_time)->format('H:i') : 'N/A';
+                                $endTime = $workshopData->end_time ?? 'N/A';
+                            @endphp
+                            {{ $dayName }} | {{ $startTime }}-{{ $endTime }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Profesor: {{ $workshopData->instructor ? ($workshopData->instructor->first_names . ' ' . $workshopData->instructor->last_names) : 'Sin profesor' }} |
+                            Modalidad: {{ $workshopData->modality ?? 'N/A' }} |
+                            {{ count($scheduleEnrollments) }} inscritos
+                        </p>
+                    </div>
+                    <div style="text-align:right; flex-shrink:0; margin-left:1.5rem;">
+                        <div style="font-size:0.75rem; color:#6b7280;">Total ingresos</div>
+                        <div style="font-size:1.125rem; font-weight:700; color:#166534;">S/ {{ number_format($totalAmount, 2) }}</div>
+                    </div>
                 </div>
             </x-slot>
 

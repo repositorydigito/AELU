@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\InstructorKardexExport;
 use App\Models\Instructor;
 use App\Models\InstructorWorkshop;
 use App\Models\StudentEnrollment;
@@ -285,10 +286,38 @@ class InstructorKardexReport extends Page implements HasActions, HasForms
                 ->send();
         }
     }
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => ! empty($this->kardexEnrollments))
+            ->action(function () {
+                try {
+                    $instructorName = $this->instructorData
+                        ? ($this->instructorData->first_names.' '.$this->instructorData->last_names)
+                        : 'instructor';
+                    $workshopName = $this->workshopData->workshop->name ?? 'taller';
+                    $fileName = 'kardex-'.str_replace(' ', '-', strtolower($instructorName)).'-'.
+                        str_replace(' ', '-', strtolower($workshopName)).'.xlsx';
+
+                    return (new InstructorKardexExport($this->kardexEnrollments, $instructorName, $workshopName))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
     // Método para limpiar el estado cuando sea necesario

@@ -136,77 +136,12 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 ->where('instructor_workshop_id', $payment->instructor_workshop_id)
                 ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
                 ->whereNotIn('payment_status', ['refunded'])
-                ->select('student_id', 'number_of_classes', 'total_amount', 'id')
+                ->select('student_id', 'number_of_classes', 'price_per_quantity', 'total_amount', 'id')
                 ->get()
                 ->groupBy('student_id')
                 ->map(fn($rows) => $rows->sortByDesc('id')->first());
 
-            $classBreakdown = $latestEnrollments
-                ->groupBy(fn($row) => $row->number_of_classes ?? 0)
-                ->map(fn($group) => $group->count())
-                ->toArray();
-
-            $categoryBreakdown = $latestEnrollments
-                ->groupBy(function ($row) {
-                    $category = $row->student->category_partner ?? null;
-
-                    return filled($category) ? $category : 'Sin categoría';
-                })
-                ->map(fn($group) => $group->count())
-                ->sortKeys()
-                ->toArray();
-
-            $categoryUnitAmountBreakdown = $latestEnrollments
-                ->groupBy(function ($row) {
-                    $category = $row->student->category_partner ?? null;
-
-                    return filled($category) ? $category : 'Sin categoría';
-                })
-                ->map(function ($group) {
-                    // Precio de referencia por persona para la categoría (valor más frecuente).
-                    $amounts = $group
-                        ->map(fn($row) => round((float) ($row->total_amount ?? 0), 2))
-                        ->filter(fn($amount) => $amount > 0)
-                        ->values();
-
-                    if ($amounts->isEmpty()) {
-                        return 0;
-                    }
-
-                    return (float) $amounts
-                        ->countBy()
-                        ->sortDesc()
-                        ->keys()
-                        ->first();
-                })
-                ->sortKeys()
-                ->toArray();
-
-            krsort($classBreakdown);
-
             $workshopModality = $workshop->modality ?? null;
-
-            $workshopRow = [
-                'workshop_name'       => $workshop->name ?? 'N/A',
-                'schedule'            => "{$dayOfWeek} {$startTime}-{$endTime}",
-                'modality'            => $workshopModality,
-                'standard_fee'        => $workshop->standard_monthly_fee ?? 0,
-                'total_students'      => array_sum($classBreakdown),
-                'students_by_classes' => $classBreakdown,
-                'students_by_category'=> $categoryBreakdown,
-                'unit_amount_by_category' => $categoryUnitAmountBreakdown,
-                'monthly_revenue'     => $payment->monthly_revenue ?? 0,
-                'amount'              => $amount,
-                'payment_status'      => $this->getPaymentStatusText($payment->payment_status),
-                'document_number'     => $payment->document_number ?? null,
-            ];
-
-            if ($modality === 'hourly') {
-                $workshopRow['hours_worked'] = $payment->total_hours ?? 0;
-                $workshopRow['hourly_rate']  = $payment->applied_hourly_rate ?? 0;
-            } else {
-                $workshopRow['volunteer_percentage'] = ($payment->applied_volunteer_percentage ?? 0) * 100;
-            }
 
             if (!isset($grouped[$modality][$instructorId])) {
                 $grouped[$modality][$instructorId] = [
@@ -218,13 +153,158 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 ];
             }
 
-            $grouped[$modality][$instructorId]['workshops'][] = $workshopRow;
+            $tierGroups = $latestEnrollments
+                ->groupBy(fn($row) => (int) ($row->number_of_classes ?? 0))
+                ->sortKeysDesc();
+
+            $appliedVolunteerPct = $payment->applied_volunteer_percentage ?? 0;
+            $isFirst = true;
+
+            if ($tierGroups->isEmpty()) {
+                $workshopRow = [
+                    'workshop_name'           => $workshop->name ?? 'N/A',
+                    'schedule'                => "{$dayOfWeek} {$startTime}-{$endTime}",
+                    'modality'                => $workshopModality,
+                    'standard_fee'            => $workshop->standard_monthly_fee ?? 0,
+                    'class_count'             => null,
+                    'total_students'          => 0,
+                    'students_by_category'    => [],
+                    'unit_amount_by_category' => [],
+                    'monthly_revenue'         => $payment->monthly_revenue ?? 0,
+                    'amount'                  => $amount,
+                    'payment_status'          => $this->getPaymentStatusText($payment->payment_status),
+                    'document_number'         => $payment->document_number ?? null,
+                ];
+                if ($modality === 'hourly') {
+                    $workshopRow['hours_worked']     = $payment->total_hours ?? 0;
+                    $workshopRow['hourly_rate']       = $payment->applied_hourly_rate ?? 0;
+                    $workshopRow['is_secondary_tier'] = false;
+                } else {
+                    $workshopRow['volunteer_percentage'] = $appliedVolunteerPct * 100;
+                }
+                $grouped[$modality][$instructorId]['workshops'][] = $workshopRow;
+            } else {
+                foreach ($tierGroups as $classCount => $tierEnrollments) {
+                    $tierRevenue   = (float) $tierEnrollments->sum('total_amount');
+                    $tierCount     = $tierEnrollments->count();
+                    $tierUnitPrice = $tierCount > 0 ? round($tierRevenue / $tierCount, 2) : 0;
+
+                    $tierCategoryBreakdown = $tierEnrollments
+                        ->groupBy(function ($row) {
+                            $category = $row->student->category_partner ?? null;
+                            return filled($category) ? $category : 'Sin categoría';
+                        })
+                        ->map(fn($group) => $group->count())
+                        ->sortKeys()
+                        ->toArray();
+
+                    $tierCategoryUnitAmount = $tierEnrollments
+                        ->groupBy(function ($row) {
+                            $category = $row->student->category_partner ?? null;
+                            return filled($category) ? $category : 'Sin categoría';
+                        })
+                        ->map(function ($group) {
+                            $amounts = $group
+                                ->map(fn($row) => round((float) ($row->total_amount ?? 0), 2))
+                                ->filter(fn($amt) => $amt > 0)
+                                ->values();
+                            if ($amounts->isEmpty()) {
+                                return 0;
+                            }
+                            return (float) $amounts->countBy()->sortDesc()->keys()->first();
+                        })
+                        ->sortKeys()
+                        ->toArray();
+
+                    $tierAmount = $modality === 'volunteer'
+                        ? round($tierRevenue * $appliedVolunteerPct, 2)
+                        : ($isFirst ? $amount : 0);
+
+                    $workshopRow = [
+                        'workshop_name'           => $workshop->name ?? 'N/A',
+                        'schedule'                => "{$dayOfWeek} {$startTime}-{$endTime}",
+                        'modality'                => $workshopModality,
+                        'standard_fee'            => $tierUnitPrice,
+                        'class_count'             => $classCount,
+                        'total_students'          => $tierCount,
+                        'students_by_category'    => $tierCategoryBreakdown,
+                        'unit_amount_by_category' => $tierCategoryUnitAmount,
+                        'monthly_revenue'         => $tierRevenue,
+                        'amount'                  => $tierAmount,
+                        'payment_status'          => $this->getPaymentStatusText($payment->payment_status),
+                        'document_number'         => $payment->document_number ?? null,
+                    ];
+
+                    if ($modality === 'hourly') {
+                        $workshopRow['hours_worked']     = $isFirst ? ($payment->total_hours ?? 0) : 0;
+                        $workshopRow['hourly_rate']       = $payment->applied_hourly_rate ?? 0;
+                        $workshopRow['is_secondary_tier'] = !$isFirst;
+                    } else {
+                        $workshopRow['volunteer_percentage'] = $appliedVolunteerPct * 100;
+                    }
+
+                    $grouped[$modality][$instructorId]['workshops'][] = $workshopRow;
+                    $isFirst = false;
+                }
+            }
+
             $grouped[$modality][$instructorId]['subtotal'] += $amount;
         }
 
         foreach (['volunteer', 'hourly'] as $type) {
             foreach ($grouped[$type] as &$instructorData) {
-                usort($instructorData['workshops'], fn($a, $b) => strcmp($a['workshop_name'], $b['workshop_name']));
+                usort($instructorData['workshops'], function ($a, $b) {
+                    $n = strcmp($a['workshop_name'], $b['workshop_name']);
+                    if ($n !== 0) return $n;
+                    $s = strcmp($a['schedule'], $b['schedule']);
+                    if ($s !== 0) return $s;
+                    return ($b['class_count'] ?? 0) <=> ($a['class_count'] ?? 0);
+                });
+
+                // Pre-compute rowspan metadata for table display
+                $ws    = &$instructorData['workshops'];
+                $total = count($ws);
+                for ($i = 0; $i < $total; $i++) {
+                    // name_rowspan: merge consecutive rows with same workshop_name
+                    if ($i === 0 || $ws[$i]['workshop_name'] !== $ws[$i - 1]['workshop_name']) {
+                        $span = 1;
+                        for ($j = $i + 1; $j < $total; $j++) {
+                            if ($ws[$j]['workshop_name'] === $ws[$i]['workshop_name']) $span++;
+                            else break;
+                        }
+                        $ws[$i]['name_rowspan'] = $span;
+                    } else {
+                        $ws[$i]['name_rowspan'] = 0;
+                    }
+
+                    // schedule_rowspan: merge consecutive rows with same name + schedule
+                    $sameName     = $i === 0 || $ws[$i]['workshop_name'] !== $ws[$i - 1]['workshop_name'];
+                    $sameSched    = $i > 0 && $ws[$i]['schedule'] === $ws[$i - 1]['schedule'];
+                    $newSchedGroup = $sameName || !$sameSched;
+
+                    if ($newSchedGroup) {
+                        $span      = 1;
+                        $modalities = !empty($ws[$i]['modality']) ? [$ws[$i]['modality']] : [];
+                        for ($j = $i + 1; $j < $total; $j++) {
+                            if ($ws[$j]['workshop_name'] === $ws[$i]['workshop_name']
+                                && $ws[$j]['schedule'] === $ws[$i]['schedule']) {
+                                $span++;
+                                $mod = $ws[$j]['modality'] ?? null;
+                                if ($mod && ! in_array($mod, $modalities, true)) {
+                                    $modalities[] = $mod;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                        $ws[$i]['schedule_rowspan']    = $span;
+                        $ws[$i]['schedule_modalities'] = $modalities;
+                    } else {
+                        $ws[$i]['schedule_rowspan']    = 0;
+                        $ws[$i]['schedule_modalities'] = [];
+                    }
+                }
+                unset($ws);
             }
             unset($instructorData);
             usort($grouped[$type], fn($a, $b) => strcmp($a['instructor_name'], $b['instructor_name']));

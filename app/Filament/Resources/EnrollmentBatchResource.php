@@ -457,7 +457,7 @@ class EnrollmentBatchResource extends Resource
                     ->modalContent(fn (EnrollmentBatch $record) => view('filament.modals.tickets-list', [
                         'tickets' => $record->tickets()
                             // ->where('status', 'active')
-                            ->with(['studentEnrollments.instructorWorkshop.workshop', 'issuedByUser'])
+                            ->with(['studentEnrollments.instructorWorkshop.workshop', 'studentEnrollments.enrollmentClasses.workshopClass', 'issuedByUser'])
                             ->orderBy('issued_at', 'asc')
                             ->get(),
                     ]))

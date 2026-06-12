@@ -202,6 +202,10 @@ class StudentEnrollmentController extends Controller
         $dompdf->setPaper('A5', 'portrait');
         $dompdf->render();
 
-        return $dompdf->stream('ticket_' . $ticket->ticket_code . '.pdf', ['Attachment' => false]);
+        return response($dompdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="ticket_' . $ticket->ticket_code . '.pdf"',
+            'Cache-Control'       => 'private',
+        ]);
     }
 }

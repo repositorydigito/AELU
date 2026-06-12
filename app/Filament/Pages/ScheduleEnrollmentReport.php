@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\ScheduleEnrollmentExport;
 use App\Models\MonthlyPeriod;
 use App\Models\Workshop;
 use App\Models\InstructorWorkshop;
@@ -34,6 +35,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
     public $scheduleEnrollments = [];
     public $periodData = null;
     public $workshopData = null;
+    public float $totalAmount = 0;
 
     public function mount(): void
     {
@@ -227,6 +229,8 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 return strcmp($a['student_name'], $b['student_name']);
             });
 
+            $this->totalAmount = collect($this->scheduleEnrollments)->sum('total_amount');
+
         } catch (\Exception $e) {
             $this->scheduleEnrollments = [];
             Notification::make()
@@ -364,6 +368,7 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 'instructor_name' => $instructorName,
                 'modality' => $modality,
                 'generated_at' => now()->format('d/m/Y H:i'),
+                'total_amount' => $this->totalAmount,
             ])->render();
 
             $options = new Options;
@@ -396,10 +401,38 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
         }
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => ! empty($this->scheduleEnrollments))
+            ->action(function () {
+                try {
+                    $workshopName = $this->workshopData->name ?? 'taller';
+                    $startDate = \Carbon\Carbon::parse($this->periodData->start_date);
+                    $periodName = ucfirst($startDate->locale('es')->isoFormat('MMMM YYYY'));
+                    $fileName = 'inscripciones-horario-'.
+                        str_replace(' ', '-', strtolower($workshopName)).'-'.
+                        str_replace(' ', '-', strtolower($periodName)).'.xlsx';
+
+                    return (new ScheduleEnrollmentExport($this->scheduleEnrollments))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
 

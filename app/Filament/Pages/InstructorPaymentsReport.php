@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\InstructorPaymentExport;
 use App\Models\Instructor;
 use App\Models\InstructorPayment;
 use App\Models\MonthlyPeriod;
@@ -313,10 +314,48 @@ class InstructorPaymentsReport extends Page implements HasActions, HasForms
         }
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => ! empty($this->instructorPayments))
+            ->action(function () {
+                try {
+                    $filters = ['payment_status' => 'paid'];
+                    if ($this->selectedInstructor) {
+                        $filters['instructor_id'] = $this->selectedInstructor;
+                    }
+                    if ($this->selectedPeriod) {
+                        $filters['monthly_period_id'] = $this->selectedPeriod;
+                    }
+
+                    $fileName = 'pagos-';
+                    if ($this->selectedInstructor && $this->instructorData) {
+                        $fileName .= 'profesor-'.str($this->instructorData->first_names.'-'.$this->instructorData->last_names)->slug();
+                    }
+                    if ($this->selectedPeriod && $this->periodData) {
+                        $fileName .= ($this->selectedInstructor ? '-' : '').'periodo-'.$this->periodData->year.'-'.str_pad($this->periodData->month, 2, '0', STR_PAD_LEFT);
+                    }
+                    $fileName .= '.xlsx';
+
+                    return (new InstructorPaymentExport($filters))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\StudentEnrollmentsExport;
 use App\Models\MonthlyPeriod;
 use App\Models\Student;
 use App\Models\StudentEnrollment;
@@ -263,10 +264,36 @@ class EnrollmentsReport1 extends Page implements HasActions, HasForms
         }
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => ! empty($this->studentEnrollments))
+            ->action(function () {
+                try {
+                    $studentName = $this->studentData
+                        ? ($this->studentData->first_names.' '.$this->studentData->last_names)
+                        : 'alumno';
+                    $fileName = 'tickets-'.str($studentName)->slug().'.xlsx';
+
+                    return (new StudentEnrollmentsExport($this->studentEnrollments, $studentName))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
 

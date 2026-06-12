@@ -40,6 +40,10 @@ class InstructorPaymentExport implements FromQuery, ShouldAutoSize, WithHeadings
             $query->where('payment_type', $this->filters['payment_type']);
         }
 
+        if (!empty($this->filters['instructor_id'])) {
+            $query->where('instructor_id', $this->filters['instructor_id']);
+        }
+
         if (!empty($this->filters['payment_status'])) {
             $query->where('payment_status', $this->filters['payment_status']);
         }

@@ -53,23 +53,18 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
 
                             return implode(' | ', $parts);
                         })($workshop['students_by_category'] ?? [], $workshop['unit_amount_by_category'] ?? []),
-                        'detalle_clases' => (function ($breakdown) {
-                            $parts = [];
-                            foreach ($breakdown as $n => $count) {
-                                if ($count > 0) {
-                                    $parts[] = ($n > 0 ? $n.'c' : '?c').':'.$count;
-                                }
-                            }
-
-                            return implode(' | ', $parts);
-                        })($workshop['students_by_classes'] ?? []),
+                        'detalle_clases' => isset($workshop['class_count']) && $workshop['class_count'] > 0
+                            ? $workshop['class_count'].'c'
+                            : '',
                         'tarifa_mensual' => $workshop['standard_fee'] ?? 0,
                         'ingresos' => $workshop['monthly_revenue'],
                         'tasa' => $type === 'volunteer'
                                                 ? number_format($workshop['volunteer_percentage'] ?? 0, 1).'%'
                                                 : 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr',
-                        'horas' => $type === 'hourly' ? ($workshop['hours_worked'] ?? 0) : '-',
-                        'monto' => $workshop['amount'],
+                        'horas' => $type === 'hourly'
+                            ? (empty($workshop['is_secondary_tier']) ? ($workshop['hours_worked'] ?? 0) : '—')
+                            : '-',
+                        'monto' => !empty($workshop['is_secondary_tier']) ? '—' : $workshop['amount'],
                         'estado' => $workshop['payment_status'],
                         'recibo' => $workshop['document_number'] ?? '',
                     ]);
@@ -112,7 +107,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             number_format($row['ingresos'], 2),
             $row['tasa'],
             $row['horas'],
-            number_format($row['monto'], 2),
+            $row['monto'] === '—' ? '—' : number_format($row['monto'], 2),
             $row['estado'],
             $row['recibo'],
         ];

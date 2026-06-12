@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\AllUsersEnrollmentExport;
 use App\Models\User;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -263,10 +264,35 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
         }
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => ! empty($this->allEnrollments))
+            ->action(function () {
+                try {
+                    $dateFrom = \Carbon\Carbon::parse($this->selectedDateFrom)->format('d-m-Y');
+                    $dateTo = \Carbon\Carbon::parse($this->selectedDateTo)->format('d-m-Y');
+                    $fileName = 'inscripciones-todos-usuarios-'.$dateFrom.'-'.$dateTo.'.xlsx';
+
+                    return (new AllUsersEnrollmentExport($this->allEnrollments))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
 

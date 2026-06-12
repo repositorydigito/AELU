@@ -4,6 +4,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\CashiersEnrollmentExport;
 use App\Models\User;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -321,10 +322,36 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         }
     }
 
+    public function exportExcelAction(): Action
+    {
+        return Action::make('exportExcel')
+            ->label('Exportar Excel')
+            ->color('success')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => ! empty($this->cashierEnrollments))
+            ->action(function () {
+                try {
+                    $cashierName = User::find($this->selectedCashier)->name ?? 'cajero';
+                    $dateFrom = \Carbon\Carbon::parse($this->selectedDateFrom)->format('d-m-Y');
+                    $dateTo = \Carbon\Carbon::parse($this->selectedDateTo)->format('d-m-Y');
+                    $fileName = 'inscripciones-cajero-'.str_replace(' ', '-', strtolower($cashierName)).'-'.$dateFrom.'-'.$dateTo.'.xlsx';
+
+                    return (new CashiersEnrollmentExport($this->cashierEnrollments))->download($fileName);
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error al exportar')
+                        ->body('Ocurrió un error: '.$e->getMessage())
+                        ->danger()
+                        ->send();
+                }
+            });
+    }
+
     protected function getActions(): array
     {
         return [
             $this->generatePDFAction(),
+            $this->exportExcelAction(),
         ];
     }
 

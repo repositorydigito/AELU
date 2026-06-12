@@ -93,10 +93,20 @@
     </div>
 
     <div class="info-section">
-        <h2>{{ $workshop_name }}</h2>
-        <p><strong>Horario:</strong> {{ $schedule_info }}</p>
-        <p><strong>Instructor:</strong> {{ $instructor_name }}</p>
-        <p><strong>Modalidad:</strong> {{ $modality }}</p>
+        <table style="width:100%; border:none; border-collapse:collapse;">
+            <tr>
+                <td style="border:none; vertical-align:top; padding:0;">
+                    <h2>{{ $workshop_name }}</h2>
+                    <p><strong>Horario:</strong> {{ $schedule_info }}</p>
+                    <p><strong>Instructor:</strong> {{ $instructor_name }}</p>
+                    <p><strong>Modalidad:</strong> {{ $modality }}</p>
+                </td>
+                <td style="border:none; vertical-align:middle; text-align:right; padding:0; width:30%;">
+                    <div style="font-size:9px; color:#555;">Total ingresos</div>
+                    <div style="font-size:16px; font-weight:bold; color:#000;">S/ {{ number_format($total_amount, 2) }}</div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <table class="table">

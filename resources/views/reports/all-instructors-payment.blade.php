@@ -106,14 +106,6 @@
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 @php
-                    $breakdown = $workshop['students_by_classes'] ?? [];
-                    $parts = [];
-                    foreach ($breakdown as $n => $count) {
-                        if ($count > 0) {
-                            $parts[] = ($n > 0 ? $n . 'c' : '?c') . ':' . $count;
-                        }
-                    }
-
                     $categoryBreakdown = $workshop['students_by_category'] ?? [];
                     $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
                     $categoryCounts = [];
@@ -130,8 +122,8 @@
                     <td>{{ $workshop['schedule'] }}@if(!empty($workshop['modality']))<br><small>{{ $workshop['modality'] }}</small>@endif</td>
                     <td class="text-center">
                         {{ $workshop['total_students'] }}
-                        @if(!empty($parts))
-                            <br><small style="font-size:8px;color:#555">{{ implode(' | ', $parts) }}</small>
+                        @if(!empty($workshop['class_count']))
+                            <br><small style="font-size:8px;color:#555">{{ $workshop['class_count'] }}c</small>
                         @endif
                     </td>
                     <td class="text-center">
@@ -197,14 +189,6 @@
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 @php
-                    $breakdown = $workshop['students_by_classes'] ?? [];
-                    $parts = [];
-                    foreach ($breakdown as $n => $count) {
-                        if ($count > 0) {
-                            $parts[] = ($n > 0 ? $n . 'c' : '?c') . ':' . $count;
-                        }
-                    }
-
                     $categoryBreakdown = $workshop['students_by_category'] ?? [];
                     $categoryAmounts = $workshop['unit_amount_by_category'] ?? [];
                     $categoryCounts = [];
@@ -221,8 +205,8 @@
                     <td>{{ $workshop['schedule'] }}@if(!empty($workshop['modality']))<br><small>{{ $workshop['modality'] }}</small>@endif</td>
                     <td class="text-center">
                         {{ $workshop['total_students'] }}
-                        @if(!empty($parts))
-                            <br><small style="font-size:8px;color:#555">{{ implode(' | ', $parts) }}</small>
+                        @if(!empty($workshop['class_count']))
+                            <br><small style="font-size:8px;color:#555">{{ $workshop['class_count'] }}c</small>
                         @endif
                     </td>
                     <td class="text-center">
@@ -240,9 +224,21 @@
                         @endif
                     </td>
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
-                    <td class="text-center">{{ number_format($workshop['hours_worked'], 1) }}</td>
+                    <td class="text-center">
+                        @if(empty($workshop['is_secondary_tier']))
+                            {{ number_format($workshop['hours_worked'], 1) }}
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="text-center">S/ {{ number_format($workshop['hourly_rate'], 2) }}</td>
-                    <td class="text-right text-bold">S/ {{ number_format($workshop['amount'], 2) }}</td>
+                    <td class="text-right text-bold">
+                        @if(empty($workshop['is_secondary_tier']))
+                            S/ {{ number_format($workshop['amount'], 2) }}
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="text-center">{{ $workshop['document_number'] ?? '—' }}</td>
                 </tr>
                 @endforeach
