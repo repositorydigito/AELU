@@ -559,17 +559,12 @@ class EnrollmentResource extends Resource
                                     Forms\Components\Placeholder::make('workshop_comments_section')
                                         ->label('')
                                         ->content(function (Forms\Get $get) {
-                                            static $cache = [];
-
                                             $workshopId = $get('instructor_workshop_id');
                                             if (! $workshopId) {
                                                 return '';
                                             }
 
-                                            if (! isset($cache[$workshopId])) {
-                                                $cache[$workshopId] = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
-                                            }
-                                            $instructorWorkshop = $cache[$workshopId];
+                                            $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
 
                                             if (! $instructorWorkshop || empty($instructorWorkshop->workshop->additional_comments)) {
                                                 return '';
@@ -591,18 +586,14 @@ class EnrollmentResource extends Resource
                                             ');
                                         })
                                         ->visible(function (Forms\Get $get) {
-                                            static $cache = [];
-
                                             $workshopId = $get('instructor_workshop_id');
                                             if (! $workshopId) {
                                                 return false;
                                             }
 
-                                            if (! isset($cache[$workshopId])) {
-                                                $cache[$workshopId] = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
-                                            }
+                                            $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
 
-                                            return $cache[$workshopId] && ! empty($cache[$workshopId]->workshop->additional_comments);
+                                            return $instructorWorkshop && ! empty($instructorWorkshop->workshop->additional_comments);
                                         })
                                         ->columnSpanFull(),
 
@@ -641,11 +632,7 @@ class EnrollmentResource extends Resource
                                                 return [];
                                             }
 
-                                            static $iwCache = [];
-                                            if (! isset($iwCache[$workshopId])) {
-                                                $iwCache[$workshopId] = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
-                                            }
-                                            $instructorWorkshop = $iwCache[$workshopId];
+                                            $instructorWorkshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
 
                                             if (! $instructorWorkshop) {
                                                 return [];
@@ -696,17 +683,12 @@ class EnrollmentResource extends Resource
                                 ->deletable(true)
                                 ->reorderable(false)
                                 ->itemLabel(function (array $state): ?string {
-                                    static $cache = [];
-
                                     $workshopId = $state['instructor_workshop_id'] ?? null;
                                     if (! $workshopId) {
                                         return 'Taller';
                                     }
 
-                                    if (! isset($cache[$workshopId])) {
-                                        $cache[$workshopId] = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
-                                    }
-                                    $workshop = $cache[$workshopId];
+                                    $workshop = \App\Models\InstructorWorkshop::with(['workshop', 'instructor'])->find($workshopId);
 
                                     if (! $workshop) {
                                         return 'Taller';
