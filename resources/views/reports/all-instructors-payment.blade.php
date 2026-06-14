@@ -91,16 +91,20 @@
                 <th style="width:18%">Horario</th>
                 <th style="width:8%" class="text-center">Inscritos</th>
                 <th style="width:10%" class="text-right">Tarifa</th>
-                <th style="width:14%" class="text-right">Ingresos del Taller</th>
-                <th style="width:7%" class="text-center">%</th>
-                <th style="width:13%" class="text-right">Monto a Pagar</th>
-                <th style="width:10%" class="text-center">Recibo</th>
+                <th style="width:18%" class="text-right">Ingresos del Taller</th>
+                <th style="width:16%" class="text-right">Monto a Pagar</th>
+                <th style="width:12%" class="text-center">Recibo</th>
             </tr>
         </thead>
         <tbody>
             @foreach($grouped_payments['volunteer'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="8">{{ $instructor['instructor_name'] }}</td>
+                    <td colspan="7">
+                        {{ $instructor['instructor_name'] }}
+                        @if(!empty($instructor['workshops'][0]['volunteer_percentage']))
+                            ({{ number_format($instructor['workshops'][0]['volunteer_percentage'], 0) }}%)
+                        @endif
+                    </td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 <tr>
@@ -117,16 +121,13 @@
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
                     @if(($workshop['schedule_rowspan'] ?? 1) > 0)
                     <td class="text-right" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'], 2) }}</td>
-                    @if(($workshop['instructor_pct_rowspan'] ?? 0) > 0)
-                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['instructor_pct_rowspan'] }}">{{ number_format($workshop['volunteer_percentage'], 0) }}%</td>
-                    @endif
                     <td class="text-right text-bold" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_amount'] ?? $workshop['amount'], 2) }}</td>
                     <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['document_number'] ?? '—' }}</td>
                     @endif
                 </tr>
                 @endforeach
                 <tr class="subtotal-row">
-                    <td colspan="6" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="5" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td></td>
                 </tr>
@@ -134,7 +135,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="6" class="text-right">TOTAL VOLUNTARIOS:</td>
+                <td colspan="5" class="text-right">TOTAL VOLUNTARIOS:</td>
                 <td class="text-right">S/ {{ number_format($total_amount['volunteer'], 2) }}</td>
                 <td></td>
             </tr>

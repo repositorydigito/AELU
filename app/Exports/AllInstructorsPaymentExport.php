@@ -29,7 +29,10 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                 foreach ($instructor['workshops'] as $workshop) {
                     $rows->push([
                         'tipo' => $typeLabel,
-                        'instructor' => $instructor['instructor_name'],
+                        'instructor' => $instructor['instructor_name']
+                            .($type === 'volunteer' && ($workshop['schedule_rowspan'] ?? 1) > 0
+                                ? ' ('.number_format($workshop['volunteer_percentage'] ?? 0, 0).'%)'
+                                : ''),
                         'taller' => $workshop['workshop_name'],
                         'horario' => $workshop['schedule'].(!empty($workshop['modality']) ? ' - '.$workshop['modality'] : ''),
                         'alumnos' => $workshop['total_students'],
@@ -60,10 +63,8 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                         'ingresos' => ($workshop['schedule_rowspan'] ?? 1) > 0
                             ? ($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
                             : '',
-                        'tasa' => ($workshop['schedule_rowspan'] ?? 1) > 0
-                            ? ($type === 'volunteer'
-                                ? number_format($workshop['volunteer_percentage'] ?? 0, 1).'%'
-                                : 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr')
+                        'tasa' => ($workshop['schedule_rowspan'] ?? 1) > 0 && $type === 'hourly'
+                            ? 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr'
                             : '',
                         'horas' => ($workshop['schedule_rowspan'] ?? 1) > 0 && $type === 'hourly'
                             ? ($workshop['hours_worked'] ?? 0)
@@ -92,7 +93,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             'Detalle Clases',
             'Tarifa Mensual (S/)',
             'Ingresos (S/)',
-            '% / Tarifa',
+            'Tarifa/hora',
             'Horas',
             'Monto a Pagar (S/)',
             'Estado',
