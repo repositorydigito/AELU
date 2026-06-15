@@ -26,7 +26,9 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Forms\Get;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rule;
 
 class InstructorResource extends Resource
 {
@@ -336,6 +338,13 @@ class InstructorResource extends Resource
                                                         ->schema([
                                                             Select::make('workshop_id')
                                                                 ->label('Taller')
+                                                                ->rules([
+                                                                    fn(Get $get) => Rule::unique('instructor_workshops', 'workshop_id')
+                                                                        ->ignore($get('id')),
+                                                                ])
+                                                                ->validationMessages([
+                                                                    'unique' => 'Este taller ya está asignado a otro instructor.',
+                                                                ])
                                                                 ->options(function () {
                                                                     static $options = null;
                                                                     if ($options === null) {
