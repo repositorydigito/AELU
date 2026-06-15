@@ -72,6 +72,10 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                         'monto' => ($workshop['schedule_rowspan'] ?? 1) > 0
                             ? ($workshop['schedule_amount'] ?? $workshop['amount'])
                             : '',
+                        'monto_favor' => ($workshop['schedule_rowspan'] ?? 1) > 0 && $type === 'volunteer'
+                            ? ($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
+                              - ($workshop['schedule_amount'] ?? $workshop['amount'])
+                            : '',
                         'estado' => ($workshop['schedule_rowspan'] ?? 1) > 0 ? $workshop['payment_status'] : '',
                         'recibo' => ($workshop['schedule_rowspan'] ?? 1) > 0 ? ($workshop['document_number'] ?? '') : '',
                     ]);
@@ -96,6 +100,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             'Tarifa/hora',
             'Horas',
             'Monto a Pagar (S/)',
+            'Monto a Favor (S/)',
             'Estado',
             'Recibo',
         ];
@@ -115,6 +120,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             $row['tasa'],
             $row['horas'],
             $row['monto'] !== '' ? number_format($row['monto'], 2) : '',
+            $row['monto_favor'] !== '' ? number_format($row['monto_favor'], 2) : '',
             $row['estado'],
             $row['recibo'],
         ];
@@ -137,7 +143,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
                     'startColor' => ['rgb' => '4F46E5'],
                 ],
             ],
-            'A1:M'.($total + 1) => [
+            'A1:N'.($total + 1) => [
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,

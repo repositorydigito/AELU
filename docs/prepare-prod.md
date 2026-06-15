@@ -101,6 +101,23 @@ php artisan shield:generate --all
 
 > **Nota:** Usar `--all` en producción puede pisar asignaciones manuales de permisos a roles. Preferir `--resource` del módulo nuevo.
 
+#### HU-I08 — Inscripción por Recuperación (feature/incripcion-recuperacion)
+
+```bash
+php artisan shield:generate --resource=Tag
+```
+
+---
+
+### 7b. Seeders de datos maestros
+
+Ejecutar seeders de catálogos cuando se despliegan nuevos módulos que requieren datos iniciales:
+
+```bash
+# HU-I08: Motivos de recuperación (tabla tags)
+php artisan db:seed --class=TagSeeder
+```
+
 ---
 
 ### 8. Verificar que todo funciona
@@ -134,6 +151,29 @@ php artisan about
 - El servidor actualmente tiene PHP **8.2.30** con OPcache habilitado.
 - `openspout ^4.30` requiere PHP ~8.3.0 || ~8.4.0 (incompatible con 8.2).
 
+
+## Permisos de storage (pail / logs)
+
+Si aparece `Permission denied` al escribir en `storage/pail/` o `storage/logs/`, es porque algún comando artisan se ejecutó como `root` y creó archivos con `owner=root`. El web server (`www-data`) no puede escribirlos.
+
+**Fix inmediato:**
+```bash
+rm -f /var/www/AELU/storage/pail/*.pail
+chown -R www-data:www-data /var/www/AELU/storage/
+chmod -R 775 /var/www/AELU/storage/
+```
+
+**Regla permanente — siempre correr artisan como www-data:**
+```bash
+sudo -u www-data php artisan pail
+sudo -u www-data php artisan config:cache
+sudo -u www-data php artisan view:clear
+# etc.
+```
+
+> En producción `php artisan pail` no se usa. El riesgo es en scripts de deploy que corran artisan como root.
+
+---
 
 ## Elminar una migracion para volver a ejecutarlo
 

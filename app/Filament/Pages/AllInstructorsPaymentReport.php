@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Exports\AllInstructorsPaymentExport;
+use App\Models\Instructor;
 use App\Models\InstructorPayment;
 use App\Models\MonthlyPeriod;
 use App\Models\InstructorWorkshop;
@@ -34,6 +35,8 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
     public ?array $data = [];
     #[Url(as: 'period')]
     public $selectedMonthlyPeriodId = null;
+    #[Url(as: 'instructor')]
+    public array $selectedInstructorIds = [];
     public $allInstructorPayments = [];
     public $totalAmount = 0;
 
@@ -41,6 +44,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
     {
         $this->form->fill([
             'monthly_period_id' => $this->selectedMonthlyPeriodId,
+            'instructor_id'     => $this->selectedInstructorIds,
         ]);
 
         if ($this->selectedMonthlyPeriodId) {
@@ -75,9 +79,33 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                     ->live()
                     ->afterStateUpdated(function ($state) {
                         $this->selectedMonthlyPeriodId = $state;
+                        $this->selectedInstructorIds = [];
+                        $this->form->fill([
+                            'monthly_period_id' => $state,
+                            'instructor_id'     => [],
+                        ]);
                         $this->loadAllInstructorPayments();
                     })
                     ->required(),
+                Select::make('instructor_id')
+                    ->label('Profesor')
+                    ->placeholder('Todos los profesores...')
+                    ->options(function () {
+                        if (!$this->selectedMonthlyPeriodId) return [];
+                        return Instructor::whereHas('instructorPayments', fn($q) =>
+                                $q->where('monthly_period_id', $this->selectedMonthlyPeriodId))
+                            ->orderBy('last_names')
+                            ->get()
+                            ->mapWithKeys(fn($i) => [$i->id => $i->last_names . ' ' . $i->first_names]);
+                    })
+                    ->multiple()
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(function ($state) {
+                        $this->selectedInstructorIds = $state ?? [];
+                        $this->loadAllInstructorPayments();
+                    })
+                    ->visible(fn() => (bool) $this->selectedMonthlyPeriodId),
             ])
             ->statePath('data');
     }
@@ -96,6 +124,8 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
             'monthlyPeriod'
         ])
             ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
+            ->when(!empty($this->selectedInstructorIds), fn($q) =>
+                $q->whereIn('instructor_id', $this->selectedInstructorIds))
             ->orderBy('instructor_id')
             ->get();
 
