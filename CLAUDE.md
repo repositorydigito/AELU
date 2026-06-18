@@ -13,6 +13,8 @@ AELU is a workshop enrollment and management system for PAMA (Programa del Adult
 - Vite + TailwindCSS 4.0
 - Spatie Laravel Permission (role-based access control)
 
+> **No dark mode.** This project does not use dark mode. Never add `dark:` Tailwind variant classes to any Blade view. If editing existing files that contain `dark:` classes, remove them.
+
 ## Development Commands
 
 Active scheduled commands:

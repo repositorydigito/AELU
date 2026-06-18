@@ -39,6 +39,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
     public array $selectedInstructorIds = [];
     public $allInstructorPayments = [];
     public $totalAmount = 0;
+    public string $periodName = '';
 
     public function mount(): void
     {
@@ -115,8 +116,19 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
         if (!$this->selectedMonthlyPeriodId) {
             $this->allInstructorPayments = [];
             $this->totalAmount = 0;
+            $this->periodName = '';
             return;
         }
+
+        $monthNames = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+        $period = MonthlyPeriod::find($this->selectedMonthlyPeriodId);
+        $this->periodName = $period
+            ? (($monthNames[$period->month] ?? 'Mes ' . $period->month) . ' ' . $period->year)
+            : '';
 
         $instructorPayments = InstructorPayment::with([
             'instructor',
@@ -366,10 +378,27 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
         $volunteerTotal = collect($grouped['volunteer'])->sum('subtotal');
         $hourlyTotal    = collect($grouped['hourly'])->sum('subtotal');
 
+        $volunteerRevenue = collect($grouped['volunteer'])->sum(function ($i) {
+            return collect($i['workshops'])
+                ->filter(fn($w) => ($w['schedule_rowspan'] ?? 1) > 0)
+                ->sum(fn($w) => $w['schedule_revenue'] ?? $w['monthly_revenue']);
+        });
+        $hourlyRevenue = collect($grouped['hourly'])->sum(function ($i) {
+            return collect($i['workshops'])
+                ->filter(fn($w) => ($w['schedule_rowspan'] ?? 1) > 0)
+                ->sum(fn($w) => $w['schedule_revenue'] ?? $w['monthly_revenue']);
+        });
+
         $this->totalAmount = [
-            'volunteer'   => $volunteerTotal,
-            'hourly'      => $hourlyTotal,
-            'grand_total' => $volunteerTotal + $hourlyTotal,
+            'volunteer'         => $volunteerTotal,
+            'hourly'            => $hourlyTotal,
+            'grand_total'       => $volunteerTotal + $hourlyTotal,
+            'volunteer_revenue' => $volunteerRevenue,
+            'hourly_revenue'    => $hourlyRevenue,
+            'total_revenue'     => $volunteerRevenue + $hourlyRevenue,
+            'volunteer_favor'   => $volunteerRevenue - $volunteerTotal,
+            'hourly_favor'      => $hourlyRevenue - $hourlyTotal,
+            'total_favor'       => ($volunteerRevenue + $hourlyRevenue) - ($volunteerTotal + $hourlyTotal),
         ];
     }
 

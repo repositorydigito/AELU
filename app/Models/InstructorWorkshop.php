@@ -79,7 +79,11 @@ class InstructorWorkshop extends Model
     public function getEffectiveVolunteerPercentage(?MonthlyInstructorRate $monthlyRate = null): ?float
     {
         if ($this->isVolunteer()) {
-            return $this->custom_volunteer_percentage ?? $monthlyRate?->volunteer_percentage;
+            if ($this->custom_volunteer_percentage !== null) {
+                // stored as percentage (e.g. 60.00 = 60%) — normalize to decimal for calculations
+                return $this->custom_volunteer_percentage / 100;
+            }
+            return $monthlyRate?->volunteer_percentage; // already decimal (e.g. 0.5000)
         }
 
         return null;

@@ -93,7 +93,7 @@
                 <th style="width:9%" class="text-right">Tarifa</th>
                 <th style="width:16%" class="text-right">Ingresos del Taller</th>
                 <th style="width:14%" class="text-right">Monto a Pagar</th>
-                <th style="width:12%" class="text-right">Monto a Favor</th>
+                <th style="width:12%" class="text-right">Saldo a Favor</th>
                 <th style="width:8%" class="text-center">Recibo</th>
             </tr>
         </thead>

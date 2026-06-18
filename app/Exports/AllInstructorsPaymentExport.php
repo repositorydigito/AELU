@@ -100,7 +100,7 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
             'Tarifa/hora',
             'Horas',
             'Monto a Pagar (S/)',
-            'Monto a Favor (S/)',
+            'Saldo a Favor (S/)',
             'Estado',
             'Recibo',
         ];
