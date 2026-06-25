@@ -212,9 +212,6 @@ class StudentEnrollmentObserver
                 'payment_status' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
                     ->where('monthly_period_id', $monthlyPeriodId)
                     ->value('payment_status') ?? 'pending',
-                'payment_date' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
-                    ->where('monthly_period_id', $monthlyPeriodId)
-                    ->value('payment_date'),
             ]
         );
     }
