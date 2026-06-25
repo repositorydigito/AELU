@@ -52,4 +52,11 @@ class EditEnrollmentBatch extends EditRecord
     {
         return EnrollmentBatchResource::getUrl('index');
     }
+
+    // Fuerza HTTP redirect completo en lugar de wire:navigate,
+    // evitando que la tabla del listado quede vacía tras el guardado.
+    protected function afterSave(): void
+    {
+        redirect()->to($this->getRedirectUrl());
+    }
 }

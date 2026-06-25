@@ -33,6 +33,12 @@ class WorkshopReplicationService
 
             if ($next->auto_generate_classes && ! $newWorkshop->workshopClasses()->exists()) {
                 $createdClasses += $this->generateClassesForWorkshopAndPeriod($newWorkshop, $next);
+
+                // Actualizar number_of_classes con clases reales generadas (feriados excluidos)
+                $actualClasses = $newWorkshop->workshopClasses()->where('status', 'scheduled')->count();
+                if ($actualClasses > 0 && $actualClasses !== $newWorkshop->number_of_classes) {
+                    $newWorkshop->update(['number_of_classes' => $actualClasses]);
+                }
             }
         }
 
@@ -70,6 +76,7 @@ class WorkshopReplicationService
                 'name'                         => $template->name,
                 'description'                  => $template->description,
                 'instructor_id'                => $template->instructor_id,
+                'delegate_user_id'             => $template->delegate_user_id,
                 'standard_monthly_fee'         => $template->standard_monthly_fee,
                 'pricing_surcharge_percentage' => $template->pricing_surcharge_percentage,
                 'day_of_week'                  => $template->day_of_week,

@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Exports\AllInstructorsPaymentExport;
 use App\Models\Instructor;
 use App\Models\InstructorPayment;
+use App\Models\InstructorPaymentReceipt;
 use App\Models\MonthlyPeriod;
 use App\Models\InstructorWorkshop;
 use App\Models\StudentEnrollment;
@@ -13,12 +14,16 @@ use Dompdf\Options;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Livewire\Attributes\Url;
 
@@ -133,7 +138,8 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
         $instructorPayments = InstructorPayment::with([
             'instructor',
             'instructorWorkshop.workshop',
-            'monthlyPeriod'
+            'monthlyPeriod',
+            'instructorPaymentReceipt',
         ])
             ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
             ->when(!empty($this->selectedInstructorIds), fn($q) =>
@@ -185,13 +191,18 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
 
             $workshopModality = $workshop->modality ?? null;
 
+            $receipt = $payment->instructorPaymentReceipt;
+
             if (!isset($grouped[$modality][$instructorId])) {
                 $grouped[$modality][$instructorId] = [
-                    'instructor_id'   => $instructorId,
-                    'instructor_name' => $instructor->last_names . ' ' . $instructor->first_names,
-                    'instructor_code' => $instructor->code ?? 'N/A',
-                    'workshops'       => [],
-                    'subtotal'        => 0,
+                    'instructor_id'    => $instructorId,
+                    'instructor_name'  => $instructor->last_names . ' ' . $instructor->first_names,
+                    'instructor_code'  => $instructor->code ?? 'N/A',
+                    'workshops'        => [],
+                    'subtotal'         => 0,
+                    'has_receipt'      => $receipt !== null,
+                    'receipt_document' => $receipt?->document_number,
+                    'receipt_date'     => $receipt?->payment_date?->format('d/m/Y'),
                 ];
             }
 
@@ -218,7 +229,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                     'monthly_revenue'         => $payment->monthly_revenue ?? 0,
                     'amount'                  => $amount,
                     'payment_status'          => $this->getPaymentStatusText($payment->payment_status),
-                    'document_number'         => $payment->document_number ?? null,
+                    'document_number'         => $payment->instructorPaymentReceipt?->document_number,
                 ];
                 if ($modality === 'hourly') {
                     $workshopRow['hours_worked']     = $payment->total_hours ?? 0;
@@ -279,7 +290,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                         'monthly_revenue'         => $tierRevenue,
                         'amount'                  => $tierAmount,
                         'payment_status'          => $this->getPaymentStatusText($payment->payment_status),
-                        'document_number'         => $payment->document_number ?? null,
+                        'document_number'         => $payment->instructorPaymentReceipt?->document_number,
                     ];
 
                     if ($modality === 'hourly') {
@@ -300,7 +311,12 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
 
         foreach (['volunteer', 'hourly'] as $type) {
             foreach ($grouped[$type] as &$instructorData) {
-                usort($instructorData['workshops'], function ($a, $b) {
+                usort($instructorData['workshops'], function ($a, $b) use ($type) {
+                    // Voluntarios: ordenar por % DESC primero, luego nombre, horario
+                    if ($type === 'volunteer') {
+                        $pct = ($b['volunteer_percentage'] ?? 0) <=> ($a['volunteer_percentage'] ?? 0);
+                        if ($pct !== 0) return $pct;
+                    }
                     $n = strcmp($a['workshop_name'], $b['workshop_name']);
                     if ($n !== 0) return $n;
                     $s = strcmp($a['schedule'], $b['schedule']);
@@ -313,12 +329,7 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 // Pre-compute rowspan metadata for table display
                 $ws    = &$instructorData['workshops'];
                 $total = count($ws);
-                // % column spans all rows of this instructor (same pct for all workshops)
-                if ($total > 0) {
-                    $ws[0]['instructor_pct_rowspan'] = $total;
-                }
                 for ($i = 0; $i < $total; $i++) {
-                    if ($i > 0) $ws[$i]['instructor_pct_rowspan'] = 0;
                     // name_rowspan: merge consecutive rows with same workshop_name
                     if ($i === 0 || $ws[$i]['workshop_name'] !== $ws[$i - 1]['workshop_name']) {
                         $span = 1;
@@ -389,6 +400,11 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
                 ->sum(fn($w) => $w['schedule_revenue'] ?? $w['monthly_revenue']);
         });
 
+        $paidVolunteer    = $instructorPayments->where('payment_type', 'volunteer')->where('payment_status', 'paid')->sum('calculated_amount');
+        $pendingVolunteer = $instructorPayments->where('payment_type', 'volunteer')->where('payment_status', 'pending')->sum('calculated_amount');
+        $paidHourly       = $instructorPayments->where('payment_type', 'hourly')->where('payment_status', 'paid')->sum('calculated_amount');
+        $pendingHourly    = $instructorPayments->where('payment_type', 'hourly')->where('payment_status', 'pending')->sum('calculated_amount');
+
         $this->totalAmount = [
             'volunteer'         => $volunteerTotal,
             'hourly'            => $hourlyTotal,
@@ -399,6 +415,12 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
             'volunteer_favor'   => $volunteerRevenue - $volunteerTotal,
             'hourly_favor'      => $hourlyRevenue - $hourlyTotal,
             'total_favor'       => ($volunteerRevenue + $hourlyRevenue) - ($volunteerTotal + $hourlyTotal),
+            'paid_volunteer'    => $paidVolunteer,
+            'pending_volunteer' => $pendingVolunteer,
+            'paid_hourly'       => $paidHourly,
+            'pending_hourly'    => $pendingHourly,
+            'paid_total'        => $paidVolunteer + $paidHourly,
+            'pending_total'     => $pendingVolunteer + $pendingHourly,
         ];
     }
 
@@ -410,6 +432,71 @@ class AllInstructorsPaymentReport extends Page implements HasActions, HasForms
             'cancelled' => 'Cancelado',
             default => ucfirst($status ?? 'Pendiente'),
         };
+    }
+
+    public function registerReceiptAction(): Action
+    {
+        return Action::make('registerReceipt')
+            ->label('Registrar Recibo')
+            ->modalHeading('Registrar Recibo de Pago')
+            ->modalDescription(fn (array $arguments) => 'Se registrará un recibo para TODOS los talleres del instructor en este período.')
+            ->form([
+                TextInput::make('document_number')
+                    ->label('Número de Recibo')
+                    ->required()
+                    ->maxLength(50)
+                    ->placeholder('Ej: REC-001'),
+                DatePicker::make('payment_date')
+                    ->label('Fecha de Pago')
+                    ->required()
+                    ->default(now()->toDateString())
+                    ->native(false),
+            ])
+            ->action(function (array $data, array $arguments) {
+                $instructorId = $arguments['instructor_id'];
+                $paymentType  = $arguments['payment_type'];
+
+                $totalAmount = InstructorPayment::where('instructor_id', $instructorId)
+                    ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
+                    ->where('payment_type', $paymentType)
+                    ->sum('calculated_amount');
+
+                try {
+                    DB::transaction(function () use ($instructorId, $paymentType, $data, $totalAmount) {
+                        $receipt = InstructorPaymentReceipt::create([
+                            'instructor_id'     => $instructorId,
+                            'monthly_period_id' => $this->selectedMonthlyPeriodId,
+                            'payment_type'      => $paymentType,
+                            'document_number'   => $data['document_number'],
+                            'payment_date'      => $data['payment_date'],
+                            'total_amount'      => round($totalAmount, 2),
+                            'registered_by'     => Auth::id(),
+                        ]);
+
+                        InstructorPayment::where('instructor_id', $instructorId)
+                            ->where('monthly_period_id', $this->selectedMonthlyPeriodId)
+                            ->where('payment_type', $paymentType)
+                            ->update([
+                                'payment_status'                => 'paid',
+                                'instructor_payment_receipt_id' => $receipt->id,
+                            ]);
+                    });
+
+                    Notification::make()
+                        ->title('Recibo registrado')
+                        ->body('Todos los talleres del instructor fueron marcados como pagados.')
+                        ->success()
+                        ->send();
+                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                    Notification::make()
+                        ->title('Ya existe un recibo')
+                        ->body('Ya existe un recibo registrado para este instructor en este período.')
+                        ->danger()
+                        ->send();
+                }
+
+                $this->loadAllInstructorPayments();
+            });
     }
 
     public function generatePDFAction(): Action

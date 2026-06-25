@@ -7,11 +7,14 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles, WithTitle
+class AllInstructorsPaymentExport implements WithMultipleSheets
 {
     use Exportable;
 
@@ -20,66 +23,51 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
         protected string $periodName,
     ) {}
 
+    public function sheets(): array
+    {
+        return [
+            new VolunteerPaymentSheet($this->groupedPayments['volunteer'] ?? [], $this->periodName),
+            new HourlyPaymentSheet($this->groupedPayments['hourly'] ?? [], $this->periodName),
+        ];
+    }
+}
+
+class VolunteerPaymentSheet implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles, WithTitle
+{
+    public function __construct(
+        protected array $instructors,
+        protected string $periodName,
+    ) {}
+
+    public function title(): string
+    {
+        return 'Voluntarios';
+    }
+
     public function collection()
     {
         $rows = collect();
 
-        foreach (['volunteer' => 'Voluntario', 'hourly' => 'Por Horas'] as $type => $typeLabel) {
-            foreach ($this->groupedPayments[$type] ?? [] as $instructor) {
-                foreach ($instructor['workshops'] as $workshop) {
-                    $rows->push([
-                        'tipo' => $typeLabel,
-                        'instructor' => $instructor['instructor_name']
-                            .($type === 'volunteer' && ($workshop['schedule_rowspan'] ?? 1) > 0
-                                ? ' ('.number_format($workshop['volunteer_percentage'] ?? 0, 0).'%)'
-                                : ''),
-                        'taller' => $workshop['workshop_name'],
-                        'horario' => $workshop['schedule'].(!empty($workshop['modality']) ? ' - '.$workshop['modality'] : ''),
-                        'alumnos' => $workshop['total_students'],
-                        'cantidad_categoria' => (function ($categoryBreakdown) {
-                            $parts = [];
-                            foreach ($categoryBreakdown as $count) {
-                                if ($count > 0) {
-                                    $parts[] = $count;
-                                }
-                            }
-
-                            return implode(' | ', $parts);
-                        })($workshop['students_by_category'] ?? []),
-                        'monto_categoria' => (function ($categoryBreakdown, $categoryAmounts) {
-                            $parts = [];
-                            foreach ($categoryBreakdown as $category => $count) {
-                                if ($count > 0) {
-                                    $parts[] = 'S/ '.number_format((float) ($categoryAmounts[$category] ?? 0), 2);
-                                }
-                            }
-
-                            return implode(' | ', $parts);
-                        })($workshop['students_by_category'] ?? [], $workshop['unit_amount_by_category'] ?? []),
-                        'detalle_clases' => isset($workshop['class_count']) && $workshop['class_count'] > 0
-                            ? $workshop['class_count'].'c'
-                            : '',
-                        'tarifa_mensual' => $workshop['standard_fee'] ?? 0,
-                        'ingresos' => ($workshop['schedule_rowspan'] ?? 1) > 0
-                            ? ($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
-                            : '',
-                        'tasa' => ($workshop['schedule_rowspan'] ?? 1) > 0 && $type === 'hourly'
-                            ? 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr'
-                            : '',
-                        'horas' => ($workshop['schedule_rowspan'] ?? 1) > 0 && $type === 'hourly'
-                            ? ($workshop['hours_worked'] ?? 0)
-                            : ($type === 'hourly' ? '' : '-'),
-                        'monto' => ($workshop['schedule_rowspan'] ?? 1) > 0
-                            ? ($workshop['schedule_amount'] ?? $workshop['amount'])
-                            : '',
-                        'monto_favor' => ($workshop['schedule_rowspan'] ?? 1) > 0 && $type === 'volunteer'
-                            ? ($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
-                              - ($workshop['schedule_amount'] ?? $workshop['amount'])
-                            : '',
-                        'estado' => ($workshop['schedule_rowspan'] ?? 1) > 0 ? $workshop['payment_status'] : '',
-                        'recibo' => ($workshop['schedule_rowspan'] ?? 1) > 0 ? ($workshop['document_number'] ?? '') : '',
-                    ]);
-                }
+        foreach ($this->instructors as $instructor) {
+            foreach ($instructor['workshops'] as $workshop) {
+                $rows->push([
+                    'instructor'    => $instructor['instructor_name'],
+                    'taller'        => $workshop['workshop_name'],
+                    'horario'       => $workshop['schedule'].(!empty($workshop['modality']) ? ' - '.$workshop['modality'] : ''),
+                    'alumnos'       => $workshop['total_students'],
+                    'tarifa'        => $workshop['standard_fee'] ?? 0,
+                    'porcentaje'    => number_format($workshop['volunteer_percentage'] ?? 0, 0).'%',
+                    'ingresos'      => ($workshop['schedule_rowspan'] ?? 1) > 0
+                                        ? ($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
+                                        : '',
+                    'por_pagar'     => ($workshop['schedule_rowspan'] ?? 1) > 0
+                                        ? ($workshop['schedule_amount'] ?? $workshop['amount'])
+                                        : '',
+                    'saldo_favor'   => ($workshop['schedule_rowspan'] ?? 1) > 0
+                                        ? (($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
+                                           - ($workshop['schedule_amount'] ?? $workshop['amount']))
+                                        : '',
+                ]);
             }
         }
 
@@ -89,73 +77,143 @@ class AllInstructorsPaymentExport implements FromCollection, ShouldAutoSize, Wit
     public function headings(): array
     {
         return [
-            'Tipo',
             'Instructor',
             'Taller',
             'Horario',
-            'N° Alumnos',
-            'Detalle Clases',
-            'Tarifa Mensual (S/)',
+            'Inscritos',
+            'Tarifa (S/)',
+            '%',
             'Ingresos (S/)',
-            'Tarifa/hora',
-            'Horas',
-            'Monto a Pagar (S/)',
+            'Por Pagar (S/)',
             'Saldo a Favor (S/)',
-            'Estado',
-            'Recibo',
         ];
     }
 
     public function map($row): array
     {
         return [
-            $row['tipo'],
             $row['instructor'],
             $row['taller'],
             $row['horario'],
             $row['alumnos'],
-            $row['detalle_clases'],
-            number_format($row['tarifa_mensual'], 2),
+            number_format($row['tarifa'], 2),
+            $row['porcentaje'],
             $row['ingresos'] !== '' ? number_format($row['ingresos'], 2) : '',
-            $row['tasa'],
-            $row['horas'],
-            $row['monto'] !== '' ? number_format($row['monto'], 2) : '',
-            $row['monto_favor'] !== '' ? number_format($row['monto_favor'], 2) : '',
-            $row['estado'],
-            $row['recibo'],
+            $row['por_pagar'] !== '' ? number_format($row['por_pagar'], 2) : '',
+            $row['saldo_favor'] !== '' ? number_format($row['saldo_favor'], 2) : '',
         ];
     }
 
     public function styles(Worksheet $sheet)
     {
-        $total = collect($this->groupedPayments['volunteer'] ?? [])
-            ->concat($this->groupedPayments['hourly'] ?? [])
-            ->sum(fn ($i) => count($i['workshops']));
+        $total = array_sum(array_map(fn ($i) => count($i['workshops']), $this->instructors));
 
         return [
             1 => [
-                'font' => [
-                    'bold' => true,
-                    'color' => ['rgb' => 'FFFFFF'],
-                ],
-                'fill' => [
-                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '4F46E5'],
-                ],
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '166534']],
             ],
-            'A1:N'.($total + 1) => [
+            'A1:I'.($total + 1) => [
                 'borders' => [
                     'allBorders' => [
-                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                        'color' => ['rgb' => 'CCCCCC'],
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color'       => ['rgb' => 'CCCCCC'],
                     ],
                 ],
             ],
         ];
     }
+}
+
+class HourlyPaymentSheet implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles, WithTitle
+{
+    public function __construct(
+        protected array $instructors,
+        protected string $periodName,
+    ) {}
 
     public function title(): string
     {
-        return $this->periodName;
+        return 'Por Horas';
+    }
+
+    public function collection()
+    {
+        $rows = collect();
+
+        foreach ($this->instructors as $instructor) {
+            foreach ($instructor['workshops'] as $workshop) {
+                $isFirst = ($workshop['schedule_rowspan'] ?? 1) > 0;
+                $rows->push([
+                    'instructor'   => $instructor['instructor_name'],
+                    'taller'       => $workshop['workshop_name'],
+                    'horario'      => $workshop['schedule'].(!empty($workshop['modality']) ? ' - '.$workshop['modality'] : ''),
+                    'alumnos'      => $workshop['total_students'],
+                    'tarifa'       => $workshop['standard_fee'] ?? 0,
+                    'honorarios'   => $isFirst ? 'S/ '.number_format($workshop['hourly_rate'] ?? 0, 2).'/hr' : '',
+                    'horas'        => $isFirst ? ($workshop['hours_worked'] ?? 0) : '',
+                    'ingresos'     => $isFirst ? ($workshop['schedule_revenue'] ?? $workshop['monthly_revenue']) : '',
+                    'por_pagar'    => $isFirst ? ($workshop['schedule_amount'] ?? $workshop['amount']) : '',
+                    'saldo_favor'  => $isFirst
+                                        ? (($workshop['schedule_revenue'] ?? $workshop['monthly_revenue'])
+                                           - ($workshop['schedule_amount'] ?? $workshop['amount']))
+                                        : '',
+                ]);
+            }
+        }
+
+        return $rows;
+    }
+
+    public function headings(): array
+    {
+        return [
+            'Instructor',
+            'Taller',
+            'Horario',
+            'Inscritos',
+            'Tarifa (S/)',
+            'Honorarios/hora (S/)',
+            'Horas',
+            'Ingresos (S/)',
+            'Por Pagar (S/)',
+            'Saldo a Favor (S/)',
+        ];
+    }
+
+    public function map($row): array
+    {
+        return [
+            $row['instructor'],
+            $row['taller'],
+            $row['horario'],
+            $row['alumnos'],
+            number_format($row['tarifa'], 2),
+            $row['honorarios'],
+            $row['horas'],
+            $row['ingresos'] !== '' ? number_format($row['ingresos'], 2) : '',
+            $row['por_pagar'] !== '' ? number_format($row['por_pagar'], 2) : '',
+            $row['saldo_favor'] !== '' ? number_format($row['saldo_favor'], 2) : '',
+        ];
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        $total = array_sum(array_map(fn ($i) => count($i['workshops']), $this->instructors));
+
+        return [
+            1 => [
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '166534']],
+            ],
+            'A1:J'.($total + 1) => [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color'       => ['rgb' => 'CCCCCC'],
+                    ],
+                ],
+            ],
+        ];
     }
 }

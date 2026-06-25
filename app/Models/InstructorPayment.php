@@ -22,9 +22,8 @@ class InstructorPayment extends Model
         'applied_volunteer_percentage',
         'calculated_amount',
         'payment_status',
-        'payment_date',
         'notes',
-        'document_number',
+        'instructor_payment_receipt_id',
     ];
 
     protected $casts = [
@@ -35,7 +34,6 @@ class InstructorPayment extends Model
         'applied_hourly_rate' => 'decimal:2',
         'applied_volunteer_percentage' => 'decimal:4',
         'calculated_amount' => 'decimal:2',
-        'payment_date' => 'date',
     ];
 
     // Relaciones
@@ -57,6 +55,11 @@ class InstructorPayment extends Model
     public function monthlyInstructorRate(): BelongsTo
     {
         return $this->belongsTo(MonthlyInstructorRate::class);
+    }
+
+    public function instructorPaymentReceipt(): BelongsTo
+    {
+        return $this->belongsTo(InstructorPaymentReceipt::class);
     }
 
     // Relación indirecta al workshop

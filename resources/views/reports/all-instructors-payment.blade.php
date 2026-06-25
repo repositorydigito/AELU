@@ -9,8 +9,12 @@
         .header h1 { margin: 0 0 4px 0; font-size: 16px; text-transform: uppercase; }
         .header p { margin: 2px 0; font-size: 10px; }
 
-        .summary-box { border: 1px solid #999; padding: 6px 10px; margin-bottom: 15px; font-size: 10px; }
-        .summary-box span { margin-right: 30px; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 10px; }
+        .summary-table th { background-color: #e5e7eb; padding: 4px 8px; border: 1px solid #aaa; font-weight: bold; text-align: right; }
+        .summary-table th:first-child { text-align: left; }
+        .summary-table td { border: 1px solid #ccc; padding: 4px 8px; text-align: right; }
+        .summary-table td:first-child { text-align: left; font-weight: bold; }
+        .summary-table tfoot td { background-color: #d1d5db; font-weight: bold; border-top: 2px solid #555; }
 
         .section-title {
             font-size: 13px;
@@ -75,11 +79,46 @@
         <p><strong>Período:</strong> {{ $monthly_period }} &nbsp;|&nbsp; <strong>Generado:</strong> {{ $generated_at }}</p>
     </div>
 
-    <div class="summary-box">
-        <span><strong>Total Voluntarios:</strong> S/ {{ number_format($total_amount['volunteer'], 2) }}</span>
-        <span><strong>Total Por Horas:</strong> S/ {{ number_format($total_amount['hourly'], 2) }}</span>
-        <span><strong>Total General:</strong> S/ {{ number_format($total_amount['grand_total'], 2) }}</span>
-    </div>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Ingresos de Taller</th>
+                <th>Total a Pagar</th>
+                <th>Pagado</th>
+                <th>Pendiente</th>
+                <th>Saldo a Favor</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Voluntarios</td>
+                <td>S/ {{ number_format($total_amount['volunteer_revenue'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['volunteer'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['paid_volunteer'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['pending_volunteer'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['volunteer_favor'] ?? 0, 2) }}</td>
+            </tr>
+            <tr>
+                <td>Por Horas</td>
+                <td>S/ {{ number_format($total_amount['hourly_revenue'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['hourly'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['paid_hourly'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['pending_hourly'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['hourly_favor'] ?? 0, 2) }}</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>Total</td>
+                <td>S/ {{ number_format($total_amount['total_revenue'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['grand_total'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['paid_total'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['pending_total'] ?? 0, 2) }}</td>
+                <td>S/ {{ number_format($total_amount['total_favor'] ?? 0, 2) }}</td>
+            </tr>
+        </tfoot>
+    </table>
 
     {{-- SECCIÓN VOLUNTARIOS --}}
     @if(!empty($grouped_payments['volunteer']))
@@ -91,21 +130,16 @@
                 <th style="width:16%">Horario</th>
                 <th style="width:7%" class="text-center">Inscritos</th>
                 <th style="width:9%" class="text-right">Tarifa</th>
-                <th style="width:16%" class="text-right">Ingresos del Taller</th>
-                <th style="width:14%" class="text-right">Monto a Pagar</th>
-                <th style="width:12%" class="text-right">Saldo a Favor</th>
-                <th style="width:8%" class="text-center">Recibo</th>
+                <th style="width:6%" class="text-center">%</th>
+                <th style="width:16%" class="text-right">Ingresos</th>
+                <th style="width:14%" class="text-right">Por Pagar</th>
+                <th style="width:14%" class="text-right">Saldo a Favor</th>
             </tr>
         </thead>
         <tbody>
             @foreach($grouped_payments['volunteer'] as $instructor)
                 <tr class="instructor-row">
-                    <td colspan="8">
-                        {{ $instructor['instructor_name'] }}
-                        @if(!empty($instructor['workshops'][0]['volunteer_percentage']))
-                            ({{ number_format($instructor['workshops'][0]['volunteer_percentage'], 0) }}%)
-                        @endif
-                    </td>
+                    <td colspan="8">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
                 @php
@@ -124,11 +158,11 @@
                         @endif
                     </td>
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
+                    <td class="text-center">{{ number_format($workshop['volunteer_percentage'] ?? 0, 0) }}%</td>
                     @if(($workshop['schedule_rowspan'] ?? 1) > 0)
                     <td class="text-right" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($pdfRevenue, 2) }}</td>
                     <td class="text-right text-bold" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($pdfPayout, 2) }}</td>
                     <td class="text-right text-bold" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($pdfRevenue - $pdfPayout, 2) }}</td>
-                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['document_number'] ?? '—' }}</td>
                     @endif
                 </tr>
                 @endforeach
@@ -137,11 +171,10 @@
                     $pdfSubFavor = $pdfSubIngresos - $instructor['subtotal'];
                 @endphp
                 <tr class="subtotal-row">
-                    <td colspan="4" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="5" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
                     <td class="text-right">S/ {{ number_format($pdfSubIngresos, 2) }}</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
                     <td class="text-right">S/ {{ number_format($pdfSubFavor, 2) }}</td>
-                    <td></td>
                 </tr>
             @endforeach
         </tbody>
@@ -153,11 +186,10 @@
         @endphp
         <tfoot>
             <tr>
-                <td colspan="4" class="text-right">TOTAL VOLUNTARIOS:</td>
+                <td colspan="5" class="text-right">TOTAL VOLUNTARIOS:</td>
                 <td class="text-right">S/ {{ number_format($pdfFooterIngresos, 2) }}</td>
                 <td class="text-right">S/ {{ number_format($total_amount['volunteer'], 2) }}</td>
                 <td class="text-right">S/ {{ number_format($pdfFooterFavor, 2) }}</td>
-                <td></td>
             </tr>
         </tfoot>
     </table>
@@ -169,14 +201,14 @@
     <table>
         <thead>
             <tr>
-                <th style="width:20%">Taller</th>
-                <th style="width:18%">Horario</th>
-                <th style="width:8%" class="text-center">Inscritos</th>
+                <th style="width:17%">Taller</th>
+                <th style="width:16%">Horario</th>
+                <th style="width:7%" class="text-center">Inscritos</th>
                 <th style="width:10%" class="text-right">Tarifa</th>
-                <th style="width:12%" class="text-center">Horas</th>
-                <th style="width:12%" class="text-center">Tarifa/hora</th>
-                <th style="width:12%" class="text-right">Monto a Pagar</th>
-                <th style="width:8%" class="text-center">Recibo</th>
+                <th style="width:14%" class="text-center">Honorarios/horas</th>
+                <th style="width:13%" class="text-right">Ingresos</th>
+                <th style="width:12%" class="text-right">Por Pagar</th>
+                <th style="width:11%" class="text-right">Saldo a Favor</th>
             </tr>
         </thead>
         <tbody>
@@ -185,6 +217,10 @@
                     <td colspan="8">{{ $instructor['instructor_name'] }}</td>
                 </tr>
                 @foreach($instructor['workshops'] as $workshop)
+                @php
+                    $hrRevenue = $workshop['schedule_revenue'] ?? $workshop['monthly_revenue'];
+                    $hrAmount  = $workshop['schedule_amount']  ?? $workshop['amount'];
+                @endphp
                 <tr>
                     @if(($workshop['schedule_rowspan'] ?? 1) > 0)
                     <td style="padding-left:14px; vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['workshop_name'] }}</td>
@@ -198,25 +234,37 @@
                     </td>
                     <td class="text-right">S/ {{ number_format($workshop['standard_fee'] ?? 0, 2) }}</td>
                     @if(($workshop['schedule_rowspan'] ?? 1) > 0)
-                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ number_format($workshop['hours_worked'] ?? 0, 1) }}</td>
-                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['hourly_rate'] ?? 0, 2) }}</td>
-                    <td class="text-right text-bold" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['schedule_amount'] ?? $workshop['amount'], 2) }}</td>
-                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">{{ $workshop['document_number'] ?? '—' }}</td>
+                    <td class="text-center" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($workshop['hourly_rate'] ?? 0, 2) }}<br><small style="font-size:8px;color:#555">{{ number_format($workshop['hours_worked'] ?? 0, 1) }} hrs</small></td>
+                    <td class="text-right" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($hrRevenue, 2) }}</td>
+                    <td class="text-right text-bold" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($hrAmount, 2) }}</td>
+                    <td class="text-right" style="vertical-align:middle" rowspan="{{ $workshop['schedule_rowspan'] }}">S/ {{ number_format($hrRevenue - $hrAmount, 2) }}</td>
                     @endif
                 </tr>
                 @endforeach
+                @php
+                    $pdfHrSubIngresos = collect($instructor['workshops'])->filter(fn($w) => ($w['schedule_rowspan'] ?? 1) > 0)->sum(fn($w) => $w['schedule_revenue'] ?? $w['monthly_revenue']);
+                    $pdfHrSubFavor = $pdfHrSubIngresos - $instructor['subtotal'];
+                @endphp
                 <tr class="subtotal-row">
-                    <td colspan="6" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td colspan="5" class="text-right">Subtotal {{ $instructor['instructor_name'] }}:</td>
+                    <td class="text-right">S/ {{ number_format($pdfHrSubIngresos, 2) }}</td>
                     <td class="text-right">S/ {{ number_format($instructor['subtotal'], 2) }}</td>
-                    <td></td>
+                    <td class="text-right">S/ {{ number_format($pdfHrSubFavor, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
+        @php
+            $pdfFooterHrIngresos = collect($grouped_payments['hourly'])->sum(function ($i) {
+                return collect($i['workshops'])->filter(fn($w) => ($w['schedule_rowspan'] ?? 1) > 0)->sum(fn($w) => $w['schedule_revenue'] ?? $w['monthly_revenue']);
+            });
+            $pdfFooterHrFavor = $pdfFooterHrIngresos - $total_amount['hourly'];
+        @endphp
         <tfoot>
             <tr>
-                <td colspan="6" class="text-right">TOTAL POR HORAS:</td>
+                <td colspan="5" class="text-right">TOTAL POR HORAS:</td>
+                <td class="text-right">S/ {{ number_format($pdfFooterHrIngresos, 2) }}</td>
                 <td class="text-right">S/ {{ number_format($total_amount['hourly'], 2) }}</td>
-                <td></td>
+                <td class="text-right">S/ {{ number_format($pdfFooterHrFavor, 2) }}</td>
             </tr>
         </tfoot>
     </table>

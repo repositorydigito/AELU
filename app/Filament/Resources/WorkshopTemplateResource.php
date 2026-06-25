@@ -42,6 +42,20 @@ class WorkshopTemplateResource extends Resource
                             ->options(\App\Models\Instructor::orderBy('last_names')->get()->pluck('full_name', 'id'))
                             ->searchable()
                             ->nullable(),
+                        Forms\Components\Select::make('delegate_user_id')
+                            ->label('Delegado')
+                            ->options(function () {
+                                if (! \Spatie\Permission\Models\Role::where('name', 'Delegado')->where('guard_name', 'web')->exists()) {
+                                    return [];
+                                }
+
+                                return \App\Models\User::role('Delegado')
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id');
+                            })
+                            ->getOptionLabelUsing(fn ($value) => \App\Models\User::find($value)?->name ?? $value)
+                            ->searchable()
+                            ->nullable(),
                         Forms\Components\Select::make('day_of_week')
                             ->label('Día del taller')
                             ->multiple()
@@ -131,6 +145,10 @@ class WorkshopTemplateResource extends Resource
                     ->label('Profesor')
                     ->searchable(['first_names', 'last_names'])
                     ->default('—'),
+                Tables\Columns\TextColumn::make('delegate.name')
+                    ->label('Delegado')
+                    ->default('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('day_of_week')
                     ->label('Días')
                     ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state),
@@ -178,6 +196,11 @@ class WorkshopTemplateResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) WorkshopTemplate::count();
     }
 
     public static function getRelations(): array

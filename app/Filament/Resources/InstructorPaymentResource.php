@@ -4,12 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\InstructorPaymentResource\Pages;
 use App\Models\InstructorPayment;
+use App\Models\InstructorPaymentReceipt;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class InstructorPaymentResource extends Resource
 {
@@ -154,17 +158,19 @@ class InstructorPaymentResource extends Resource
                                     ->disabled()
                                     ->native(false),
 
-                                Forms\Components\DatePicker::make('payment_date')
+                                Forms\Components\TextInput::make('receipt_payment_date')
                                     ->label('Fecha de Pago')
-                                    ->disabled(),
+                                    ->disabled()
+                                    ->formatStateUsing(fn ($record) => $record?->instructorPaymentReceipt?->payment_date?->format('d/m/Y') ?? '—')
+                                    ->visible(fn ($record) => $record?->instructorPaymentReceipt !== null),
                             ]),
 
-                        Forms\Components\TextInput::make('document_number')
-                            ->label('Número de Documento')
-                            ->helperText('Número de recibo, comprobante o documento de pago')
-                            ->placeholder('Ej: REC-001, VOUCHER-123')
-                            ->maxLength(255)
-                            ->visible(fn ($record) => $record?->payment_status === 'paid'),
+                        Forms\Components\TextInput::make('receipt_document_number')
+                            ->label('Número de Recibo')
+                            ->helperText('Registrado en el reporte general de pago de profesores')
+                            ->disabled()
+                            ->formatStateUsing(fn ($record) => $record?->instructorPaymentReceipt?->document_number ?? '—')
+                            ->visible(fn ($record) => $record?->instructorPaymentReceipt !== null),
 
                         Forms\Components\Textarea::make('notes')
                             ->label('Notas')
@@ -342,10 +348,15 @@ class InstructorPaymentResource extends Resource
                         default => 'Estado desconocido',
                     }),
 
-                Tables\Columns\TextColumn::make('payment_date')
+                Tables\Columns\TextColumn::make('instructorPaymentReceipt.payment_date')
                     ->label('Fecha de Pago')
                     ->date('d/m/Y')
                     ->placeholder('Sin fecha')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('instructorPaymentReceipt.document_number')
+                    ->label('N° Recibo')
+                    ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -366,27 +377,57 @@ class InstructorPaymentResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('mark_as_paid')
-                    ->label('Marcar como Pagado')
+                    ->label('Registrar Recibo')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->form([
                         Forms\Components\TextInput::make('document_number')
-                            ->label('Número de Documento')
+                            ->label('Número de Recibo')
                             ->helperText('Número de recibo, comprobante o documento de pago')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(50),
+                        Forms\Components\DatePicker::make('payment_date')
+                            ->label('Fecha de Pago')
+                            ->required()
+                            ->default(now()->toDateString())
+                            ->native(false),
                     ])
                     ->action(function (InstructorPayment $record, array $data) {
-                        $record->update([
-                            'payment_status' => 'paid',
-                            'payment_date' => now()->toDateString(),
-                            'document_number' => $data['document_number'],
-                        ]);
+                        $totalAmount = InstructorPayment::where('instructor_id', $record->instructor_id)
+                            ->where('monthly_period_id', $record->monthly_period_id)
+                            ->where('payment_type', $record->payment_type)
+                            ->sum('calculated_amount');
+
+                        DB::transaction(function () use ($record, $data, $totalAmount) {
+                            $receipt = InstructorPaymentReceipt::create([
+                                'instructor_id'      => $record->instructor_id,
+                                'monthly_period_id'  => $record->monthly_period_id,
+                                'payment_type'       => $record->payment_type,
+                                'document_number'    => $data['document_number'],
+                                'payment_date'       => $data['payment_date'],
+                                'total_amount'       => round($totalAmount, 2),
+                                'registered_by'      => Auth::id(),
+                            ]);
+
+                            InstructorPayment::where('instructor_id', $record->instructor_id)
+                                ->where('monthly_period_id', $record->monthly_period_id)
+                                ->where('payment_type', $record->payment_type)
+                                ->update([
+                                    'payment_status'                => 'paid',
+                                    'instructor_payment_receipt_id' => $receipt->id,
+                                ]);
+                        });
+
+                        Notification::make()
+                            ->title('Recibo registrado')
+                            ->body('Todos los talleres del instructor fueron marcados como pagados.')
+                            ->success()
+                            ->send();
                     })
-                    ->visible(fn (InstructorPayment $record) => $record->payment_status === 'pending')
-                    ->requiresConfirmation()
-                    ->modalHeading('Confirmar Pago')
-                    ->modalDescription(fn (InstructorPayment $record) => 'Confirma el pago de S/ '.number_format($record->calculated_amount, 2)." para {$record->instructor->first_names} {$record->instructor->last_names}"
+                    ->visible(fn (InstructorPayment $record) => $record->instructorPaymentReceipt === null)
+                    ->modalHeading('Registrar Recibo de Pago')
+                    ->modalDescription(fn (InstructorPayment $record) => 'Se registrará un recibo para TODOS los talleres de '.
+                        "{$record->instructor->first_names} {$record->instructor->last_names} en este período."
                     )
                     ->modalSubmitActionLabel('Confirmar Pago')
                     ->modalCancelActionLabel('Cancelar'),

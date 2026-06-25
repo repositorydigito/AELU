@@ -44,23 +44,30 @@ class InstructorPaymentService
 
         $calculatedAmount = $monthlyRevenue * $appliedPercentage;
 
-        return InstructorPayment::updateOrCreate(
-            [
-                'instructor_workshop_id' => $instructorWorkshop->id,
-                'monthly_period_id' => $monthlyPeriod->id,
-            ],
-            [
-                'instructor_id' => $instructorWorkshop->instructor_id,
-                'monthly_instructor_rate_id' => $monthlyRate?->id,
-                'payment_type' => 'volunteer',
-                'total_students' => $totalStudents,
-                'monthly_revenue' => $monthlyRevenue,
-                'volunteer_percentage' => $monthlyRate?->volunteer_percentage,
-                'applied_volunteer_percentage' => $appliedPercentage,
-                'calculated_amount' => round($calculatedAmount, 2),
-                'payment_status' => 'pending',
-            ]
-        );
+        $payment = InstructorPayment::firstOrNew([
+            'instructor_workshop_id' => $instructorWorkshop->id,
+            'monthly_period_id'      => $monthlyPeriod->id,
+        ]);
+
+        $payment->fill([
+            'instructor_id'                => $instructorWorkshop->instructor_id,
+            'monthly_instructor_rate_id'   => $monthlyRate?->id,
+            'payment_type'                 => 'volunteer',
+            'total_students'               => $totalStudents,
+            'monthly_revenue'              => $monthlyRevenue,
+            'volunteer_percentage'         => $monthlyRate?->volunteer_percentage,
+            'applied_volunteer_percentage' => $appliedPercentage,
+            'calculated_amount'            => round($calculatedAmount, 2),
+        ]);
+
+        // Solo establecer 'pending' en registros nuevos; no resetear si ya tiene recibo registrado.
+        if (! $payment->exists) {
+            $payment->payment_status = 'pending';
+        }
+
+        $payment->save();
+
+        return $payment;
     }
 
     /**
@@ -80,22 +87,29 @@ class InstructorPaymentService
 
         $calculatedAmount = $totalHours * $appliedHourlyRate;
 
-        return InstructorPayment::updateOrCreate(
-            [
-                'instructor_workshop_id' => $instructorWorkshop->id,
-                'monthly_period_id' => $monthlyPeriod->id,
-            ],
-            [
-                'instructor_id' => $instructorWorkshop->instructor_id,
-                'monthly_instructor_rate_id' => $monthlyRate?->id,
-                'payment_type' => 'hourly',
-                'total_hours' => $totalHours,
-                'hourly_rate' => $instructorWorkshop->hourly_rate,
-                'applied_hourly_rate' => $appliedHourlyRate,
-                'calculated_amount' => round($calculatedAmount, 2),
-                'payment_status' => 'pending',
-            ]
-        );
+        $payment = InstructorPayment::firstOrNew([
+            'instructor_workshop_id' => $instructorWorkshop->id,
+            'monthly_period_id'      => $monthlyPeriod->id,
+        ]);
+
+        $payment->fill([
+            'instructor_id'             => $instructorWorkshop->instructor_id,
+            'monthly_instructor_rate_id' => $monthlyRate?->id,
+            'payment_type'              => 'hourly',
+            'total_hours'               => $totalHours,
+            'hourly_rate'               => $instructorWorkshop->hourly_rate,
+            'applied_hourly_rate'       => $appliedHourlyRate,
+            'calculated_amount'         => round($calculatedAmount, 2),
+        ]);
+
+        // Solo establecer 'pending' en registros nuevos; no resetear si ya tiene recibo registrado.
+        if (! $payment->exists) {
+            $payment->payment_status = 'pending';
+        }
+
+        $payment->save();
+
+        return $payment;
     }
 
     /**

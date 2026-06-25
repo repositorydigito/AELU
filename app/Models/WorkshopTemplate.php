@@ -11,6 +11,7 @@ class WorkshopTemplate extends Model
     protected $fillable = [
         'name',
         'instructor_id',
+        'delegate_user_id',
         'description',
         'standard_monthly_fee',
         'pricing_surcharge_percentage',
@@ -38,6 +39,11 @@ class WorkshopTemplate extends Model
     public function instructor(): BelongsTo
     {
         return $this->belongsTo(Instructor::class);
+    }
+
+    public function delegate(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'delegate_user_id');
     }
 
     public function workshops(): HasMany

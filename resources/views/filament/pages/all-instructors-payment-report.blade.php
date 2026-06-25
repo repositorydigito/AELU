@@ -21,6 +21,24 @@
             z-index: 8;
         }
 
+        .ipr-sidebar-expanded .ipr-instructor-header td {
+            top: 30px;
+        }
+
+        .ipr-instructor-header td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ipr-sidebar-expanded {
+            --ipr-taller-top: 92px;
+        }
+
+        .ipr-name-separator td {
+            border-top: 2px solid #d1d5db;
+        }
+
         .ipr-summary-amount {
             font-size: 1rem;
         }
@@ -34,7 +52,20 @@
             color: #14532d !important;
         }
     </style>
-    <div class="space-y-6">
+    <div class="space-y-6" id="ipr-root" style="--ipr-taller-top: 74px;"
+        x-data="{
+            init() {
+                const root = document.getElementById('ipr-root');
+                const sidebar = document.querySelector('aside.fi-sidebar');
+                if (!sidebar || !root) return;
+                const update = () => {
+                    const w = parseInt(window.getComputedStyle(sidebar).width) || 0;
+                    root.classList.toggle('ipr-sidebar-expanded', w > 150);
+                };
+                new ResizeObserver(update).observe(sidebar);
+                update();
+            }
+        }">
 
         <!-- Formulario de selección -->
         <x-filament::section>
@@ -60,7 +91,9 @@
                         <tr class="border-b-2 border-gray-500">
                             <th class="py-2 pr-6 text-left font-medium text-gray-500"></th>
                             <th class="py-2 px-4 text-right font-semibold text-gray-700 border-l border-gray-300">Ingresos de Taller</th>
-                            <th class="py-2 px-4 text-right font-semibold text-gray-700 border-l border-gray-300">Por Pagar</th>
+                            <th class="py-2 px-4 text-right font-semibold text-gray-700 border-l border-gray-300">Total a Pagar</th>
+                            <th class="py-2 px-4 text-right font-semibold text-gray-700 border-l border-gray-300">Pagado</th>
+                            <th class="py-2 px-4 text-right font-semibold text-gray-700 border-l border-gray-300">Pendiente</th>
                             <th class="py-2 px-4 text-right font-semibold text-gray-700 border-l border-gray-300">Saldo a Favor</th>
                         </tr>
                     </thead>
@@ -69,12 +102,16 @@
                             <td class="py-2 pr-6 font-medium text-gray-700">Voluntarios</td>
                             <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['volunteer_revenue'] ?? 0, 2) }}</td>
                             <td class="py-2 px-4 text-right font-semibold text-green-700 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['volunteer'] ?? 0, 2) }}</td>
+                            <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['paid_volunteer'] ?? 0, 2) }}</td>
+                            <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['pending_volunteer'] ?? 0, 2) }}</td>
                             <td class="py-2 px-4 text-right ipr-summary-amount border-l border-gray-300 {{ ($totalAmount['volunteer_favor'] ?? 0) >= 0 ? 'text-blue-600' : 'text-red-600' }}">S/ {{ number_format($totalAmount['volunteer_favor'] ?? 0, 2) }}</td>
                         </tr>
                         <tr class="border-b border-gray-200">
                             <td class="py-2 pr-6 font-medium text-gray-700">Por Horas</td>
                             <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['hourly_revenue'] ?? 0, 2) }}</td>
                             <td class="py-2 px-4 text-right font-semibold text-green-700 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['hourly'] ?? 0, 2) }}</td>
+                            <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['paid_hourly'] ?? 0, 2) }}</td>
+                            <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['pending_hourly'] ?? 0, 2) }}</td>
                             <td class="py-2 px-4 text-right ipr-summary-amount border-l border-gray-300 {{ ($totalAmount['hourly_favor'] ?? 0) >= 0 ? 'text-blue-600' : 'text-red-600' }}">S/ {{ number_format($totalAmount['hourly_favor'] ?? 0, 2) }}</td>
                         </tr>
                     </tbody>
@@ -83,6 +120,8 @@
                             <td class="py-2 pr-6 text-gray-900">Total</td>
                             <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['total_revenue'] ?? 0, 2) }}</td>
                             <td class="py-2 px-4 text-right text-green-700 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['grand_total'] ?? 0, 2) }}</td>
+                            <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['paid_total'] ?? 0, 2) }}</td>
+                            <td class="py-2 px-4 text-right text-gray-900 ipr-summary-amount border-l border-gray-300">S/ {{ number_format($totalAmount['pending_total'] ?? 0, 2) }}</td>
                             <td class="py-2 px-4 text-right ipr-summary-amount border-l border-gray-300 {{ ($totalAmount['total_favor'] ?? 0) >= 0 ? 'text-blue-700' : 'text-red-600' }}">S/ {{ number_format($totalAmount['total_favor'] ?? 0, 2) }}</td>
                         </tr>
                     </tfoot>
@@ -114,11 +153,6 @@
                             x-on:click="tab = 'hourly'">
                             Por Horas
                             <x-slot name="badge">{{ count($allInstructorPayments['hourly']) }}</x-slot>
-
-                            {{-- agregar columna de saldo a favor de pama (ingresos - monto a pagar) y sumar en el total general
-                            NOMBRE DEL TALLER
-                            cambiar Tarifa/hora => honorarios / horas
-                            exportar en documentos diferentes --}}
                         </x-filament::tabs.item>
                     @endif
                 </x-filament::tabs>
@@ -138,27 +172,37 @@
                                             <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
                                                 Inscritos</th>
                                             <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                                Tarifa Mensual</th>
+                                                Tarifa</th>
+                                            <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
+                                                %</th>
                                             <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                                Ingresos del Taller</th>
+                                                Ingresos</th>
                                             <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                                Monto a Pagar</th>
+                                                Por Pagar</th>
                                             <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
                                                 Saldo a Favor</th>
-                                            <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                                Estado</th>
-                                            <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                                Recibo</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
                                         @foreach ($allInstructorPayments['volunteer'] as $instructor)
                                             <tr class="ipr-instructor-header">
-                                                <td colspan="9" class="px-3 py-2">
-                                                    {{ $instructor['instructor_name'] }}
-                                                    @if (!empty($instructor['workshops'][0]['volunteer_percentage']))
-                                                        <span class="ml-2 font-normal text-green-700">({{ number_format($instructor['workshops'][0]['volunteer_percentage'], 0) }}%)</span>
-                                                    @endif
+                                                <td colspan="8" class="px-3 py-2">
+                                                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                                                        <span>{{ $instructor['instructor_name'] }}</span>
+                                                        @if ($instructor['has_receipt'])
+                                                            <span style="font-size:0.8rem; font-weight:400; color:#166534;">
+                                                                N° {{ $instructor['receipt_document'] }} &nbsp;•&nbsp; {{ $instructor['receipt_date'] }}
+                                                            </span>
+                                                        @else
+                                                            <x-filament::button
+                                                                size="xs"
+                                                                color="success"
+                                                                wire:click="mountAction('registerReceipt', {{ \Illuminate\Support\Js::from(['instructor_id' => $instructor['instructor_id'], 'payment_type' => 'volunteer']) }})"
+                                                            >
+                                                                Registrar Recibo
+                                                            </x-filament::button>
+                                                        @endif
+                                                    </div>
                                                 </td>
                                             </tr>
                                             @php $schedGroupIdx = 0; @endphp
@@ -168,10 +212,11 @@
                                                         $schedGroupIdx++;
                                                     }
                                                 @endphp
-                                                <tr class="{{ $schedGroupIdx % 2 === 1 ? 'ipr-row-odd' : 'ipr-row-even' }}">
-                                                    @if (($workshop['schedule_rowspan'] ?? 1) > 0)
-                                                        <td class="px-3 py-2 pl-6 text-gray-900 align-middle"
-                                                            rowspan="{{ $workshop['schedule_rowspan'] }}">
+                                                <tr class="{{ $schedGroupIdx % 2 === 1 ? 'ipr-row-odd' : 'ipr-row-even' }} {{ ($workshop['name_rowspan'] ?? 0) > 0 ? 'ipr-name-separator' : '' }}">
+                                                    @if (($workshop['name_rowspan'] ?? 1) > 0)
+                                                        <td class="px-3 py-2 pl-6 text-gray-900"
+                                                            rowspan="{{ $workshop['name_rowspan'] }}"
+                                                            style="position:sticky; top:var(--ipr-taller-top, 74px); z-index:7; background:white; vertical-align:top; border-top:2px solid #d1d5db;">
                                                             {{ $workshop['workshop_name'] }}</td>
                                                     @endif
                                                     @if (($workshop['schedule_rowspan'] ?? 1) > 0)
@@ -193,6 +238,9 @@
                                                     </td>
                                                     <td class="px-3 py-2 text-right text-gray-600">S/
                                                         {{ number_format($workshop['standard_fee'], 2) }}</td>
+                                                    <td class="px-3 py-2 text-center text-gray-500 text-xs align-middle">
+                                                        {{ number_format($workshop['volunteer_percentage'] ?? 0, 0) }}%
+                                                    </td>
                                                     @if (($workshop['schedule_rowspan'] ?? 1) > 0)
                                                         <td class="px-3 py-2 text-right text-gray-900 align-middle"
                                                             rowspan="{{ $workshop['schedule_rowspan'] }}">S/
@@ -211,14 +259,6 @@
                                                             rowspan="{{ $workshop['schedule_rowspan'] }}">S/
                                                             {{ number_format($revenue - $payout, 2) }}</td>
                                                     @endif
-                                                    <td class="px-3 py-2 text-center">
-                                                        <x-filament::badge :color="$workshop['payment_status'] === 'Pagado' ? 'success' : 'warning'">
-                                                            {{ $workshop['payment_status'] }}
-                                                        </x-filament::badge>
-                                                    </td>
-                                                    <td class="px-3 py-2 text-center text-xs text-gray-600">
-                                                        {{ $workshop['document_number'] ?? '—' }}
-                                                    </td>
                                                 </tr>
                                             @endforeach
                                             @php
@@ -233,7 +273,7 @@
                                                     });
                                             @endphp
                                             <tr class="bg-purple-50/50 border-t border-purple-200">
-                                                <td colspan="4" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600">
+                                                <td colspan="5" class="px-3 py-2 pl-6 text-right text-xs font-semibold text-gray-600">
                                                     Subtotal {{ $instructor['instructor_name'] }}:
                                                 </td>
                                                 <td class="px-3 py-2 text-right text-gray-700">
@@ -245,8 +285,6 @@
                                                 <td class="px-3 py-2 text-right text-blue-600">
                                                     S/ {{ number_format($subtotalFavor, 2) }}
                                                 </td>
-                                                <td></td>
-                                                <td></td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -258,12 +296,10 @@
                                     @endphp
                                     <tfoot>
                                         <tr class="bg-purple-100 font-bold border-t-2 border-purple-300">
-                                            <td colspan="4" class="px-3 py-3 text-right text-gray-900">TOTAL VOLUNTARIOS:</td>
+                                            <td colspan="5" class="px-3 py-3 text-right text-gray-900">TOTAL VOLUNTARIOS:</td>
                                             <td class="px-3 py-3 text-right text-gray-900">S/ {{ number_format($footerVolIngresos, 2) }}</td>
                                             <td class="px-3 py-3 text-right text-purple-700">S/ {{ number_format($totalAmount['volunteer'], 2) }}</td>
                                             <td class="px-3 py-3 text-right text-blue-600">S/ {{ number_format($footerVolFavor, 2) }}</td>
-                                            <td></td>
-                                            <td></td>
                                         </tr>
                                     </tfoot>
                                 </table>
@@ -280,33 +316,44 @@
                             <table class="w-full table-auto text-sm">
                                 <thead class="sticky top-0 z-10">
                                     <tr>
-                                        <th class="px-3 py-2 text-left font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
+                                        <th class="px-3 py-2 text-left font-medium text-gray-500 sticky top-0 z-10 bg-gray-50" style="width:20%">
                                             Taller</th>
                                         <th class="px-3 py-2 text-left font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
                                             Horario</th>
                                         <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
                                             Inscritos</th>
                                         <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                            Tarifa Mensual</th>
+                                            Tarifa</th>
                                         <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
                                             Honorarios/horas</th>
                                         <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                            Ingresos del Taller</th>
+                                            Ingresos</th>
                                         <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
                                             Por Pagar</th>
                                         <th class="px-3 py-2 text-right font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
                                             Saldo a Favor</th>
-                                        <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                            Estado</th>
-                                        <th class="px-3 py-2 text-center font-medium text-gray-500 sticky top-0 z-10 bg-gray-50">
-                                            Recibo</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     @foreach ($allInstructorPayments['hourly'] as $instructor)
                                         <tr class="ipr-instructor-header">
-                                            <td colspan="10" class="px-3 py-2">
-                                                {{ $instructor['instructor_name'] }}
+                                            <td colspan="8" class="px-3 py-2">
+                                                <div style="display:flex; align-items:center; justify-content:space-between;">
+                                                    <span>{{ $instructor['instructor_name'] }}</span>
+                                                    @if ($instructor['has_receipt'])
+                                                        <span style="font-size:0.8rem; font-weight:400; color:#166534;">
+                                                            N° {{ $instructor['receipt_document'] }} &nbsp;•&nbsp; {{ $instructor['receipt_date'] }}
+                                                        </span>
+                                                    @else
+                                                        <x-filament::button
+                                                            size="xs"
+                                                            color="success"
+                                                            wire:click="mountAction('registerReceipt', {{ \Illuminate\Support\Js::from(['instructor_id' => $instructor['instructor_id'], 'payment_type' => 'hourly']) }})"
+                                                        >
+                                                            Registrar Recibo
+                                                        </x-filament::button>
+                                                    @endif
+                                                </div>
                                             </td>
                                         </tr>
                                         @php $schedGroupIdx = 0; @endphp
@@ -316,10 +363,11 @@
                                                     $schedGroupIdx++;
                                                 }
                                             @endphp
-                                            <tr class="{{ $schedGroupIdx % 2 === 1 ? 'ipr-row-odd' : 'ipr-row-even' }}">
-                                                @if (($workshop['schedule_rowspan'] ?? 1) > 0)
-                                                    <td class="px-3 py-2 pl-6 text-gray-900 align-middle"
-                                                        rowspan="{{ $workshop['schedule_rowspan'] }}">
+                                            <tr class="{{ $schedGroupIdx % 2 === 1 ? 'ipr-row-odd' : 'ipr-row-even' }} {{ ($workshop['name_rowspan'] ?? 0) > 0 ? 'ipr-name-separator' : '' }}">
+                                                @if (($workshop['name_rowspan'] ?? 1) > 0)
+                                                    <td class="px-3 py-2 pl-6 text-gray-900"
+                                                        rowspan="{{ $workshop['name_rowspan'] }}"
+                                                        style="position:sticky; top:var(--ipr-taller-top, 74px); z-index:7; background:white; vertical-align:top; border-top:2px solid #d1d5db;">
                                                         {{ $workshop['workshop_name'] }}</td>
                                                 @endif
                                                 @if (($workshop['schedule_rowspan'] ?? 1) > 0)
@@ -368,14 +416,6 @@
                                                         {{ number_format($hrRevenue - $hrAmount, 2) }}
                                                     </td>
                                                 @endif
-                                                <td class="px-3 py-2 text-center">
-                                                    <x-filament::badge :color="$workshop['payment_status'] === 'Pagado' ? 'success' : 'warning'">
-                                                        {{ $workshop['payment_status'] }}
-                                                    </x-filament::badge>
-                                                </td>
-                                                <td class="px-3 py-2 text-center text-xs text-gray-600">
-                                                    {{ $workshop['document_number'] ?? '—' }}
-                                                </td>
                                             </tr>
                                         @endforeach
                                         @php
@@ -402,8 +442,6 @@
                                             <td class="px-3 py-2 text-right text-blue-600">
                                                 S/ {{ number_format($subtotalHrFavor, 2) }}
                                             </td>
-                                            <td></td>
-                                            <td></td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -421,8 +459,6 @@
                                         <td class="px-3 py-3 text-right text-gray-900">S/ {{ number_format($footerHrIngresos, 2) }}</td>
                                         <td class="px-3 py-3 text-right text-green-700">S/ {{ number_format($totalAmount['hourly'], 2) }}</td>
                                         <td class="px-3 py-3 text-right text-blue-600">S/ {{ number_format($footerHrFavor, 2) }}</td>
-                                        <td></td>
-                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>

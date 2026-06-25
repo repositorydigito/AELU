@@ -151,6 +151,7 @@ class WorkshopResource extends Resource
                                 }
                                 return \App\Models\User::role('Delegado')->pluck('name', 'id');
                             })
+                            ->getOptionLabelUsing(fn ($value) => \App\Models\User::find($value)?->name ?? $value)
                             ->searchable()
                             ->placeholder('Seleccionar delegado')
                             ->nullable(),
