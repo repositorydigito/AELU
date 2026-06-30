@@ -375,9 +375,26 @@ if ($workshop->isFullForPeriod($periodId)) {
 - Feature branches for new functionality
 - Test locally before pushing
 
+## Module Documentation (`docs/`)
+
+Before implementing or modifying any feature, read the relevant module doc to understand business rules, flows, and architectural decisions already documented.
+
+| Módulo | Documentos |
+|--------|-----------|
+| **Inscripciones** | `docs/modules/inscriptions/enrollment-replication-flow.md` — replicación automática mensual; bugs conocidos; reglas de precios |
+| | `docs/modules/inscriptions/user-stories.md` — historias de usuario de inscripciones |
+| **Pagos** | `docs/modules/payments/full-payment-flow.md` — pago total (cash/link); generación de tickets; reglas de validación |
+| | `docs/modules/payments/partial-payment-flow.md` — pago parcial; estado `to_pay`; protección auto-cancel; cancelaciones manuales |
+| **Instructores** | `docs/modules/instructors/flow-edit-instructor.md` — flujo de edición de instructor |
+| | `docs/modules/instructors/volunteer-percentage-resolution.md` — lógica de resolución de porcentaje voluntario |
+| **Feriados** | `docs/modules/holidays/holidays-flow.md` — impacto de feriados en clases y precios |
+| **Reportes** | `docs/modules/reports/structure-reports.md` — mapeo Reporte ↔ Excel ↔ PDF |
+| **General** | `docs/user-stories.md` — historias de usuario globales del sistema |
+| | `docs/user_model.md` — modelo de usuario, enrollment_code, formatos de ticket |
+| | `docs/check-list-prod.md` — checklist pre-producción |
+
 ## Additional Resources
 
 - Filament Documentation: https://filamentphp.com/docs
 - Laravel Documentation: https://laravel.com/docs/12.x
 - Spatie Permissions: https://spatie.be/docs/laravel-permission
-- User Stories: `docs/user-stories.md`
