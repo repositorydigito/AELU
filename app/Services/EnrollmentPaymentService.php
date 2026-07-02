@@ -150,6 +150,21 @@ class EnrollmentPaymentService
         return abs($totalAmount - $expectedAmount) < 0.01;
     }
 
+    private function getNextSequential(\App\Models\User $user): int
+    {
+        $lastTicketNumber = \App\Models\Ticket::where('issued_by_user_id', $user->id)
+            ->where('ticket_code', 'LIKE', $user->enrollment_code.'-%')
+            ->get()
+            ->map(function ($ticket) {
+                $parts = explode('-', $ticket->ticket_code);
+
+                return isset($parts[1]) ? intval($parts[1]) : 0;
+            })
+            ->max();
+
+        return ($lastTicketNumber ?? 0) + 1;
+    }
+
     private function generateTicketCode(int $userId): string
     {
         $user = \App\Models\User::find($userId);
@@ -158,34 +173,11 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
-        // Contar solo los tickets que son pago en efectivo
-        $lastTicketNumber = \App\Models\Ticket::whereHas('enrollmentPayment', function ($query) {
-            $query->where('payment_method', 'cash');
-        })
-            ->where('issued_by_user_id', $userId)
-            ->where('ticket_code', 'LIKE', $user->enrollment_code.'-%')
-            ->get()
-            ->map(function ($ticket) {
-                // Extraer el número del código (ej: de "002-000019" extraer 19)
-                $parts = explode('-', $ticket->ticket_code);
-
-                return isset($parts[1]) ? intval($parts[1]) : 0;
-            })
-            ->max();
-
-        $nextNumber = ($lastTicketNumber ?? 0) + 1;
+        $nextNumber = $this->getNextSequential($user);
 
         return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * Genera el código de ticket para pagos por link
-     * Agrega el prefijo del usuario al código ingresado manualmente
-     *
-     * @param  int  $userId  ID del usuario
-     * @param  string  $manualCode  Código ingresado manualmente (ej: "B001-9827")
-     * @return string Código completo con prefijo (ej: "002-B001-9827")
-     */
     private function generateTicketCodeForLink(int $userId, string $manualCode): string
     {
         $user = \App\Models\User::find($userId);
@@ -194,10 +186,9 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
-        // Limpiar espacios del código manual
+        $nextNumber = $this->getNextSequential($user);
         $manualCode = trim($manualCode);
 
-        // Combinar el código del usuario con el código manual
-        return $user->enrollment_code.'-'.$manualCode;
+        return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT).'-'.$manualCode;
     }
 }
