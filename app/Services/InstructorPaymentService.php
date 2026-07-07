@@ -113,12 +113,15 @@ class InstructorPaymentService
     }
 
     /**
-     * Obtiene los ingresos totales de un taller en un período
+     * Obtiene los ingresos totales de un taller en un período.
+     * Solo dinero real: inscripciones cobradas (payment_status = 'completed'),
+     * independiente del estado del lote (RN-A3/RN-A4).
      */
     private function getWorkshopRevenueForPeriod(InstructorWorkshop $instructorWorkshop, MonthlyPeriod $monthlyPeriod): float
     {
         return $instructorWorkshop->enrollments()
             ->where('monthly_period_id', $monthlyPeriod->id)
+            ->where('payment_status', 'completed')
             ->sum('total_amount');
     }
 

@@ -68,22 +68,7 @@ class EnrollmentPaymentService
                 throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
             }
 
-            if ($paymentMethod === 'link') {
-                // Para pagos por link, agregar el prefijo del usuario al código ingresado manualmente
-                $ticketCode = $this->generateTicketCodeForLink(Auth::id(), $batch->batch_code);
-            } else {
-                $ticketCode = $this->generateTicketCode(Auth::id());
-            }
-
-            $ticket = \App\Models\Ticket::create([
-                'ticket_code' => $ticketCode,
-                'enrollment_batch_id' => $batch->id,
-                'enrollment_payment_id' => $payment->id,
-                'student_id' => $batch->student_id,
-                'total_amount' => $totalAmount,
-                'ticket_type' => 'enrollment',
-                'status' => 'active',
-            ]);
+            $ticket = $this->createTicketWithUniqueCode($batch, $payment, $paymentMethod, $totalAmount);
 
             // 7. Relacionar el ticket con las inscripciones pagadas
             $ticket->studentEnrollments()->attach($enrollments->pluck('id'));
@@ -150,19 +135,62 @@ class EnrollmentPaymentService
         return abs($totalAmount - $expectedAmount) < 0.01;
     }
 
-    private function getNextSequential(\App\Models\User $user): int
+    /**
+     * Crea el ticket del pago con reintento ante colisión del índice único
+     * de ticket_code (red de seguridad del correlativo global).
+     */
+    private function createTicketWithUniqueCode(EnrollmentBatch $batch, EnrollmentPayment $payment, string $paymentMethod, float $totalAmount): \App\Models\Ticket
     {
-        $lastTicketNumber = \App\Models\Ticket::where('issued_by_user_id', $user->id)
-            ->where('ticket_code', 'LIKE', $user->enrollment_code.'-%')
-            ->get()
-            ->map(function ($ticket) {
-                $parts = explode('-', $ticket->ticket_code);
+        $attempts = 0;
 
-                return isset($parts[1]) ? intval($parts[1]) : 0;
-            })
-            ->max();
+        do {
+            if ($paymentMethod === 'link') {
+                // Para pagos por link, agregar el prefijo del usuario al código ingresado manualmente
+                $ticketCode = $this->generateTicketCodeForLink(Auth::id(), $batch->batch_code);
+            } else {
+                $ticketCode = $this->generateTicketCode(Auth::id());
+            }
 
-        return ($lastTicketNumber ?? 0) + 1;
+            try {
+                return \App\Models\Ticket::create([
+                    'ticket_code' => $ticketCode,
+                    'enrollment_batch_id' => $batch->id,
+                    'enrollment_payment_id' => $payment->id,
+                    'student_id' => $batch->student_id,
+                    'total_amount' => $totalAmount,
+                    'ticket_type' => 'enrollment',
+                    'status' => 'active',
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // 23000 = violación de unicidad (ticket_code duplicado): tomar el siguiente correlativo
+                if ($e->getCode() !== '23000' || ++$attempts >= 3) {
+                    throw $e;
+                }
+            }
+        } while (true);
+    }
+
+    /**
+     * Correlativo atómico GLOBAL (RN-C3): un único contador compartido por
+     * TODOS los cajeros, no uno por usuario. Incrementa la fila
+     * `system_settings.key = 'global_ticket_seq'` bajo row lock
+     * (debe ejecutarse dentro de la transacción del pago), por lo que
+     * serializa la emisión de tickets de todo el sistema.
+     */
+    private function getNextSequential(): int
+    {
+        $current = DB::table('system_settings')
+            ->where('key', 'global_ticket_seq')
+            ->lockForUpdate()
+            ->value('value');
+
+        $next = ((int) $current) + 1;
+
+        DB::table('system_settings')
+            ->where('key', 'global_ticket_seq')
+            ->update(['value' => (string) $next]);
+
+        return $next;
     }
 
     private function generateTicketCode(int $userId): string
@@ -173,7 +201,7 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
-        $nextNumber = $this->getNextSequential($user);
+        $nextNumber = $this->getNextSequential();
 
         return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
@@ -186,7 +214,7 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
-        $nextNumber = $this->getNextSequential($user);
+        $nextNumber = $this->getNextSequential();
         $manualCode = trim($manualCode);
 
         return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT).'-'.$manualCode;

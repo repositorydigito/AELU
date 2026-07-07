@@ -140,6 +140,11 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
                           $subQuery->where('payment_registered_by_user_id', $this->selectedCashier);
                       });
             })
+            // RN-A1/RN-A2: recaudación cuenta solo lotes 100% pagados;
+            // pending/to_pay/refunded no se visualizan ni suman
+            ->whereHas('enrollmentBatch', function ($query) {
+                $query->where('payment_status', 'completed');
+            })
             ->whereDate('issued_at', '>=', $dateFromForQuery)
             ->whereDate('issued_at', '<=', $dateToForQuery)
             ->orderBy('issued_at', 'desc')

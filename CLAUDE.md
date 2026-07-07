@@ -20,7 +20,7 @@ AELU is a workshop enrollment and management system for PAMA (Programa del Adult
 Active scheduled commands:
 - `enrollments:auto-cancel` - Auto-cancels pending enrollments on configured day
 - `workshops:auto-replicate` - Replicates workshops to next month
-- `enrollments:auto-generate` - (Currently disabled) Auto-generates enrollments
+- `enrollments:auto-generate` - Auto-generates enrollments
 
 ### Useful Artisan Commands
 ```bash
@@ -89,7 +89,8 @@ php artisan pail
 
 **User Model Management**
 - `enrollment_code`: código 3 dígitos auto-asignado al crear usuario (no aplica a rol `Delegado`)
-  - Secuencial, único, sirve como prefijo de todos los tickets emitidos por ese usuario
+  - Secuencial, único, se antepone como prefijo identificando qué cajero emitió el ticket
+  - El `{6-digit-seq}` es un correlativo **global**, compartido por todos los cajeros (no uno por usuario) — contador en `system_settings.key = 'global_ticket_seq'`
   - Formato ticket cash: `{enrollment_code}-{6-digit-seq}` (ej: `002-000019`)
   - Formato ticket link: `{enrollment_code}-{batch_code}`
   - Lógica auto-generación: `app/Models/User.php` → `boot()` → evento `created`

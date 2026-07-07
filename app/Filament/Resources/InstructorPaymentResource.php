@@ -330,6 +330,28 @@ class InstructorPaymentResource extends Resource
                     ->weight(FontWeight::Bold)
                     ->color('success'), */
 
+                // RN-A6: alerta visual de descuadre esperado vs cobrado (no bloquea)
+                Tables\Columns\IconColumn::make('reconciliation_alert')
+                    ->label('Conciliación')
+                    ->getStateUsing(fn (InstructorPayment $record): bool => app(\App\Services\InstructorPaymentReconciliationService::class)
+                        ->isBalanced($record))
+                    ->icon(fn (bool $state): string => $state
+                        ? 'heroicon-o-check-circle'
+                        : 'heroicon-o-exclamation-triangle')
+                    ->color(fn (bool $state): string => $state ? 'success' : 'danger')
+                    ->tooltip(function (InstructorPayment $record): string {
+                        $result = app(\App\Services\InstructorPaymentReconciliationService::class)
+                            ->reconcile($record);
+
+                        if ($result['is_balanced']) {
+                            return 'Conciliado: inscripciones cobradas cuadran con los pagos registrados.';
+                        }
+
+                        return 'Descuadre: esperado S/ '.number_format($result['expected'], 2)
+                            .' vs pagos registrados S/ '.number_format($result['collected'], 2)
+                            .' (diferencia S/ '.number_format($result['difference'], 2).').';
+                    }),
+
                 Tables\Columns\IconColumn::make('payment_status')
                     ->label('Estado')
                     ->icon(fn (string $state): string => match ($state) {

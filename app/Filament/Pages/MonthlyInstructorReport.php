@@ -99,8 +99,9 @@ class MonthlyInstructorReport extends Page implements HasActions, HasForms
 
         $data = InstructorWorkshop::with(['workshop', 'instructor'])
             ->whereHas('enrollments', function($query) {
+                // RN-A3: solo inscripciones cobradas (dinero real), aunque el lote sea parcial
                 $query->where('monthly_period_id', $this->selectedPeriod)
-                      ->whereIn('payment_status', ['completed', 'pending']);
+                      ->where('payment_status', 'completed');
             })
             ->get()
             ->groupBy('payment_type');
@@ -119,7 +120,7 @@ class MonthlyInstructorReport extends Page implements HasActions, HasForms
         return $workshops->map(function($instructorWorkshop) {
             $enrollments = $instructorWorkshop->enrollments()
                 ->where('monthly_period_id', $this->selectedPeriod)
-                ->whereIn('payment_status', ['completed', 'pending'])
+                ->where('payment_status', 'completed')
                 ->get();
 
             return [

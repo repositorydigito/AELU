@@ -112,6 +112,11 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
                     $roleQuery->where('name', 'Delegado');
                 });
             })
+            // RN-A1/RN-A2: recaudación cuenta solo lotes 100% pagados;
+            // pending/to_pay/refunded no se visualizan ni suman
+            ->whereHas('enrollmentBatch', function ($query) {
+                $query->where('payment_status', 'completed');
+            })
             ->whereDate('issued_at', '>=', $dateFromForQuery)
             ->whereDate('issued_at', '<=', $dateToForQuery)
             ->when($this->selectedStatus, fn($q) => $q->where('status', $this->selectedStatus))

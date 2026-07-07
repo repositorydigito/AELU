@@ -162,7 +162,11 @@ class ScheduleEnrollmentReport extends Page implements HasActions, HasForms
                 })
                 ->where('monthly_period_id', $this->selectedPeriod)
                 ->whereNull('cancelled_at')
-                ->whereNotIn('payment_status', ['refunded'])
+                // RN-A1/RN-A2: recaudación cuenta solo lotes 100% pagados;
+                // pending/to_pay/refunded no se visualizan ni suman
+                ->whereHas('enrollmentBatch', function ($query) {
+                    $query->where('payment_status', 'completed');
+                })
                 ->with([
                     'student',
                     'enrollmentBatch.paymentRegisteredByUser',
