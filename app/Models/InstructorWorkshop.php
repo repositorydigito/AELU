@@ -83,6 +83,7 @@ class InstructorWorkshop extends Model
                 // stored as percentage (e.g. 60.00 = 60%) — normalize to decimal for calculations
                 return $this->custom_volunteer_percentage / 100;
             }
+
             return $monthlyRate?->volunteer_percentage; // already decimal (e.g. 0.5000)
         }
 
@@ -136,5 +137,30 @@ class InstructorWorkshop extends Model
     public function isFullForPeriod($monthlyPeriodId): bool
     {
         return $this->getAvailableSpotsForPeriod($monthlyPeriodId) <= 0;
+    }
+
+    /**
+     * Compara si dos InstructorWorkshop (de distintos períodos) son "el mismo taller"
+     * usando la misma clave de equivalencia que EnrollmentReplicationService al
+     * replicar inscripciones al mes siguiente (instructor + nombre + día + horario + duración + modalidad).
+     */
+    public function matchesWorkshop(self $other): bool
+    {
+        return $this->equivalenceKey() === $other->equivalenceKey();
+    }
+
+    public function equivalenceKey(): string
+    {
+        $workshop = $this->workshop;
+        $dayOfWeek = is_array($workshop->day_of_week)
+            ? json_encode($workshop->day_of_week)
+            : $workshop->day_of_week;
+
+        return $this->instructor_id.'_'.
+            $workshop->name.'_'.
+            $dayOfWeek.'_'.
+            $workshop->start_time.'_'.
+            $workshop->duration.'_'.
+            $workshop->modality;
     }
 }

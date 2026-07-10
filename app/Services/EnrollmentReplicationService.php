@@ -53,19 +53,7 @@ class EnrollmentReplicationService
                 $query->where('monthly_period_id', $nextPeriod->id);
             })
             ->get()
-            ->keyBy(function ($iw) {
-                // Crear clave única: instructor_id + nombre + día + horario + duración + modalidad
-                $dayOfWeek = is_array($iw->workshop->day_of_week)
-                    ? json_encode($iw->workshop->day_of_week)
-                    : $iw->workshop->day_of_week;
-
-                return $iw->instructor_id.'_'.
-                       $iw->workshop->name.'_'.
-                       $dayOfWeek.'_'.
-                       $iw->workshop->start_time.'_'.
-                       $iw->workshop->duration.'_'.
-                       $iw->workshop->modality;
-            });
+            ->keyBy(fn ($iw) => $iw->equivalenceKey());
 
         Log::info("Pre-loaded {$this->nextPeriodInstructorWorkshops->count()} instructor workshops for next period");
 
@@ -284,22 +272,8 @@ class EnrollmentReplicationService
      */
     protected function findEquivalentInstructorWorkshop(InstructorWorkshop $originalIW, MonthlyPeriod $nextPeriod): ?InstructorWorkshop
     {
-        $originalWorkshop = $originalIW->workshop;
-
-        // Crear clave de búsqueda: instructor_id + nombre + día + horario + duración + modalidad
-        $dayOfWeek = is_array($originalWorkshop->day_of_week)
-            ? json_encode($originalWorkshop->day_of_week)
-            : $originalWorkshop->day_of_week;
-
-        $searchKey = $originalIW->instructor_id.'_'.
-                     $originalWorkshop->name.'_'.
-                     $dayOfWeek.'_'.
-                     $originalWorkshop->start_time.'_'.
-                     $originalWorkshop->duration.'_'.
-                     $originalWorkshop->modality;
-
         // Buscar en el cache pre-cargado
-        return $this->nextPeriodInstructorWorkshops->get($searchKey);
+        return $this->nextPeriodInstructorWorkshops->get($originalIW->equivalenceKey());
     }
 
     /**

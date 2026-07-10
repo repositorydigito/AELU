@@ -35,6 +35,12 @@
                     <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Monto por Efectivo</span>
                     <span class="text-2xl font-bold text-green-600 dark:text-green-400">S/ {{ number_format($summaryData['cash_amount'], 2) }}</span>
                 </div>
+                @if(($summaryData['credit_amount'] ?? 0) > 0)
+                <div class="flex-1">
+                    <span class="text-xs font-medium text-gray-500 uppercase tracking-wider block">Cubierto con Crédito</span>
+                    <span class="text-2xl font-bold text-amber-600">S/ {{ number_format($summaryData['credit_amount'], 2) }}</span>
+                </div>
+                @endif
             </div>
         </x-filament::section>
         @endif

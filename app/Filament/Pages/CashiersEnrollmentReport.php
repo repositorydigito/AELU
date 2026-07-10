@@ -26,14 +26,21 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
     protected static string $view = 'filament.pages.cashiers-enrollment-report';
+
     protected static ?string $title = 'Inscripciones por Cajero';
+
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
+
     public $selectedCashier = null;
+
     public $selectedDateFrom = null;
+
     public $selectedDateTo = null;
+
     public $cashierEnrollments = [];
 
     public $paymentSummary = [
@@ -53,7 +60,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         $currentUser = auth()->user();
         $isAdmin = in_array($currentUser->name, ['sdordan', 'ggonzalez', 'tnamoc']);
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $this->form->fill([
                 'cashier_id' => $currentUser->id,
             ]);
@@ -72,7 +79,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         $cashierOptions = $isAdmin
             ? \App\Models\User::whereDoesntHave('roles', function ($query) {
                 $query->where('name', 'Delegado');
-              })->pluck('name', 'id')
+            })->pluck('name', 'id')
             : collect([$currentUser->id => $currentUser->name]);
 
         return $form
@@ -82,7 +89,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
                     ->placeholder('Selecciona un cajero...')
                     ->options($cashierOptions)
                     ->searchable($isAdmin) // Solo búsqueda si es admin
-                    ->disabled(!$isAdmin) // Deshabilitar si no es admin
+                    ->disabled(! $isAdmin) // Deshabilitar si no es admin
                     ->live()
                     ->afterStateUpdated(function ($state) {
                         $this->selectedCashier = $state;
@@ -120,6 +127,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         if (! $this->selectedCashier || ! $this->selectedDateFrom || ! $this->selectedDateTo) {
             $this->cashierEnrollments = [];
             $this->resetPaymentSummary();
+
             return;
         }
 
@@ -131,14 +139,14 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             'student',
             'issuedByUser',
             'enrollmentBatch.paymentRegisteredByUser',
-            'studentEnrollments.instructorWorkshop.workshop'
+            'studentEnrollments.instructorWorkshop.workshop',
         ])
             ->where(function ($query) {
                 // Buscar por quien emitió el ticket O por quien registró el pago del batch
                 $query->where('issued_by_user_id', $this->selectedCashier)
-                      ->orWhereHas('enrollmentBatch', function ($subQuery) {
-                          $subQuery->where('payment_registered_by_user_id', $this->selectedCashier);
-                      });
+                    ->orWhereHas('enrollmentBatch', function ($subQuery) {
+                        $subQuery->where('payment_registered_by_user_id', $this->selectedCashier);
+                    });
             })
             // RN-A1/RN-A2: recaudación cuenta solo lotes 100% pagados;
             // pending/to_pay/refunded no se visualizan ni suman
@@ -153,6 +161,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         if ($tickets->isEmpty()) {
             $this->cashierEnrollments = [];
             $this->resetPaymentSummary();
+
             return;
         }
 
@@ -162,6 +171,13 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
 
             // Calcular totales del ticket
             $totalAmount = $ticket->studentEnrollments->sum('total_amount');
+            // RN-D23: la porción cubierta con crédito de recuperación no es dinero nuevo
+            // (ya se contó como recaudación en el mes de origen) — se muestra aparte.
+            // Se usa el crédito REALMENTE aplicado (capado), no el StudentCredit.amount
+            // completo, para que el dinero nuevo cuadre contra caja física.
+            $creditAmount = \App\Models\EnrollmentPaymentItem::creditAppliedForEnrollments(
+                $ticket->studentEnrollments->pluck('id')
+            );
             $workshopsCount = $ticket->studentEnrollments->count();
             $workshopsList = $ticket->studentEnrollments->pluck('instructorWorkshop.workshop.name')->filter()->join(', ');
 
@@ -180,6 +196,8 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
                 'workshops_list' => $workshopsList ?: 'N/A',
                 'total_amount' => $totalAmount,
                 'amount_paid' => $totalAmount, // En tickets, el monto pagado es igual al total
+                'credit_amount' => (float) $creditAmount,
+                'new_money_amount' => $totalAmount - (float) $creditAmount,
                 'payment_method' => $this->getPaymentMethodText($firstEnrollment->payment_method ?? 'cash'),
                 'ticket_code' => $ticket->ticket_code,
                 'payment_status' => $this->getTicketStatusText($ticket->status),
@@ -197,6 +215,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             'cash_amount' => 0,
             'link_count' => 0,
             'link_amount' => 0,
+            'credit_amount' => 0,
             'total_amount' => 0,
             'inscribed_count' => 0,
             'cancelled_count' => 0,
@@ -210,13 +229,16 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         // Filtrar solo los no anulados para los cálculos de montos
         $activeEnrollments = $enrollments->where('payment_status', '!=', 'Anulado');
 
+        // RN-D23: recaudación = solo dinero nuevo (efectivo + link); la porción
+        // cubierta con crédito se muestra aparte y no cuadra contra caja.
         $this->paymentSummary = [
             'total_enrollments' => $enrollments->count(),
             'cash_count' => $activeEnrollments->where('payment_method', 'Efectivo')->count(),
-            'cash_amount' => $activeEnrollments->where('payment_method', 'Efectivo')->sum('total_amount'),
+            'cash_amount' => $activeEnrollments->where('payment_method', 'Efectivo')->sum('new_money_amount'),
             'link_count' => $activeEnrollments->where('payment_method', 'Link')->count(),
-            'link_amount' => $activeEnrollments->where('payment_method', 'Link')->sum('total_amount'),
-            'total_amount' => $activeEnrollments->sum('total_amount'),
+            'link_amount' => $activeEnrollments->where('payment_method', 'Link')->sum('new_money_amount'),
+            'credit_amount' => $activeEnrollments->sum('credit_amount'),
+            'total_amount' => $activeEnrollments->sum('new_money_amount'),
             'inscribed_count' => $enrollments->where('payment_status', 'Inscrito')->pluck('student_code')->unique()->count(),
             'cancelled_count' => $enrollments->where('payment_status', 'Anulado')->count(),
         ];
@@ -249,6 +271,7 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
         return match ($method) {
             'cash' => 'Efectivo',
             'link' => 'Link',
+            'credito' => 'Crédito',
             default => 'N/A',
         };
     }
@@ -359,5 +382,4 @@ class CashiersEnrollmentReport extends Page implements HasActions, HasForms
             $this->exportExcelAction(),
         ];
     }
-
 }

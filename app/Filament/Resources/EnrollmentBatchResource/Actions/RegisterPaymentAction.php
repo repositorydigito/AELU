@@ -9,6 +9,55 @@ use Illuminate\Support\HtmlString;
 
 class RegisterPaymentAction
 {
+    /**
+     * Para cada inscripción pendiente, encuentra el crédito de recuperación
+     * disponible que le aplica (RN-D17/RN-D22), sin reutilizar el mismo
+     * crédito para dos inscripciones.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\StudentCredit> keyed by student_enrollment_id
+     */
+    protected static function matchApplicableCredits(\Illuminate\Support\Collection $enrollments): \Illuminate\Support\Collection
+    {
+        if ($enrollments->isEmpty()) {
+            return collect();
+        }
+
+        $studentId = $enrollments->first()->student_id;
+
+        $availableCredits = \App\Models\StudentCredit::where('student_id', $studentId)
+            ->where('status', 'available')
+            ->with('originEnrollment.instructorWorkshop.workshop')
+            ->get();
+
+        $usedCreditIds = [];
+        $matches = [];
+
+        foreach ($enrollments as $enrollment) {
+            $credit = $availableCredits->first(fn ($c) => ! in_array($c->id, $usedCreditIds, true) && $c->isApplicableTo($enrollment));
+
+            if ($credit) {
+                $usedCreditIds[] = $credit->id;
+                $matches[$enrollment->id] = $credit;
+            }
+        }
+
+        return collect($matches);
+    }
+
+    protected static function totalCreditApplicable(array $enrollmentIds): float
+    {
+        $enrollments = \App\Models\StudentEnrollment::whereIn('id', $enrollmentIds)->get();
+        $matches = self::matchApplicableCredits($enrollments);
+
+        $total = $enrollments->sum(function ($enrollment) use ($matches) {
+            $credit = $matches->get($enrollment->id);
+
+            return $credit ? min((float) $credit->amount, (float) $enrollment->total_amount) : 0;
+        });
+
+        return round($total, 2);
+    }
+
     public static function make(): Tables\Actions\Action
     {
         return Tables\Actions\Action::make('register_payment')
@@ -52,6 +101,7 @@ class RegisterPaymentAction
 
                 // === PAGO EN EFECTIVO (Con selección de inscripciones - Pagos Parciales) ===
                 $pendingEnrollments = $paymentService->getPendingEnrollments($record);
+                $creditMatches = self::matchApplicableCredits($pendingEnrollments);
 
                 // Inscripciones pagadas
                 $paidEnrollments = $record->enrollments()
@@ -104,38 +154,38 @@ class RegisterPaymentAction
                                     ->label('')
                                     ->content(new HtmlString('
                                         <div class="space-y-2">
-                                            ' . $paidEnrollments->map(function ($enrollment) {
-                                                $workshop = $enrollment->instructorWorkshop->workshop->name ?? 'N/A';
-                                                $instructor = $enrollment->instructorWorkshop->instructor
-                                                    ? $enrollment->instructorWorkshop->instructor->full_name
-                                                    : 'N/A';
+                                            '.$paidEnrollments->map(function ($enrollment) {
+                                        $workshop = $enrollment->instructorWorkshop->workshop->name ?? 'N/A';
+                                        $instructor = $enrollment->instructorWorkshop->instructor
+                                            ? $enrollment->instructorWorkshop->instructor->full_name
+                                            : 'N/A';
 
-                                                $daysOfWeek = $enrollment->instructorWorkshop->day_of_week;
-                                                if (is_array($daysOfWeek)) {
-                                                    $dayAbbreviations = [
-                                                        'Lunes' => 'Lun', 'Martes' => 'Mar', 'Miércoles' => 'Mié',
-                                                        'Jueves' => 'Jue', 'Viernes' => 'Vie', 'Sábado' => 'Sáb', 'Domingo' => 'Dom',
-                                                    ];
-                                                    $dayName = implode('/', array_map(fn($day) => $dayAbbreviations[$day] ?? $day, $daysOfWeek));
-                                                } else {
-                                                    $dayName = $daysOfWeek ?? 'N/A';
-                                                }
+                                        $daysOfWeek = $enrollment->instructorWorkshop->day_of_week;
+                                        if (is_array($daysOfWeek)) {
+                                            $dayAbbreviations = [
+                                                'Lunes' => 'Lun', 'Martes' => 'Mar', 'Miércoles' => 'Mié',
+                                                'Jueves' => 'Jue', 'Viernes' => 'Vie', 'Sábado' => 'Sáb', 'Domingo' => 'Dom',
+                                            ];
+                                            $dayName = implode('/', array_map(fn ($day) => $dayAbbreviations[$day] ?? $day, $daysOfWeek));
+                                        } else {
+                                            $dayName = $daysOfWeek ?? 'N/A';
+                                        }
 
-                                                $startTime = $enrollment->instructorWorkshop->start_time
-                                                    ? \Carbon\Carbon::parse($enrollment->instructorWorkshop->start_time)->format('H:i')
-                                                    : 'N/A';
-                                                $endTime = $enrollment->instructorWorkshop->end_time
-                                                    ? \Carbon\Carbon::parse($enrollment->instructorWorkshop->end_time)->format('H:i')
-                                                    : 'N/A';
+                                        $startTime = $enrollment->instructorWorkshop->start_time
+                                            ? \Carbon\Carbon::parse($enrollment->instructorWorkshop->start_time)->format('H:i')
+                                            : 'N/A';
+                                        $endTime = $enrollment->instructorWorkshop->end_time
+                                            ? \Carbon\Carbon::parse($enrollment->instructorWorkshop->end_time)->format('H:i')
+                                            : 'N/A';
 
-                                                $modality = $enrollment->instructorWorkshop->workshop->modality ?? 'N/A';
-                                                $modalityText = match($modality) {
-                                                    'voluntary' => 'Voluntario',
-                                                    'hourly' => 'Por Horas',
-                                                    default => ucfirst($modality)
-                                                };
+                                        $modality = $enrollment->instructorWorkshop->workshop->modality ?? 'N/A';
+                                        $modalityText = match ($modality) {
+                                            'voluntary' => 'Voluntario',
+                                            'hourly' => 'Por Horas',
+                                            default => ucfirst($modality)
+                                        };
 
-                                                return '
+                                        return '
                                                     <div class="bg-green-50 border border-green-200 rounded-lg p-3">
                                                         <div class="flex justify-between items-start">
                                                             <div class="flex-1">
@@ -152,12 +202,32 @@ class RegisterPaymentAction
                                                         </div>
                                                     </div>
                                                 ';
-                                            })->join('') . '
+                                    })->join('').'
                                         </div>
                                     ')),
                             ])
                             ->collapsible()
                             ->collapsed(true),
+                    ];
+                }
+
+                // Créditos de recuperación aplicables (RN-D3: pagan solo la diferencia)
+                $creditSection = [];
+                if ($creditMatches->isNotEmpty()) {
+                    $creditSection = [
+                        Forms\Components\Placeholder::make('available_credits')
+                            ->label('')
+                            ->content(new HtmlString('
+                                <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
+                                    <h3 class="font-semibold text-amber-800">Créditos de recuperación aplicables</h3>
+                                    '.$creditMatches->map(function ($credit, $enrollmentId) use ($pendingEnrollments) {
+                                $enrollment = $pendingEnrollments->firstWhere('id', $enrollmentId);
+                                $workshop = $enrollment?->instructorWorkshop?->workshop?->name ?? 'N/A';
+
+                                return '<p class="text-sm text-amber-700">'.$workshop.': crédito de S/ '.number_format($credit->amount, 2).' se aplicará automáticamente (paga solo la diferencia).</p>';
+                            })->implode('').'
+                                </div>
+                            ')),
                     ];
                 }
 
@@ -174,7 +244,7 @@ class RegisterPaymentAction
                                 $amount = number_format($enrollment->total_amount, 2);
 
                                 return [
-                                    $enrollment->id => "{$workshop} - {$instructor} - S/ {$amount}"
+                                    $enrollment->id => "{$workshop} - {$instructor} - S/ {$amount}",
                                 ];
                             })
                         )
@@ -199,7 +269,7 @@ class RegisterPaymentAction
                                     : 'N/A';
 
                                 $modality = $instructorWorkshop->workshop->modality ?? 'N/A';
-                                $modalityText = match($modality) {
+                                $modalityText = match ($modality) {
                                     'voluntary' => 'Voluntario',
                                     'hourly' => 'Por Horas',
                                     default => ucfirst($modality)
@@ -213,7 +283,7 @@ class RegisterPaymentAction
                                         $startTime,
                                         $endTime,
                                         $modalityText
-                                    )
+                                    ),
                                 ];
                             })
                         )
@@ -242,12 +312,15 @@ class RegisterPaymentAction
 
                                     if (empty($selectedIds)) {
                                         $set('change_amount', 0);
+
                                         return;
                                     }
 
-                                    // Calcular el total de las inscripciones seleccionadas
+                                    // Calcular el total de las inscripciones seleccionadas, descontando
+                                    // créditos de recuperación aplicables (RN-D3: paga solo la diferencia)
                                     $total = \App\Models\StudentEnrollment::whereIn('id', $selectedIds)
                                         ->sum('total_amount');
+                                    $total -= self::totalCreditApplicable($selectedIds);
 
                                     // Calcular el vuelto
                                     $change = max(0, $amountPaid - $total);
@@ -278,6 +351,7 @@ class RegisterPaymentAction
                 return array_merge(
                     $batchInfo,
                     $paidEnrollmentsSection,
+                    $creditSection,
                     $enrollmentSelection,
                     $paymentFields
                 );
@@ -290,27 +364,43 @@ class RegisterPaymentAction
                     try {
                         $pendingEnrollments = $record->enrollments()
                             ->where('payment_status', 'pending')
-                            ->pluck('id')
-                            ->toArray();
+                            ->get();
 
-                        if (empty($pendingEnrollments)) {
+                        if ($pendingEnrollments->isEmpty()) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Error')
                                 ->body('No hay inscripciones pendientes de pago.')
                                 ->danger()
                                 ->send();
+
                             return;
                         }
 
                         $record->update(['batch_code' => $data['batch_code']]);
 
-                        $payment = $paymentService->processPayment(
-                            $record,
-                            $pendingEnrollments,
-                            'link',
-                            $data['payment_date'] ?? now(),
-                            $data['payment_notes'] ?? null
-                        );
+                        $creditMatches = self::matchApplicableCredits($pendingEnrollments);
+                        $regularIds = $pendingEnrollments->pluck('id')->diff($creditMatches->keys())->values()->toArray();
+
+                        foreach ($creditMatches as $enrollmentId => $credit) {
+                            $paymentService->processPaymentWithCredit(
+                                $record,
+                                $pendingEnrollments->firstWhere('id', $enrollmentId),
+                                $credit,
+                                'link',
+                                $data['payment_date'] ?? now(),
+                                $data['payment_notes'] ?? null
+                            );
+                        }
+
+                        if (! empty($regularIds)) {
+                            $paymentService->processPayment(
+                                $record,
+                                $regularIds,
+                                'link',
+                                $data['payment_date'] ?? now(),
+                                $data['payment_notes'] ?? null
+                            );
+                        }
 
                         \Filament\Notifications\Notification::make()
                             ->title('Pago Registrado Exitosamente')
@@ -325,6 +415,7 @@ class RegisterPaymentAction
                             ->danger()
                             ->send();
                     }
+
                     return;
                 }
 
@@ -335,12 +426,16 @@ class RegisterPaymentAction
                         ->body('Debe seleccionar al menos una inscripción para pagar.')
                         ->danger()
                         ->send();
+
                     return;
                 }
 
-                // Calcular el total de las inscripciones seleccionadas
+                // Calcular el total de las inscripciones seleccionadas, descontando
+                // créditos de recuperación aplicables (RN-D3: paga solo la diferencia)
                 $enrollments = \App\Models\StudentEnrollment::whereIn('id', $data['selected_enrollments'])->get();
-                $totalAmount = $enrollments->sum('total_amount');
+                $creditMatches = self::matchApplicableCredits($enrollments);
+                $creditApplicable = self::totalCreditApplicable($data['selected_enrollments']);
+                $totalAmount = $enrollments->sum('total_amount') - $creditApplicable;
                 $amountPaid = (float) ($data['amount_paid'] ?? 0);
 
                 // Validar monto con notificación detallada
@@ -349,8 +444,8 @@ class RegisterPaymentAction
                         ->title('Monto Insuficiente')
                         ->body("
                             <div class='space-y-2'>
-                                <p><strong>Total de inscripciones seleccionadas:</strong> S/ ".number_format($totalAmount, 2)."</p>
-                                <p><strong>Monto recibido:</strong> S/ ".number_format($amountPaid, 2)."</p>
+                                <p><strong>Total a pagar (con crédito aplicado):</strong> S/ ".number_format($totalAmount, 2).'</p>
+                                <p><strong>Monto recibido:</strong> S/ '.number_format($amountPaid, 2)."</p>
                                 <p class='text-red-600'><strong>Falta:</strong> S/ ".number_format($totalAmount - $amountPaid, 2)."</p>
                                 <p class='text-sm mt-2'>Por favor, verifique el monto ingresado.</p>
                             </div>
@@ -358,30 +453,49 @@ class RegisterPaymentAction
                         ->danger()
                         ->duration(8000) // 8 segundos
                         ->send();
+
                     return;
                 }
 
                 try {
-                    // Procesar el pago
-                    $payment = $paymentService->processPayment(
-                        $record,
-                        $data['selected_enrollments'],
-                        'cash',
-                        $data['payment_date'] ?? now(),
-                        $data['payment_notes'] ?? null
-                    );
+                    $regularIds = $enrollments->pluck('id')->diff($creditMatches->keys())->values()->toArray();
 
-                    // Actualizar monto pagado
-                    $payment->update([
-                        'amount' => $amountPaid,
-                    ]);
+                    // Procesar inscripciones cubiertas (parcial o totalmente) por crédito
+                    foreach ($creditMatches as $enrollmentId => $credit) {
+                        $paymentService->processPaymentWithCredit(
+                            $record,
+                            $enrollments->firstWhere('id', $enrollmentId),
+                            $credit,
+                            'cash',
+                            $data['payment_date'] ?? now(),
+                            $data['payment_notes'] ?? null
+                        );
+                    }
 
-                    // Calcular y guardar vuelto si hay
-                    $change = $amountPaid - $totalAmount;
-                    if ($change > 0) {
+                    // Procesar el resto como pago normal en efectivo
+                    $payment = null;
+                    $change = 0;
+                    if (! empty($regularIds)) {
+                        $payment = $paymentService->processPayment(
+                            $record,
+                            $regularIds,
+                            'cash',
+                            $data['payment_date'] ?? now(),
+                            $data['payment_notes'] ?? null
+                        );
+
+                        // Actualizar monto pagado
                         $payment->update([
-                            'notes' => ($payment->notes ?? '') . "\nVuelto: S/ ".number_format($change, 2)
+                            'amount' => $amountPaid,
                         ]);
+
+                        // Calcular y guardar vuelto si hay
+                        $change = $amountPaid - $totalAmount;
+                        if ($change > 0) {
+                            $payment->update([
+                                'notes' => ($payment->notes ?? '')."\nVuelto: S/ ".number_format($change, 2),
+                            ]);
+                        }
                     }
 
                     $record->refresh();
@@ -397,15 +511,15 @@ class RegisterPaymentAction
                     $bodyMessage = "
                         <div class='space-y-1'>
                             <p>{$statusMessage}</p>
-                            <p><strong>Total pagado:</strong> S/ ".number_format($totalAmount, 2)."</p>
-                            <p><strong>Monto recibido:</strong> S/ ".number_format($amountPaid, 2)."</p>
-                    ";
+                            <p><strong>Total pagado:</strong> S/ ".number_format($totalAmount, 2).'</p>
+                            <p><strong>Monto recibido:</strong> S/ '.number_format($amountPaid, 2).'</p>
+                    ';
 
                     if ($change > 0) {
-                        $bodyMessage .= "<p><strong>Vuelto:</strong> S/ ".number_format($change, 2)."</p>";
+                        $bodyMessage .= '<p><strong>Vuelto:</strong> S/ '.number_format($change, 2).'</p>';
                     }
 
-                    $bodyMessage .= "</div>";
+                    $bodyMessage .= '</div>';
 
                     \Filament\Notifications\Notification::make()
                         ->title('Pago Registrado Exitosamente')
@@ -428,12 +542,12 @@ class RegisterPaymentAction
                 $description = $record->payment_method === 'link'
                     ? 'Se registrará el pago completo de todas las inscripciones'
                     : 'Seleccione las inscripciones y registre el monto recibido';
+
                 return "Método de pago: {$method} | {$description}";
             })
             ->modalSubmitActionLabel('Registrar Pago')
             ->modalCancelActionLabel('Cancelar')
-            ->visible(fn (EnrollmentBatch $record): bool =>
-                $record->payment_status !== 'completed' &&
+            ->visible(fn (EnrollmentBatch $record): bool => $record->payment_status !== 'completed' &&
                 $record->enrollments()->where('payment_status', 'pending')->exists()
             )
             ->color('success')

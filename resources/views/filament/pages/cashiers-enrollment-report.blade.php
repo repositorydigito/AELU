@@ -45,6 +45,16 @@
                             (S/ {{ number_format($paymentSummary['link_amount'], 2) }})
                         </span>
                     </div>
+                    @if(($paymentSummary['credit_amount'] ?? 0) > 0)
+                    <div class="flex-1">
+                        <span class="text-sm font-medium text-amber-600">
+                            Cubierto con crédito
+                        </span>
+                        <span class="text-xs text-amber-600 ml-2">
+                            (S/ {{ number_format($paymentSummary['credit_amount'], 2) }})
+                        </span>
+                    </div>
+                    @endif
                     <div class="flex-1">
                         <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
                             {{ $paymentSummary['inscribed_count'] }} Inscritos

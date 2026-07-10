@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\EnrollmentBatch;
 use App\Models\EnrollmentPayment;
+use App\Models\StudentCredit;
 use App\Models\StudentEnrollment;
 use App\Models\Ticket;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +12,97 @@ use Illuminate\Support\Facades\DB;
 
 class EnrollmentPaymentService
 {
+    /**
+     * Aplica un crédito de recuperación (RN-D3: paga solo la diferencia) a una
+     * inscripción específica del mes siguiente. Si el crédito no cubre el total,
+     * el saldo restante se cobra con $remainingPaymentMethod en el mismo lote.
+     */
+    public function processPaymentWithCredit(
+        EnrollmentBatch $batch,
+        StudentEnrollment $enrollment,
+        StudentCredit $credit,
+        string $remainingPaymentMethod,
+        string $paymentDate,
+        ?string $notes = null
+    ): array {
+        return DB::transaction(function () use ($batch, $enrollment, $credit, $remainingPaymentMethod, $paymentDate, $notes) {
+            if ($enrollment->enrollment_batch_id !== $batch->id) {
+                throw new \Exception('La inscripción no pertenece a este lote.');
+            }
+
+            if ($enrollment->payment_status === 'completed') {
+                throw new \Exception("La inscripción {$enrollment->id} ya está pagada.");
+            }
+
+            if (! $credit->isApplicableTo($enrollment)) {
+                throw new \Exception('El crédito no es aplicable a esta inscripción (vencido, ya consumido, o taller distinto).');
+            }
+
+            if (! Auth::check()) {
+                throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
+            }
+
+            $creditApplied = min((float) $credit->amount, (float) $enrollment->total_amount);
+            $remaining = round((float) $enrollment->total_amount - $creditApplied, 2);
+
+            $creditPayment = EnrollmentPayment::create([
+                'enrollment_batch_id' => $batch->id,
+                'amount' => $creditApplied,
+                'payment_method' => 'credito',
+                'payment_date' => $paymentDate,
+                'status' => 'completed',
+                'notes' => "Crédito de recuperación #{$credit->id} aplicado.",
+            ]);
+            $creditPayment->paymentItems()->create([
+                'student_enrollment_id' => $enrollment->id,
+                'amount' => $creditApplied,
+            ]);
+
+            $credit->update([
+                'status' => 'consumed',
+                'consumed_at' => now(),
+                'consumed_student_enrollment_id' => $enrollment->id,
+            ]);
+
+            $remainingPayment = null;
+            if ($remaining > 0) {
+                $remainingPayment = EnrollmentPayment::create([
+                    'enrollment_batch_id' => $batch->id,
+                    'amount' => $remaining,
+                    'payment_method' => $remainingPaymentMethod,
+                    'payment_date' => $paymentDate,
+                    'status' => 'completed',
+                    'notes' => $notes,
+                ]);
+                $remainingPayment->paymentItems()->create([
+                    'student_enrollment_id' => $enrollment->id,
+                    'amount' => $remaining,
+                ]);
+            }
+
+            $enrollment->update([
+                'payment_status' => 'completed',
+                'payment_method' => $remaining > 0 ? $remainingPaymentMethod : 'credito',
+                'payment_date' => $paymentDate,
+            ]);
+
+            $ticketMethod = $remaining > 0 ? $remainingPaymentMethod : 'cash';
+            $ticketPayment = $remainingPayment ?? $creditPayment;
+            $ticket = $this->createTicketWithUniqueCode($batch, $ticketPayment, $ticketMethod, (float) $enrollment->total_amount);
+            $ticket->studentEnrollments()->attach($enrollment->id);
+
+            $this->updateBatchStatus($batch);
+
+            return [
+                'credit_payment' => $creditPayment,
+                'remaining_payment' => $remainingPayment,
+                'ticket' => $ticket,
+                'credit_applied' => $creditApplied,
+                'remaining' => $remaining,
+            ];
+        });
+    }
+
     public function processPayment(EnrollmentBatch $batch, array $studentEnrollmentIds, string $paymentMethod, string $paymentDate, ?string $notes = null): EnrollmentPayment
     {
         return DB::transaction(function () use ($batch, $studentEnrollmentIds, $paymentMethod, $paymentDate, $notes) {

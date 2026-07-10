@@ -107,6 +107,34 @@ php artisan shield:generate --all
 php artisan shield:generate --resource=Tag
 ```
 
+#### Módulo de Recuperaciones (crédito por clases pagadas no asistidas)
+
+Implementa Épica D.1/D.4/D.5 de `docs/new-requirements.md`: crédito como saldo del alumno (ledger), aplicable como método de pago "crédito" en la inscripción del mes siguiente del mismo taller.
+
+**1. Migrar (nuevas tablas `student_credits`, `student_credit_classes` + enum `payment_method` con `'credito'`):**
+```bash
+php artisan migrate --force
+```
+
+**2. Generar permiso de la página (es página custom, no resource — usar `--page`):**
+```bash
+php artisan shield:generate --panel=admin --page=RecoveryManagement --no-interaction
+```
+
+**3. Asignar el permiso a los roles que deben ver "Recuperaciones":**
+```bash
+php artisan tinker --execute="
+\$perm = \Spatie\Permission\Models\Permission::where('name','page_RecoveryManagement')->first();
+foreach (\Spatie\Permission\Models\Role::whereIn('name',['super_admin','Administrador','Cajero'])->get() as \$role) {
+    \$role->givePermissionTo(\$perm);
+}
+"
+```
+
+**4. Scheduler:** `credits:expire` (vence créditos fuera del mes de vigencia, RN-D17) ya está registrado en `routes/console.php` — no requiere entrada de cron nueva, corre con el `schedule:run` existente.
+
+> No requiere seeder. La página vive en `app/Filament/Pages/RecoveryManagement.php`.
+
 ---
 
 ### 7b. Seeders de datos maestros

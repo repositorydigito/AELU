@@ -56,4 +56,11 @@ class MonthlyPeriod extends Model
     {
         return $this->hasMany(InstructorWorkshop::class, 'initial_monthly_period_id');
     }
+
+    public function nextPeriod(): ?self
+    {
+        $next = \Carbon\Carbon::create($this->year, $this->month, 1)->addMonthNoOverflow();
+
+        return static::where('year', $next->year)->where('month', $next->month)->first();
+    }
 }

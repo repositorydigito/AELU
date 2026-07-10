@@ -3,7 +3,6 @@
 namespace App\Filament\Pages;
 
 use App\Exports\AllUsersEnrollmentExport;
-use App\Models\User;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Filament\Actions\Action;
@@ -24,19 +23,28 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
+
     protected static string $view = 'filament.pages.all-users-enrollment-report';
+
     protected static ?string $title = 'Inscripciones - Reporte General';
+
     protected static bool $shouldRegisterNavigation = false;
 
     public ?array $data = [];
+
     public $selectedDateFrom = null;
+
     public $selectedDateTo = null;
+
     public $selectedStatus = null;
+
     public $allEnrollments = [];
+
     public $summaryData = [
         'total_amount' => 0,
-        'link_amount'  => 0,
-        'cash_amount'  => 0,
+        'link_amount' => 0,
+        'cash_amount' => 0,
+        'credit_amount' => 0,
     ];
 
     public function mount(): void
@@ -74,9 +82,9 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
                     ->label('Estado')
                     ->placeholder('Todos los estados')
                     ->options([
-                        'active'    => 'Inscrito',
+                        'active' => 'Inscrito',
                         'cancelled' => 'Anulado',
-                        'refunded'  => 'Reembolsado',
+                        'refunded' => 'Reembolsado',
                     ])
                     ->native(false)
                     ->live()
@@ -91,9 +99,10 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
     public function loadAllUsersEnrollments(): void
     {
-        if (!$this->selectedDateFrom || !$this->selectedDateTo) {
+        if (! $this->selectedDateFrom || ! $this->selectedDateTo) {
             $this->allEnrollments = [];
-            $this->summaryData = ['total_amount' => 0, 'link_amount' => 0, 'cash_amount' => 0];
+            $this->summaryData = ['total_amount' => 0, 'link_amount' => 0, 'cash_amount' => 0, 'credit_amount' => 0];
+
             return;
         }
 
@@ -105,7 +114,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             'student',
             'issuedByUser',
             'enrollmentBatch.paymentRegisteredByUser',
-            'studentEnrollments.instructorWorkshop.workshop'
+            'studentEnrollments.instructorWorkshop.workshop',
         ])
             ->whereHas('enrollmentBatch.paymentRegisteredByUser', function ($query) {
                 $query->whereDoesntHave('roles', function ($roleQuery) {
@@ -119,13 +128,14 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             })
             ->whereDate('issued_at', '>=', $dateFromForQuery)
             ->whereDate('issued_at', '<=', $dateToForQuery)
-            ->when($this->selectedStatus, fn($q) => $q->where('status', $this->selectedStatus))
+            ->when($this->selectedStatus, fn ($q) => $q->where('status', $this->selectedStatus))
             ->orderBy('issued_at', 'desc')
             ->get();
 
         if ($tickets->isEmpty()) {
             $this->allEnrollments = [];
-            $this->summaryData = ['total_amount' => 0, 'link_amount' => 0, 'cash_amount' => 0];
+            $this->summaryData = ['total_amount' => 0, 'link_amount' => 0, 'cash_amount' => 0, 'credit_amount' => 0];
+
             return;
         }
 
@@ -136,6 +146,12 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
             // Calcular totales del ticket
             $totalAmount = $ticket->studentEnrollments->sum('total_amount');
+            // RN-D23: la porción cubierta con crédito de recuperación no es dinero nuevo.
+            // Se usa el crédito REALMENTE aplicado (capado), no el StudentCredit.amount
+            // completo, para que el dinero nuevo cuadre contra caja física.
+            $creditAmount = \App\Models\EnrollmentPaymentItem::creditAppliedForEnrollments(
+                $ticket->studentEnrollments->pluck('id')
+            );
             $workshopsCount = $ticket->studentEnrollments->count();
             $workshopsList = $ticket->studentEnrollments->pluck('instructorWorkshop.workshop.name')->filter()->join(', ');
 
@@ -146,13 +162,15 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             return [
                 'id' => $ticket->id,
                 'user_name' => $user ? $user->name : 'N/A',
-                'student_name' => $student ? ($student->last_names . ' ' . $student->first_names) : 'N/A',
+                'student_name' => $student ? ($student->last_names.' '.$student->first_names) : 'N/A',
                 'student_code' => $student->student_code ?? 'N/A',
                 'payment_registered_time' => $ticket->issued_at ? $ticket->issued_at->format('d/m/Y H:i') : 'N/A',
                 'enrollment_date' => $enrollmentDate ? $enrollmentDate->format('d/m/Y') : 'N/A',
                 'workshops_count' => $workshopsCount,
                 'workshops_list' => $workshopsList ?: 'N/A',
                 'total_amount' => $totalAmount,
+                'credit_amount' => (float) $creditAmount,
+                'new_money_amount' => $totalAmount - (float) $creditAmount,
                 'payment_method' => $this->getPaymentMethodText($firstEnrollment->payment_method ?? 'cash'),
                 'ticket_code' => $ticket->ticket_code,
                 'payment_status' => $this->getTicketStatusText($ticket->status),
@@ -161,9 +179,10 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
         $active = collect($this->allEnrollments)->where('payment_status', '!=', 'Anulado');
         $this->summaryData = [
-            'total_amount' => $active->sum('total_amount'),
-            'link_amount'  => $active->where('payment_method', 'Link')->sum('total_amount'),
-            'cash_amount'  => $active->where('payment_method', 'Efectivo')->sum('total_amount'),
+            'total_amount' => $active->sum('new_money_amount'),
+            'link_amount' => $active->where('payment_method', 'Link')->sum('new_money_amount'),
+            'cash_amount' => $active->where('payment_method', 'Efectivo')->sum('new_money_amount'),
+            'credit_amount' => $active->sum('credit_amount'),
         ];
     }
 
@@ -194,6 +213,7 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
         return match ($method) {
             'cash' => 'Efectivo',
             'link' => 'Link',
+            'credito' => 'Crédito',
             default => 'N/A',
         };
     }
@@ -204,14 +224,14 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             ->label('Generar PDF')
             ->color('primary')
             ->icon('heroicon-o-document-arrow-down')
-            ->visible(fn() => !empty($this->allEnrollments))
+            ->visible(fn () => ! empty($this->allEnrollments))
             ->action(function () {
                 try {
                     return $this->generatePDF();
                 } catch (\Exception $e) {
                     Notification::make()
                         ->title('Error en la acción')
-                        ->body('Error: ' . $e->getMessage())
+                        ->body('Error: '.$e->getMessage())
                         ->danger()
                         ->send();
                 }
@@ -249,21 +269,21 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
 
             $dompdf->render();
 
-            $fileName = 'inscripciones-todos-usuarios-' .
-                \Carbon\Carbon::parse($this->selectedDateFrom)->format('d-m-Y') . '-' .
-                \Carbon\Carbon::parse($this->selectedDateTo)->format('d-m-Y') . '.pdf';
+            $fileName = 'inscripciones-todos-usuarios-'.
+                \Carbon\Carbon::parse($this->selectedDateFrom)->format('d-m-Y').'-'.
+                \Carbon\Carbon::parse($this->selectedDateTo)->format('d-m-Y').'.pdf';
 
             return response()->stream(function () use ($dompdf) {
                 echo $dompdf->output();
             }, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+                'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
             ]);
 
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error al generar PDF')
-                ->body('Ocurrió un error: ' . $e->getMessage())
+                ->body('Ocurrió un error: '.$e->getMessage())
                 ->danger()
                 ->send();
         }
@@ -300,5 +320,4 @@ class AllUsersEnrollmentReport extends Page implements HasActions, HasForms
             $this->exportExcelAction(),
         ];
     }
-
 }

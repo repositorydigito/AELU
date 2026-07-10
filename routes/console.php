@@ -37,3 +37,9 @@ Schedule::command('holidays:replicate-recurring')
     ->yearlyOn(12, 1, '00:00')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Vence créditos de recuperación disponibles fuera de su mes de vigencia (RN-D17)
+Schedule::command('credits:expire')
+    ->daily()
+    ->withoutOverlapping()
+    ->runInBackground();

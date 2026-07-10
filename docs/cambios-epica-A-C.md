@@ -12,7 +12,7 @@
 
 | Archivo | Cambio | Regla |
 |---------|--------|-------|
-| `app/Services/InstructorPaymentService.php` | 🔴 Fix crítico: `getWorkshopRevenueForPeriod()` ahora filtra `payment_status = 'completed'` a nivel **inscripción**. Antes sumaba todas las inscripciones (pending, to_pay, refunded incluidas) → el profesor cobraba de más. | RN-A3, RN-A4 |
+| `app/Services/InstructorPaymentService.php` | ⚠️ **Corrección posterior (ver sección "Revisión revenue del profesor" abajo):** este Service resultó ser **código muerto** (0 llamadores). El fix de `getWorkshopRevenueForPeriod()` que se hizo aquí **no tenía efecto en runtime**; el cálculo real vive en `StudentEnrollmentObserver`. El Service quedó **comentado**. | RN-A3, RN-A4 |
 | `app/Filament/Pages/ScheduleEnrollmentReport.php` | Recaudación por horario: la consulta ahora exige lote (`EnrollmentBatch`) con `payment_status = 'completed'`. Antes solo excluía `refunded` → pendientes y parciales sumaban al total. | RN-A1, RN-A2 |
 | `app/Filament/Pages/AllUsersEnrollmentReport.php` | Reporte general: los tickets listados ahora exigen lote `completed`. Tickets de lotes parciales (`to_pay`) ya no aparecen ni suman. | RN-A1, RN-A2 |
 | `app/Filament/Pages/CashiersEnrollmentReport.php` | Reporte por cajero (caja): mismo filtro de lote `completed`. | RN-A1, RN-A2 |
@@ -37,6 +37,21 @@
 - **CA-A4/A5** — El pago al profesor suma cada inscripción `completed` de su horario aunque el lote esté `to_pay`; las pendientes no suman.
 - **CA-A6** — Sin cambios: `getTotalHoursForPeriod()` ya excluía clases `cancelled` (feriados).
 - **CA-A7** — Alerta visual de descuadre operativa en Tesorería → Pago de Profesores.
+
+### Revisión revenue del profesor (post-Épica A) + fix crédito de recuperación
+
+Al validar la interacción con recuperaciones (Épica D) se verificó el flujo real y se corrigieron dos cosas:
+
+1. **`InstructorPaymentService` es código muerto.** No lo llama ningún comando, scheduler, página, resource ni test (confirmado por grep + exploración). El pago al instructor lo calcula **`app/Observers/StudentEnrollmentObserver.php`** (`calculateAndSaveInstructorPayment`, `updateOrCreate` en cada cambio a `completed`), que **ya** filtraba `payment_status='completed'` (RN-A3). Por eso el fix de Épica A al Service no cambiaba nada en runtime. **Acción:** el Service quedó **comentado** con un banner que explica que está muerto y en qué difiere del observer (hourly: cuenta clases reales vs 4 fijas; % voluntario: `getEffectiveVolunteerPercentage` vs `custom ?? 50`; crédito). No se borró, por decisión.
+
+2. 🔴 **Bug de sobre-resta de crédito (RN-D5 / RN-D23).** En 3 lugares se restaba el `StudentCredit.amount` **completo** (suma de clases del mes origen), cuando lo realmente aplicado a la inscripción destino es `min(credit.amount, total_amount)` (`EnrollmentPaymentService::processPaymentWithCredit`). Si el crédito excede el total del destino → se restaba de más: **subpagaba al profesor** y **descuadraba la recaudación** contra caja. **Fix:** nuevo helper `EnrollmentPaymentItem::creditAppliedForEnrollments()` que suma el crédito **realmente aplicado** (items de pago con `payment_method='credito'`, ya capado). Reemplaza el patrón erróneo en:
+   - `app/Observers/StudentEnrollmentObserver.php` (revenue voluntario, RN-D5)
+   - `app/Filament/Pages/AllUsersEnrollmentReport.php` (dinero nuevo, RN-D23)
+   - `app/Filament/Pages/CashiersEnrollmentReport.php` (dinero nuevo, RN-D23)
+
+**Archivos nuevos/tocados en esta revisión:** `app/Models/EnrollmentPaymentItem.php` (helper), observer, los 2 reportes, `app/Services/InstructorPaymentService.php` (comentado).
+
+3. **Regla de aplicabilidad del crédito ampliada (decisión 2026-07).** `StudentCredit::isApplicableTo` exigía que el taller destino coincidiera exactamente con el de origen (`matchesWorkshop`: nombre+instructor+día+hora+modalidad). Se descubrió que por eso un crédito de "YOGA Miércoles Presencial" no aplicaba a "YOGA Lunes Virtual" del mismo alumno. **Decisión del cliente:** el crédito es saldo aplicable a **cualquier taller/horario** al pagar. Se removió la restricción `matchesWorkshop`; ahora solo valida disponible + mismo alumno + mes de vigencia (RN-D17). Archivo: `app/Models/StudentCredit.php`. Limitación conocida: 1 crédito por inscripción (no apila varios en un pago).
 
 ---
 
@@ -72,7 +87,7 @@ Excluido de este alcance: el plazo de retención (3/6 meses) está **por definir
 
 ## Pendientes / seguimiento
 
-- **Tests:** el proyecto solo tiene tests de ejemplo; queda pendiente cubrir RN-A3/A4 (revenue solo `completed`), RN-A1/A2 (recaudación por lote) y RN-C3 (correlativo global, incluyendo caso concurrente entre dos cajeros distintos) cuando se arme la suite.
+- **Tests:** el proyecto solo tiene `ExampleTest` y solo existe `UserFactory` — no hay factories para Student/StudentEnrollment/EnrollmentPayment/etc. Queda pendiente (bloqueado por falta de factories) cubrir: RN-A3/A4 (revenue solo `completed`), RN-A1/A2 (recaudación por lote), RN-C3 (correlativo global, caso concurrente entre 2 cajeros) y **RN-D5 caso borde**: crédito aplicado > total destino → verificar que `creditAppliedForEnrollments` resta solo lo aplicado (capado), no el `credit.amount`. Sin datos de crédito consumido en la DB actual no se pudo smoke-test con datos reales; el helper se validó con entrada vacía (→ 0).
 - **Migración pendiente de correr:** `php artisan migrate` para `2026_07_03_000000_seed_global_ticket_sequence` (aún no se aplicó en ningún entorno).
 - **Concurrencia (nota):** al pasar de contador por cajero a global, el `lockForUpdate` ahora serializa **todas** las emisiones de ticket del sistema (más contención que antes), lo cual es la contraparte esperada de tener una secuencia realmente global.
 - **Opcional (eficiencia):** denormalizar `monthly_period_id` en `enrollment_batches`/`enrollment_payments` — no implementado por ser opcional.

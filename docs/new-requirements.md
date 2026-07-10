@@ -137,6 +137,8 @@ flowchart TD
 - **RN-A6** *(Q5)* — La validación pago-profesor vs. inscripciones es **solo alerta visual**; **no** bloquea ni ajusta el pago.
 
 > **Corrección técnica requerida:** `InstructorPaymentService.php:118-123` hoy suma **todas** las inscripciones sin filtrar estado. Debe filtrar `payment_status = 'completed'` (nivel inscripción) para cumplir RN-A3/RN-A4.
+>
+> **⚠️ Aclaración verificada (2026-07):** `InstructorPaymentService` es **código muerto** (0 llamadores) — quedó **comentado**. El pago al profesor lo calcula **`app/Observers/StudentEnrollmentObserver.php`** (`calculateAndSaveInstructorPayment`), que **ya** filtra `payment_status='completed'` (RN-A3) y resta el crédito de recuperación (RN-D5). O sea RN-A3/A4 ya se cumplen en la ruta real.
 
 ## Criterios de aceptación
 
@@ -387,9 +389,10 @@ flowchart TD
 
 - **RN-D1** — La recuperación aplica por **clase suspendida** (feriado) **y** por **inasistencia propia** del alumno. Ambas dan derecho a reponer.
 - **RN-D2** — La clase recuperada **no genera monto adicional** (req 2): se cubre con el crédito de clases ya pagadas y no usadas.
-- **RN-D3** — **Modelo crédito→diferencia:** el valor de las clases no usadas se vuelve crédito; el mes siguiente el alumno toma su inscripción normal (4 clases) del taller y **paga solo la diferencia**. El crédito es válido **solo el mes inmediato siguiente** y **caduca** si no se usa (ver RN-D17).
+- **RN-D3** — **Modelo crédito→diferencia:** el valor de las clases no usadas se vuelve crédito; el mes siguiente el alumno toma su inscripción normal (4 clases) y **paga solo la diferencia**. El crédito es válido **solo el mes inmediato siguiente** y **caduca** si no se usa (ver RN-D17).
+- **RN-D3b (decisión 2026-07)** — El crédito es un **saldo del alumno aplicable a CUALQUIER taller/horario** al pagar, no solo al taller de origen. Se removió la restricción `matchesWorkshop` de `StudentCredit::isApplicableTo` (antes exigía coincidir nombre+instructor+día+hora+modalidad, por eso un crédito de "YOGA Miércoles Presencial" no aplicaba a "YOGA Lunes Virtual"). Ahora solo valida: crédito `available`, mismo alumno, dentro del mes de vigencia. **Limitación actual:** `processPaymentWithCredit` aplica **1 crédito por inscripción** (`min(credito, total)`); no apila varios créditos en un mismo pago (posible mejora futura).
 - **RN-D4** — **Control por asistencia:** las clases recuperables = las `is_present = false` (`ClassAttendance`) de una inscripción **pagada**. No se puede recuperar más de lo no asistido ni más de lo pagado.
-- **RN-D5** — ⚠️ **Evitar doble conteo de revenue del profesor:** las clases pagadas y no usadas **ya se contaron** en el pago al profesor del mes original (RN-A4). Al aplicarse el crédito el mes siguiente, esas clases **no deben volver a sumar** al revenue del profesor. *(Requiere lógica que distinga la porción "pagada con crédito" de la "pagada con dinero nuevo".)*
+- **RN-D5** ✅ — **Evitar doble conteo de revenue del profesor:** las clases pagadas y no usadas **ya se contaron** en el pago al profesor del mes original (RN-A4). Al aplicarse el crédito el mes siguiente, esas clases **no deben volver a sumar** al revenue del profesor. **Implementado:** el observer resta el crédito **realmente aplicado** vía `EnrollmentPaymentItem::creditAppliedForEnrollments()` (items de pago con `payment_method='credito'`, capado a `total_amount`), no el `StudentCredit.amount` completo — esto evita la sobre-resta cuando el crédito excede el total del destino. Mismo criterio en reportes de recaudación (RN-D23).
 
 ### Criterios de aceptación
 

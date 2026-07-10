@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\InstructorPayment;
 use App\Models\InstructorWorkshop;
+use App\Models\EnrollmentPaymentItem;
 use App\Models\MonthlyInstructorRate;
 use App\Models\StudentEnrollment;
 use Illuminate\Support\Facades\DB;
@@ -72,7 +73,7 @@ class StudentEnrollmentObserver
         $instructorWorkshopId = $studentEnrollment->instructor_workshop_id;
         $monthlyPeriodId = $studentEnrollment->monthly_period_id;
 
-        if (!$instructorWorkshopId || !$monthlyPeriodId) {
+        if (! $instructorWorkshopId || ! $monthlyPeriodId) {
             return;
         }
 
@@ -119,6 +120,7 @@ class StudentEnrollmentObserver
             InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
                 ->where('monthly_period_id', $monthlyPeriodId)
                 ->delete();
+
             return;
         }
 
@@ -146,6 +148,21 @@ class StudentEnrollmentObserver
                 ->where('monthly_period_id', $monthlyPeriodId)
                 ->where('payment_status', 'completed')
                 ->sum('total_amount');
+
+            // RN-D5: la porción cubierta con crédito de recuperación ya se contó
+            // como revenue del profesor en el mes de origen — no debe re-sumarse aquí.
+            // Se resta el crédito REALMENTE aplicado (capado a total_amount), no el
+            // StudentCredit.amount completo, que puede exceder lo aplicado y sobre-restar.
+            $completedEnrollmentIds = DB::table('student_enrollments')
+                ->where('instructor_workshop_id', $instructorWorkshopId)
+                ->where('monthly_period_id', $monthlyPeriodId)
+                ->where('payment_status', 'completed')
+                ->pluck('id')
+                ->all();
+
+            $creditCovered = EnrollmentPaymentItem::creditAppliedForEnrollments($completedEnrollmentIds);
+
+            $monthlyRevenue -= $creditCovered;
 
             $totalStudents = DB::table('student_enrollments')
                 ->where('instructor_workshop_id', $instructorWorkshopId)
@@ -185,7 +202,7 @@ class StudentEnrollmentObserver
         // Preparar notas informativas
         $notes = '';
         if ($instructorWorkshop->isVolunteer()) {
-            $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ ".number_format($monthlyRevenue, 2)." × ".number_format($appliedVolunteerPercentage, 2)."% = S/ ".number_format($calculatedAmount, 2);
+            $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ ".number_format($monthlyRevenue, 2).' × '.number_format($appliedVolunteerPercentage, 2).'% = S/ '.number_format($calculatedAmount, 2);
         } elseif ($instructorWorkshop->isHourly()) {
             $notes = "Pago por horas: {$totalHours} horas totales (4 clases × {$durationHours} hrs/clase) × S/ {$appliedHourlyRate}/hora = S/ ".number_format($calculatedAmount, 2);
         }
@@ -206,7 +223,7 @@ class StudentEnrollmentObserver
                 'total_hours' => $totalHours,
                 'hourly_rate' => $hourlyRate,
                 'applied_hourly_rate' => $appliedHourlyRate,
-                'applied_volunteer_percentage' => $appliedVolunteerPercentage/100,
+                'applied_volunteer_percentage' => $appliedVolunteerPercentage / 100,
                 'calculated_amount' => round($calculatedAmount, 2),
                 'notes' => $notes,
                 'payment_status' => InstructorPayment::where('instructor_workshop_id', $instructorWorkshopId)
