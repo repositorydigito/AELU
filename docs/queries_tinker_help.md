@@ -250,18 +250,14 @@ $next    = \App\Models\MonthlyPeriod::where('year', now()->addMonth()->year)->wh
 // Si es 0 → correr primero: php artisan workshops:auto-replicate --force
 
 // ¿Cuántos batches completed hay en el período actual para replicar?
-\App\Models\EnrollmentBatch::where('payment_status', 'completed')
-    ->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', $current->id)->whereNull('cancelled_at'))
-    ->count();
+\App\Models\EnrollmentBatch::where('payment_status', 'completed')->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', $current->id)->whereNull('cancelled_at'))->count();
 
 // ¿El job ya corrió para el siguiente período?
 $next->enrollments_replicated_at;
 // Si tiene fecha → resetear: $next->update(['enrollments_replicated_at' => null])
 
 // PASO 2: Limpiar inscripciones del siguiente período si ya existen (prueba limpia)
-$batchIds = \App\Models\EnrollmentBatch::where('payment_status', 'pending')
-    ->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', $next->id))
-    ->pluck('id');
+$batchIds = \App\Models\EnrollmentBatch::where('payment_status', 'pending')->whereHas('enrollments', fn($q) => $q->where('monthly_period_id', $next->id))->pluck('id');
 
 \App\Models\EnrollmentClass::whereHas('studentEnrollment',
     fn($q) => $q->whereIn('enrollment_batch_id', $batchIds)

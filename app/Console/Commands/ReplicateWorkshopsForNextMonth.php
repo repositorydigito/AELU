@@ -7,6 +7,7 @@ use App\Models\SystemSetting;
 use App\Services\WorkshopReplicationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -79,27 +80,49 @@ class ReplicateWorkshopsForNextMonth extends Command
 
         $service = app(WorkshopReplicationService::class);
 
-        DB::beginTransaction();
-        try {
-            $replicated = $service->replicateFromTemplates($nextPeriod);
+        // D.1: mutex por período — evita que dos corridas solapadas (cron + --force manual,
+        // o dos ejecuciones concurrentes) creen talleres duplicados para el mismo período.
+        // Ya ocurrió en producción (ver app/Console/Commands/FixDuplicateWorkshops.php).
+        $lock = Cache::lock("workshop_replication_period_{$nextPeriod->id}", 300);
 
-            // Marcar como replicado
-            $nextPeriod->update(['workshops_replicated_at' => now()]);
-
-            DB::commit();
-
-            $this->info('Replicación completa');
-            $this->info("- Talleres creados: {$replicated['workshops']}");
-            $this->info("- Clases generadas: {$replicated['classes']}");
-            $this->info("- Plantillas omitidas (ya existen): {$replicated['skipped']}");
-
-            return Command::SUCCESS;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error replicando talleres', ['error' => $e->getMessage()]);
-            $this->error('Error durante replicación: '.$e->getMessage());
+        if (! $lock->get()) {
+            $this->error("Ya hay una replicación de talleres en curso para {$nextPeriod->year}/{$nextPeriod->month}. Intenta de nuevo en unos minutos.");
 
             return Command::FAILURE;
+        }
+
+        try {
+            DB::beginTransaction();
+            try {
+                $replicated = $service->replicateFromTemplates($nextPeriod);
+
+                // Marcar como replicado
+                $nextPeriod->update(['workshops_replicated_at' => now()]);
+
+                DB::commit();
+
+                $this->info('Replicación completa');
+                $this->info("- Talleres creados: {$replicated['workshops']}");
+                $this->info("- Clases generadas: {$replicated['classes']}");
+                $this->info("- Plantillas omitidas (ya existen): {$replicated['skipped']}");
+
+                if (! empty($replicated['warnings'])) {
+                    $this->warn('- Advertencias: '.count($replicated['warnings']));
+                    foreach ($replicated['warnings'] as $warning) {
+                        $this->warn("  • {$warning}");
+                    }
+                }
+
+                return Command::SUCCESS;
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Error replicando talleres', ['error' => $e->getMessage()]);
+                $this->error('Error durante replicación: '.$e->getMessage());
+
+                return Command::FAILURE;
+            }
+        } finally {
+            $lock->release();
         }
     }
 }

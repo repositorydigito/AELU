@@ -20,7 +20,7 @@ AELU is a workshop enrollment and management system for PAMA (Programa del Adult
 Active scheduled commands:
 - `enrollments:auto-cancel` - Auto-cancels pending enrollments on configured day
 - `workshops:auto-replicate` - Replicates workshops to next month
-- `enrollments:auto-generate` - (Currently disabled) Auto-generates enrollments
+- `enrollments:auto-generate` - Auto-generates enrollments
 
 ### Useful Artisan Commands
 ```bash
