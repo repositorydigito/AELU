@@ -158,7 +158,17 @@ class EnrollmentPaymentService
             ->map(function ($ticket) {
                 $parts = explode('-', $ticket->ticket_code);
 
-                return isset($parts[1]) ? intval($parts[1]) : 0;
+                // Solo confiar en parts[1] si calza EXACTO con el formato del generador
+                // (6 dígitos numéricos). Tickets link legacy de 2 partes
+                // ({enrollment_code}-{voucher}) pueden tener un voucher puramente
+                // numérico de otra longitud (ej. '01061705', 8 dígitos) que NO es un
+                // correlativo real — tratarlo como tal infla el máximo y corrompe la
+                // secuencia (ej. generó '006-1061706' en vez de continuar desde 497).
+                if (! isset($parts[1]) || strlen($parts[1]) !== 6 || ! ctype_digit($parts[1])) {
+                    return 0;
+                }
+
+                return intval($parts[1]);
             })
             ->max();
 
