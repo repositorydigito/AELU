@@ -12,43 +12,6 @@ use Carbon\Carbon;
 class WorkshopReplicationService
 {
     /**
-     * Replicar talleres de un período al siguiente y generar sus clases.
-     *
-     * @return array{workshops:int, classes:int}
-     */
-    public function replicateFromPeriodToNext(MonthlyPeriod $current, MonthlyPeriod $next): array
-    {
-        $createdWorkshops = 0;
-        $createdClasses = 0;
-
-        $workshops = Workshop::where('monthly_period_id', $current->id)->get();
-
-        foreach ($workshops as $workshop) {
-
-            $newWorkshop = $workshop->replicate();
-            $newWorkshop->monthly_period_id = $next->id;
-            $newWorkshop->save();
-
-            $createdWorkshops++;
-
-            if ($next->auto_generate_classes && ! $newWorkshop->workshopClasses()->exists()) {
-                $createdClasses += $this->generateClassesForWorkshopAndPeriod($newWorkshop, $next);
-
-                // Actualizar number_of_classes con clases reales generadas (feriados excluidos)
-                $actualClasses = $newWorkshop->workshopClasses()->where('status', 'scheduled')->count();
-                if ($actualClasses > 0 && $actualClasses !== $newWorkshop->number_of_classes) {
-                    $newWorkshop->update(['number_of_classes' => $actualClasses]);
-                }
-            }
-        }
-
-        return [
-            'workshops' => $createdWorkshops,
-            'classes' => $createdClasses,
-        ];
-    }
-
-    /**
      * Replicar talleres desde plantillas activas al siguiente período.
      *
      * @return array{workshops:int, classes:int, skipped:int}
@@ -58,6 +21,7 @@ class WorkshopReplicationService
         $createdWorkshops = 0;
         $createdClasses   = 0;
         $skipped          = 0;
+        $warnings         = [];
 
         $templates = WorkshopTemplate::where('is_active', true)->get();
 
@@ -94,12 +58,20 @@ class WorkshopReplicationService
             $createdWorkshops++;
 
             if ($next->auto_generate_classes) {
-                $createdClasses += $this->generateClassesForWorkshopAndPeriod($workshop, $next);
+                // D.3: si el taller queda mal configurado (sin día u sin cupo), no se debe
+                // adivinar en silencio. Se aísla el error por taller (no aborta a los demás)
+                // y se reporta como advertencia — el taller queda creado pero sin clases,
+                // pendiente de que el admin corrija y genere las clases a mano.
+                try {
+                    $createdClasses += $this->generateClassesForWorkshopAndPeriod($workshop, $next);
 
-                // Actualizar number_of_classes con clases reales generadas (feriados excluidos)
-                $actualClasses = $workshop->workshopClasses()->where('status', 'scheduled')->count();
-                if ($actualClasses > 0 && $actualClasses !== $workshop->number_of_classes) {
-                    $workshop->update(['number_of_classes' => $actualClasses]);
+                    // Actualizar number_of_classes con clases reales generadas (feriados excluidos)
+                    $actualClasses = $workshop->workshopClasses()->where('status', 'scheduled')->count();
+                    if ($actualClasses > 0 && $actualClasses !== $workshop->number_of_classes) {
+                        $workshop->update(['number_of_classes' => $actualClasses]);
+                    }
+                } catch (\Exception $e) {
+                    $warnings[] = $e->getMessage();
                 }
             }
         }
@@ -108,6 +80,7 @@ class WorkshopReplicationService
             'workshops' => $createdWorkshops,
             'classes'   => $createdClasses,
             'skipped'   => $skipped,
+            'warnings'  => $warnings,
         ];
     }
 
@@ -116,15 +89,23 @@ class WorkshopReplicationService
      */
     public function generateClassesForWorkshopAndPeriod(Workshop $workshop, MonthlyPeriod $period): int
     {
+        // D.3: no defaultear en silencio si falta configuración. Antes esto generaba
+        // clases el "Lunes" (day_of_week vacío) o con cupo 0 (capacity vacío), corrompiendo
+        // datos sin ningún aviso — mejor fallar explícito para que el admin lo corrija.
+        if (empty($workshop->day_of_week)) {
+            throw new \Exception("Taller '{$workshop->name}' (id {$workshop->id}): no tiene día(s) de clase configurado (day_of_week vacío), no se generaron clases.");
+        }
+
+        if (empty($workshop->capacity) || $workshop->capacity <= 0) {
+            throw new \Exception("Taller '{$workshop->name}' (id {$workshop->id}): no tiene capacidad configurada (capacity vacío o 0), no se generaron clases.");
+        }
+
         $days = $workshop->day_of_week;
         if (is_string($days)) {
             $days = [$days];
         }
         if (is_numeric($days)) {
             $days = [$this->mapNumericDayToSpanish((int) $days)];
-        }
-        if (! is_array($days) || empty($days)) {
-            $days = ['Lunes'];
         }
 
         $dayMap = [
@@ -148,7 +129,7 @@ class WorkshopReplicationService
         }
         $targetWeekdays = array_unique($targetWeekdays);
         if (empty($targetWeekdays)) {
-            $targetWeekdays = [1];
+            throw new \Exception("Taller '{$workshop->name}' (id {$workshop->id}): day_of_week tiene valores no reconocidos (".json_encode($workshop->day_of_week).'), no se generaron clases.');
         }
 
         $startDate = Carbon::parse($period->start_date)->startOfDay();
@@ -200,7 +181,7 @@ class WorkshopReplicationService
                 'class_date'        => $date->toDateString(),
                 'start_time'        => $startTime->format('H:i:s'),
                 'end_time'          => $endTime->format('H:i:s'),
-                'max_capacity'      => (int) ($workshop->capacity ?? 0),
+                'max_capacity'      => (int) $workshop->capacity,
                 'status'            => 'scheduled',
             ]);
 

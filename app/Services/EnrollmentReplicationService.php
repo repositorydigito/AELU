@@ -48,24 +48,15 @@ class EnrollmentReplicationService
         Log::info("Starting enrollment replication from period {$currentPeriod->year}/{$currentPeriod->month} to {$nextPeriod->year}/{$nextPeriod->month}");
 
         // Pre-cargar InstructorWorkshops del siguiente período para evitar N+1
+        // Se agrupa (no keyBy) para poder detectar claves ambiguas (D.11): si más de un
+        // InstructorWorkshop del próximo período comparte la misma clave de equivalencia,
+        // no se puede saber cuál es el correcto — se debe fallar explícito, no adivinar.
         $this->nextPeriodInstructorWorkshops = InstructorWorkshop::with('workshop')
             ->whereHas('workshop', function ($query) use ($nextPeriod) {
                 $query->where('monthly_period_id', $nextPeriod->id);
             })
             ->get()
-            ->keyBy(function ($iw) {
-                // Crear clave única: instructor_id + nombre + día + horario + duración + modalidad
-                $dayOfWeek = is_array($iw->workshop->day_of_week)
-                    ? json_encode($iw->workshop->day_of_week)
-                    : $iw->workshop->day_of_week;
-
-                return $iw->instructor_id.'_'.
-                       $iw->workshop->name.'_'.
-                       $dayOfWeek.'_'.
-                       $iw->workshop->start_time.'_'.
-                       $iw->workshop->duration.'_'.
-                       $iw->workshop->modality;
-            });
+            ->groupBy(fn ($iw) => $this->buildEquivalenceKey($iw));
 
         Log::info("Pre-loaded {$this->nextPeriodInstructorWorkshops->count()} instructor workshops for next period");
 
@@ -284,22 +275,58 @@ class EnrollmentReplicationService
      */
     protected function findEquivalentInstructorWorkshop(InstructorWorkshop $originalIW, MonthlyPeriod $nextPeriod): ?InstructorWorkshop
     {
-        $originalWorkshop = $originalIW->workshop;
-
-        // Crear clave de búsqueda: instructor_id + nombre + día + horario + duración + modalidad
-        $dayOfWeek = is_array($originalWorkshop->day_of_week)
-            ? json_encode($originalWorkshop->day_of_week)
-            : $originalWorkshop->day_of_week;
-
-        $searchKey = $originalIW->instructor_id.'_'.
-                     $originalWorkshop->name.'_'.
-                     $dayOfWeek.'_'.
-                     $originalWorkshop->start_time.'_'.
-                     $originalWorkshop->duration.'_'.
-                     $originalWorkshop->modality;
+        $searchKey = $this->buildEquivalenceKey($originalIW);
 
         // Buscar en el cache pre-cargado
-        return $this->nextPeriodInstructorWorkshops->get($searchKey);
+        $matches = $this->nextPeriodInstructorWorkshops->get($searchKey);
+
+        if (! $matches || $matches->isEmpty()) {
+            return null;
+        }
+
+        // D.11: si más de un taller del próximo período comparte la misma clave de
+        // equivalencia (ej. se dividió en secciones idénticas salvo capacidad), no hay
+        // forma segura de saber cuál es el correcto — fallar explícito en vez de adivinar.
+        if ($matches->count() > 1) {
+            throw new \Exception(
+                "Coincidencia ambigua: {$matches->count()} talleres del próximo período comparten la misma clave de equivalencia ('{$searchKey}') — no se puede determinar cuál usar."
+            );
+        }
+
+        return $matches->first();
+    }
+
+    /**
+     * Clave de equivalencia: instructor_id + nombre + día + horario + duración + modalidad.
+     *
+     * Normaliza `start_time` a formato `H:i` (via Carbon) y ordena `day_of_week` antes de
+     * codificarlo — encontrado en incidente real (2026-07-14, replicación de agosto): el
+     * `Workshop` del período origen guardaba `start_time` como "10:00" (sin segundos) pero
+     * el creado por `replicateFromTemplates()` desde `WorkshopTemplate` lo guardaba como
+     * "10:00:00" (con segundos) — la comparación de string literal nunca hacía match,
+     * causando que el 100% de las inscripciones fallaran con "Workshop not found" y todos
+     * los lotes se crearan y borraran en silencio. Ver también R3/D.11.
+     */
+    private function buildEquivalenceKey(InstructorWorkshop $iw): string
+    {
+        $workshop = $iw->workshop;
+
+        $dayOfWeek = $workshop->day_of_week;
+        if (is_array($dayOfWeek)) {
+            sort($dayOfWeek);
+            $dayOfWeek = json_encode($dayOfWeek);
+        }
+
+        $startTime = $workshop->start_time
+            ? Carbon::parse($workshop->start_time)->format('H:i')
+            : $workshop->start_time;
+
+        return $iw->instructor_id.'_'.
+               $workshop->name.'_'.
+               $dayOfWeek.'_'.
+               $startTime.'_'.
+               $workshop->duration.'_'.
+               $workshop->modality;
     }
 
     /**

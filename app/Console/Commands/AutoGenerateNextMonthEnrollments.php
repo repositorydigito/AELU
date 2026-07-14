@@ -7,6 +7,7 @@ use App\Models\SystemSetting;
 use App\Services\EnrollmentReplicationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -79,6 +80,16 @@ class AutoGenerateNextMonthEnrollments extends Command
             ]
         );
 
+        // R5 (RN-D6): orden obligatorio talleres -> inscripciones. Sin talleres del próximo
+        // período, cada inscripción fallaría el match en silencio (solo warning por batch).
+        // Se valida el flag de la corrida masiva (no solo "existe algún taller"): un taller
+        // suelto creado a mano no significa que la replicación completa ya corrió.
+        if (! $nextPeriod->workshops_replicated_at) {
+            $this->error("Los talleres de {$nextPeriod->year}/{$nextPeriod->month} aún no fueron replicados. Corre 'workshops:auto-replicate' primero (orden obligatorio, RN-D6).");
+
+            return Command::FAILURE;
+        }
+
         // Verificar si ya se replicaron las inscripciones para este período
         if ($nextPeriod->enrollments_replicated_at && ! $this->option('force')) {
             $this->info("Las inscripciones ya fueron replicadas para {$nextPeriod->year}/{$nextPeriod->month} el {$nextPeriod->enrollments_replicated_at->format('Y-m-d H:i:s')}");
@@ -96,46 +107,60 @@ class AutoGenerateNextMonthEnrollments extends Command
 
         $service = app(EnrollmentReplicationService::class);
 
-        DB::beginTransaction();
-        try {
-            $result = $service->replicateEnrollmentsToNextMonth($currentPeriod, $nextPeriod);
+        // D.1: mutex por período — evita que dos corridas solapadas (cron + --force manual,
+        // o dos ejecuciones concurrentes) creen inscripciones/lotes duplicados.
+        $lock = Cache::lock("enrollment_replication_period_{$nextPeriod->id}", 300);
 
-            // Marcar como replicado
-            $nextPeriod->update(['enrollments_replicated_at' => now()]);
-
-            DB::commit();
-
-            // Resumen de la operación
-            $this->info('Replicación completada exitosamente');
-            $this->info("- Lotes creados: {$result['batches']}");
-            $this->info("- Inscripciones creadas: {$result['enrollments']}");
-            $this->info("- Clases asignadas: {$result['classes']}");
-            $this->info("- Lotes omitidos: {$result['skipped']}");
-
-            // Mostrar advertencias
-            if (! empty($result['warnings'])) {
-                $this->warn('- Advertencias: '.count($result['warnings']));
-                foreach ($result['warnings'] as $warning) {
-                    $this->warn("  • {$warning}");
-                }
-            }
-
-            // Mostrar errores
-            if (! empty($result['errors'])) {
-                $this->error('- Errores: '.count($result['errors']));
-                foreach ($result['errors'] as $error) {
-                    $this->error("  • {$error}");
-                }
-            }
-
-            return Command::SUCCESS;
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error crítico replicando inscripciones', ['error' => $e->getMessage()]);
-            $this->error('Error crítico durante replicación: '.$e->getMessage());
+        if (! $lock->get()) {
+            $this->error("Ya hay una replicación de inscripciones en curso para {$nextPeriod->year}/{$nextPeriod->month}. Intenta de nuevo en unos minutos.");
 
             return Command::FAILURE;
+        }
+
+        try {
+            DB::beginTransaction();
+            try {
+                $result = $service->replicateEnrollmentsToNextMonth($currentPeriod, $nextPeriod);
+
+                // Marcar como replicado
+                $nextPeriod->update(['enrollments_replicated_at' => now()]);
+
+                DB::commit();
+
+                // Resumen de la operación
+                $this->info('Replicación completada exitosamente');
+                $this->info("- Lotes creados: {$result['batches']}");
+                $this->info("- Inscripciones creadas: {$result['enrollments']}");
+                $this->info("- Clases asignadas: {$result['classes']}");
+                $this->info("- Lotes omitidos: {$result['skipped']}");
+
+                // Mostrar advertencias
+                if (! empty($result['warnings'])) {
+                    $this->warn('- Advertencias: '.count($result['warnings']));
+                    foreach ($result['warnings'] as $warning) {
+                        $this->warn("  • {$warning}");
+                    }
+                }
+
+                // Mostrar errores
+                if (! empty($result['errors'])) {
+                    $this->error('- Errores: '.count($result['errors']));
+                    foreach ($result['errors'] as $error) {
+                        $this->error("  • {$error}");
+                    }
+                }
+
+                return Command::SUCCESS;
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Error crítico replicando inscripciones', ['error' => $e->getMessage()]);
+                $this->error('Error crítico durante replicación: '.$e->getMessage());
+
+                return Command::FAILURE;
+            }
+        } finally {
+            $lock->release();
         }
     }
 }
