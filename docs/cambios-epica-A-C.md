@@ -3,7 +3,6 @@
 > **Fecha:** 2026-07-02 · **Alcance:** Épica A (motor de "dinero real") completa y Épica C.1 (tickets correlativos). **C.2 excluido** (plazo de retención pendiente de definición por Susana).
 >
 > Referencia de requerimientos: `docs/new-requirements.md`.
-
 ---
 
 ## Épica A — Motor de "dinero real"

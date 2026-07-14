@@ -261,9 +261,13 @@ flowchart TD
 
 **Reqs:** 3 (tickets link correlativos), 5 (DELETE gastos extra con retención).
 
-## C.1 — Tickets de pago por link correlativos — ✅ IMPLEMENTADO (corregido a secuencia GLOBAL)
+## C.1 — Tickets de pago por link correlativos — 🔶 DEFINICIÓN CORRECTA = GLOBAL
 
-**⚠️ Corrección del cliente (2026-07-02):** la implementación previa (commit `1da9c68`) usó correlativo **por cajero** (secuencia independiente por `enrollment_code`). **Decisión correcta del cliente: el correlativo debe ser GLOBAL**, compartido entre **todos** los cajeros — no uno por usuario. Ya corregido en código.
+**Decisión de negocio (2026-07-02, definitiva):** el correlativo debe ser **GLOBAL**, compartido entre **todos** los cajeros — **no** uno independiente por cajero. Esto es lo correcto y no está en discusión.
+
+> **⚠️ Estado real en esta branch (`feat/replicacion-incripciones` = `main` al día de hoy):** el código **todavía tiene la implementación vieja por-cajero** (`EnrollmentPaymentService::getNextSequential()` calcula el máximo escaneando solo `Ticket::where('issued_by_user_id', $user->id)` — secuencia independiente por cajero, sin `system_settings.global_ticket_seq` ni lock). **Es esperado y está bien así**: el fix a global vive en la branch `feat/recuperaciones` y llegará a `main` cuando se mergee esa branch. Esta branch (D.2, replicación de talleres/inscripciones) no depende de este fix y no hace falta implementarlo aquí.
+>
+> Todo lo que sigue abajo (código, migraciones, RN-C1/C3, CA-C1) describe el diseño **correcto/objetivo**, ya implementado en `feat/recuperaciones` — no el estado actual de esta branch.
 
 **Decisión tomada (revisada e implementada):** correlativo **único y global** (una sola secuencia para todo el sistema, cash+link), con el prefijo `enrollment_code` del cajero que emite conservado solo como identificador de quién lo emitió — no delimita una secuencia propia. El voucher/`batch_code` se sigue conservando como sufijo de referencia en los tickets link.
 
@@ -339,7 +343,7 @@ flowchart TD
 | Entregable | Peso | Estado | % |
 |-----------|:----:|:------:|:--:|
 | C.1 — Tickets link correlativos (unificado cash+link) | 3 | ✅ Implementado | 100% |
-| C.1 — Correlativo **global** (corrección 2026-07-02: contador único, no por cajero) | 1 | ✅ Implementado | 100% |
+| C.1 — Correlativo **global** (corrección 2026-07-02: contador único, no por cajero) | 1 | ✅ Implementado en `feat/recuperaciones` / ⚠️ pendiente en esta branch | 100%* |
 | C.2 — Soft-delete + retención en Gastos Extra | 3 | ⬜ Bloqueado (plazo Susana) | 0% |
 | C.2 — Auditoría + purga programada + borrado de comprobante | 1 | ⬜ Pendiente | 0% |
 
@@ -406,7 +410,7 @@ flowchart TD
 
 **Estado actual (código):**
 - `routes/console.php:20-39`: `auto-cancel`, `auto-replicate`, `auto-generate`, `holidays:replicate-recurring` → **todos habilitados** (validan día/hora vía `SystemSettings`).
-- ✅ **Confirmado por el cliente: la replicación automática está ACTIVA en producción.** (CLAUDE.md decía "disabled" — desactualizado.)
+- ✅ **Confirmado por el cliente: la replicación automática está ACTIVA en producción.**
 
 **Preguntas:** ¿qué cambiar/agregar? ¿`auto-generate` activo o manual? ¿criterio de replicación? ¿notificar al admin? ¿vista de control/log y reversión? ¿orquestar el orden talleres→feriados→inscripciones?
 
@@ -425,11 +429,14 @@ flowchart TD
 
 ### Reglas de negocio
 
-- **RN-D6** — Orden obligatorio: **talleres → (admin cancela feriados/suspensiones) → inscripciones**. Inscripciones solo se asignan a clases `scheduled`.
+- **RN-D6** — Orden obligatorio: **talleres → (admin cancela feriados/suspensiones) → inscripciones**. Inscripciones solo se asignan a clases `scheduled`. ✅ **Implementado (2026-07-13):** `AutoGenerateNextMonthEnrollments.php:87` verifica `$nextPeriod->workshops_replicated_at` antes de correr; si no está seteado, falla duro con mensaje claro en vez de dejar que cada inscripción falle en silencio.
 - **RN-D7** — Solo se replican lotes `completed` del mes actual; los precios se **recalculan** (no se copian).
 - **RN-D8** — Se omiten alumnos sin mantenimiento vigente o con lote manual ya creado para el periodo.
 - **RN-D9** — Cada corrida deja **log** consultable; el admin puede revisar y revertir. ⚠️
 - **RN-D10** — El estado activo/inactivo de cada proceso se controla desde `SystemSettings`.
+- **RN-D24** ✅ *(nueva)* — **Una sola corrida activa por período.** Ni `workshops:auto-replicate` ni `enrollments:auto-generate` pueden ejecutarse dos veces en simultáneo para el mismo período (cron solapado con `--force` manual, o dos ejecuciones manuales). Implementado con `Cache::lock()` (`workshop_replication_period_{id}` / `enrollment_replication_period_{id}`, 300s, tabla `cache_locks`) — si el lock ya está tomado, el comando falla con mensaje claro en vez de duplicar datos.
+- **RN-D25** ✅ *(nueva)* — **Sin ambigüedad en el match de talleres.** Si más de un `InstructorWorkshop` del período siguiente comparte la misma clave de equivalencia (instructor+nombre+día+hora+duración+modalidad — ej. un taller dividido en secciones idénticas salvo capacidad), la inscripción **no se replica adivinando cuál usar**; se registra como error explícito por inscripción.
+- **RN-D26** ✅ *(nueva)* — **Sin defaults silenciosos en la generación de clases.** Un taller con `day_of_week` vacío/inválido o `capacity` vacío/0 **no genera clases** (antes: día "Lunes" por defecto o cupo 0 silencioso, corrompiendo datos). El taller queda creado pero sin clases, con advertencia explícita para que el admin lo corrija manualmente.
 
 ### Criterios de aceptación
 
@@ -437,26 +444,96 @@ flowchart TD
 - **CA-D5** — Dada una clase caída en feriado, cuando se replican inscripciones, entonces **ninguna** inscripción apunta a esa clase (`cancelled`).
 - **CA-D6** — Dado un alumno sin mantenimiento vigente, cuando corre la replicación, entonces **no** se le genera lote.
 - **CA-D7** — Dada una corrida automática, cuando finaliza, entonces el admin recibe/consulta un **resumen** de lo generado.
+- **CA-D20** ✅ *(nueva, RN-D6)* — Dado que `workshops:auto-replicate` **no** corrió para el período siguiente, cuando se ejecuta `enrollments:auto-generate`, entonces el comando **falla inmediatamente** con el mensaje "Los talleres de {año}/{mes} aún no fueron replicados..." y **no** crea ni borra ningún lote.
+- **CA-D21** ✅ *(nueva, RN-D24)* — Dado que `workshops:auto-replicate` ya está corriendo para un período, cuando se invoca el mismo comando de nuevo (cron solapado o `--force` manual) para ese mismo período, entonces la segunda ejecución **falla** con "Ya hay una replicación... en curso" y **no** crea talleres duplicados. Mismo comportamiento para `enrollments:auto-generate`.
+- **CA-D22** ✅ *(nueva, RN-D25)* — Dado que el período siguiente tiene 2 `InstructorWorkshop` con la misma clave de equivalencia exacta, cuando se replica una inscripción hacia ese taller, entonces se registra un error "Coincidencia ambigua..." para esa inscripción puntual y **no** se le asigna a ninguna de las dos secciones al azar.
+- **CA-D23** ✅ *(nueva, RN-D26)* — Dado un taller con `day_of_week` vacío o `capacity` en 0/null, cuando corre `workshops:auto-replicate`, entonces el taller se crea pero **sin clases**, con una advertencia explícita en el resultado del comando (no se generan clases el "Lunes" por defecto ni con cupo 0).
 
 ### Revisión de correctitud (replicación ↔ feriados ↔ inscripciones)
 
-Revisión read-only del flujo real (jul 2026). **Veredicto: mayormente correcto** — el bug histórico de Semana Santa ya está corregido, el orden se resuelve por días escalonados + idempotencia (`enrollments_replicated_at`), y `number_of_classes` excluye feriados. Los hallazgos abajo son **backlog registrado, NO implementado** (el cliente decidió solo documentar).
+Revisión read-only del flujo real (jul 2026). **Veredicto: mayormente correcto** — el bug histórico de Semana Santa ya está corregido, el orden se resuelve por días escalonados + idempotencia (`enrollments_replicated_at`), y `number_of_classes` excluye feriados. De los 5 hallazgos originales, **4 se corrigieron el 2026-07-13** (ver tabla); R1 queda como decisión de negocio pendiente.
 
 **✅ Correcto verificado:**
-- Feriados registrados → la clase **no se crea** (`WorkshopReplicationService.php:193` hace `continue`). **Corrección a CLAUDE.md:** ahí dice que se crean con `status='cancelled'` (notes='Cancelada por feriado') — **es falso**, no se crea ningún registro. Actualizar CLAUDE.md.
-- Inscripciones filtran `status != 'cancelled'` (`EnrollmentReplicationService.php:385,405`) — bug Semana Santa resuelto.
+- Feriados registrados → la clase **no se crea** (`WorkshopReplicationService.php` hace `continue` sobre fechas de feriado). **Corrección a CLAUDE.md:** ahí dice que se crean con `status='cancelled'` (notes='Cancelada por feriado') — **es falso**, no se crea ningún registro. Actualizar CLAUDE.md.
+- Inscripciones filtran `status != 'cancelled'` — bug Semana Santa resuelto.
 - Feriados recurrentes por `m-d` → correcto porque los **movibles se cargan por año (no recurrentes)**; los recurrentes solo son de fecha fija.
 - `duration` en minutos (`addMinutes` correcto). Días escalonados del scheduler correctos. Capacidad cuenta pendientes = regla de negocio deliberada (separar cupo sin pagar).
+- **`replicateFromPeriodToNext()` (código muerto, 0 llamadores) eliminado** de `WorkshopReplicationService.php` — el método real usado por el comando siempre fue `replicateFromTemplates()`.
 
-**⚠️ Riesgos (backlog, no implementado):**
+**Estado de los riesgos (actualizado 2026-07-13):**
 
 | ID | Sev | Ubicación | Problema | Estado |
 |----|-----|-----------|----------|--------|
-| R1 | Alto | `EnrollmentReplicationService.php:250` | Precio = `standard_monthly_fee × multiplier` **sin prorratear** por feriados, mientras `number_of_classes` sí se auto-reduce. Si el admin no baja el fee manualmente → cobra mes completo por mes corto. (Post-fix doble-descuento jul-2026.) | **Decisión Tesorería** |
-| R2 | Medio | `WorkshopReplicationService.php:39` | Guard `> 0`: si todas las clases caen en feriado, `number_of_classes` queda en valor viejo → inscripción con precio completo y **0 clases** (`total_amount` NO queda en 0). | Backlog |
-| R3 | Medio | `EnrollmentReplicationService.php:294` | Clave de equivalencia exacta (`name+day_of_week(json)+start_time+duration+modality`); reordenar `day_of_week` o renombrar rompe el match → inscripción omitida en silencio. | Backlog |
-| R4 | Medio | `WorkshopReplicationService.php:34` | Si `next.auto_generate_classes=false` → sin clases y `number_of_classes` stale → inscripciones con 0 `EnrollmentClass`. | Backlog |
-| R5 | Medio-bajo | `EnrollmentReplicationService.php:44` | Sin guard de orden: si corre antes que la replicación de talleres → todo "not found" → **lotes borrados en silencio**. | Backlog |
+| R1 | Alto | `EnrollmentReplicationService.php:250` | Precio = `standard_monthly_fee × multiplier` **sin prorratear** por feriados, mientras `number_of_classes` sí se auto-reduce. Agravante confirmado: `standard_monthly_fee` se copia desde `WorkshopTemplate` (no desde el `Workshop` del mes actual) y **no hay sincronización** `Workshop → WorkshopTemplate` — el único ajuste manual posible es editar el `Workshop` recién creado del mes siguiente, en la ventana entre que corren talleres e inscripciones. | **Decisión Tesorería — sin tocar, queda manual a pedido del cliente** |
+| R2 | Medio | `WorkshopReplicationService.php:64` (`replicateFromTemplates`, guard `actualClasses > 0`) | Si todas las clases caen en feriado, `number_of_classes` queda en valor viejo → inscripción con precio completo y **0 clases**. | Backlog (sin tocar, no pedido) |
+| R3 | Medio | `EnrollmentReplicationService.php:294` (`findEquivalentInstructorWorkshop`) | Clave de equivalencia exacta; reordenar `day_of_week` o renombrar rompe el match. | ✅ **Mitigado por RN-D25** — ya no se puede asignar mal por ambigüedad de match (2+ candidatos); el caso de "cero candidatos" por rename/reorder sigue generando el warning de "not found" existente (sin cambio, es comportamiento correcto: si no hay match, no se puede inventar uno). |
+| R4 | Medio | `WorkshopReplicationService.php:59` (`replicateFromTemplates`, gate `auto_generate_classes`) | Si `next.auto_generate_classes=false` → sin clases y `number_of_classes` stale. | Backlog (sin tocar, no pedido — es una decisión explícita del período, no un dato faltante como R2/D.3) |
+| R5 | Medio-bajo | `EnrollmentReplicationService.php:44` | Sin guard de orden: si corre antes que la replicación de talleres → todo "not found" → lotes borrados en silencio. | ✅ **Corregido (RN-D6/RN-D24)** — guard explícito antes de correr. |
+
+**Hallazgos adicionales corregidos el 2026-07-13 (no estaban en la tabla original, encontrados en audit previo a la corrida real de agosto 2026):**
+
+| ID | Ubicación | Problema | Estado |
+|----|-----------|----------|--------|
+| D.1 | `ReplicateWorkshopsForNextMonth.php`, `AutoGenerateNextMonthEnrollments.php` | Sin protección real contra corridas concurrentes (cron + `--force` manual solapado) → duplicados. **Ya ocurrió en producción** (`FixDuplicateWorkshops.php`, marzo 2026, 7 pares de talleres duplicados limpiados a mano). | ✅ **Corregido (RN-D24)** — `Cache::lock()` por período. |
+| D.11 | `EnrollmentReplicationService.php:51-68,285-303` | `keyBy()` sin `orderBy`: si 2+ talleres del período siguiente comparten clave de equivalencia, se queda con "el último" sin avisar — riesgo de asignar mal la sección. | ✅ **Corregido (RN-D25)** — `groupBy()` + detección de ambigüedad, lanza error explícito. |
+| D.3 | `WorkshopReplicationService.php` (`generateClassesForWorkshopAndPeriod`) | `day_of_week` vacío → default silencioso a `['Lunes']`; `capacity` vacío → `max_capacity=0` silencioso (taller queda "lleno" para siempre). | ✅ **Corregido (RN-D26)** — valida y lanza error explícito por taller, sin abortar el resto de la corrida. |
+
+**Verificado durante el audit (no requiere fix):**
+- Solo **1 grupo de duplicados reales** existe hoy en la BD (clave de equivalencia completa) — el resto de "duplicados" que parecían existir (91 grupos por nombre) son en realidad **secciones legítimas** del mismo taller con distintos días (ej. "ACTI BAILE" tiene 7 `WorkshopTemplate` distintos: Lunes, Miércoles, Viernes, y combinaciones — cada uno un plan de asistencia válido). **No tocar por nombre**, la clave real de duplicado es la equivalencia completa.
+- 0 de los 81 `WorkshopTemplate` activos hoy tiene `day_of_week`/`capacity` vacío — el fix de RN-D26 no rompe la corrida real de agosto 2026.
+
+## Pruebas a correr para confirmar que la corrida real de agosto 2026 crea todo correctamente
+
+**Antes de correr en producción**, validar en este orden:
+
+1. **Confirmar que no hay corrida en curso:**
+   ```
+   php artisan tinker --execute="echo App\Models\MonthlyPeriod::find(20)->workshops_replicated_at ?? 'null';"
+   ```
+   Debe seguir `null` (agosto 2026 aún no replicado). Si ya tiene fecha, alguien ya corrió — no reintentar sin `--force` y sin entender por qué.
+
+2. **Correr talleres (día 15, o manual con `--force` si se decide adelantar):**
+   ```
+   php artisan workshops:auto-replicate --force
+   ```
+   Revisar el output:
+   - `Talleres creados` debería ≈ 81 (cantidad de templates activos hoy). Si es menor, revisar `Plantillas omitidas` (puede ser el taller manual suelto id 853 "ACTI BAILE" ya creado durante esta sesión — legítimo, no error).
+   - **Si aparecen `Advertencias`** (RN-D26): cada una es un taller creado pero **sin clases** — anotar el nombre y corregir `day_of_week`/`capacity` en `WorkshopResource` antes del día 21.
+   - Confirmar `workshops_replicated_at` ahora tiene fecha: `MonthlyPeriod::find(20)->workshops_replicated_at`.
+
+3. **Verificar conteo de clases generadas vs. esperado:**
+   ```
+   php artisan tinker --execute="
+   echo App\Models\Workshop::where('monthly_period_id',20)->count().' talleres'.PHP_EOL;
+   echo App\Models\WorkshopClass::where('monthly_period_id',20)->where('status','scheduled')->count().' clases scheduled'.PHP_EOL;
+   "
+   ```
+   Cruzar contra los 2 feriados ya cargados (06-ago Batalla de Junín, 30-ago Santa Rosa) — los talleres que caen esos días deben tener menos clases que el resto.
+
+4. **Revisar manualmente talleres con menos clases este mes (R1, sin fix automático):** identificar cuáles talleres tienen `number_of_classes` distinto al de su `WorkshopTemplate` origen, y decidir si bajar `standard_monthly_fee` a mano antes del día 21.
+
+5. **Reintentar `workshops:auto-replicate --force` mientras la primera corrida está "en curso" (test de concurrencia, RN-D24):** en una segunda terminal, correr el comando de nuevo apenas se lance el primero. Debe fallar con "Ya hay una replicación... en curso", **no** debe duplicar talleres.
+
+6. **Correr inscripciones SOLO después de confirmar el paso 2 (día 21, o manual):**
+   ```
+   php artisan enrollments:auto-generate --force
+   ```
+   - Si por error se corre **antes** de completar el paso 2 en algún otro período, debe fallar con "Los talleres de {año}/{mes} aún no fueron replicados..." (RN-D6) — **no** debe crear y borrar lotes en silencio.
+   - Revisar `Lotes creados`, `Inscripciones creadas`, `Lotes omitidos`, y **especialmente las Advertencias** — ahí aparecen los batches con inscripciones parcialmente fallidas (D.2 del audit) y los "Coincidencia ambigua" (RN-D25) si los hubiera.
+
+7. **Verificar que ningún alumno quedó con menos talleres de los que pagó (silent partial drop):**
+   ```
+   php artisan tinker --execute="
+   // Comparar cantidad de inscripciones por lote original vs lote replicado, para lotes con warnings
+   "
+   ```
+   Cruzar manualmente los IDs de batch mencionados en las advertencias contra el lote original, confirmar cuántas inscripciones tenía vs. cuántas se replicaron.
+
+8. **Confirmar `enrollments_replicated_at` seteado y que no se puede volver a correr sin `--force`:**
+   ```
+   php artisan enrollments:auto-generate
+   ```
+   (sin `--force`) — debe salir inmediatamente con "Las inscripciones ya fueron replicadas...".
 
 ## D.3 — Fechas de pago por inscripción
 
@@ -560,11 +637,12 @@ flowchart TD
 | **A** (transversal) | ✅ RESUELTA: dinero real = solo `completed` (recaudación por lote; profesores por inscripción) | — |
 | A — Q4 | ✅ RESUELTA: pago al profesor solo por lo cobrado; sin recálculo retroactivo | — |
 | A — Q6 | ✅ RESUELTA: "tesorería continua" no existe; **eliminar `TreasuryPolicy` huérfana** | Dev |
-| C.1 | ✅ RESUELTA + IMPLEMENTADA: correlativo unificado cash+link, secuencia **global** compartida (corregido 2026-07-02; ya no es por cajero) | — |
+| C.1 | ✅ RESUELTA (definición): correlativo unificado cash+link, secuencia **global** compartida, ya no por cajero. Implementado en `feat/recuperaciones`; **pendiente de mergear a esta branch/main** | — |
 | C.2 | **Plazo de retención gastos extra (3/6 meses)** — bloquea implementación | **Susana** |
 | D.1 | ✅ RESUELTA: recuperación por feriado **e** inasistencia propia; modelo crédito→diferencia; caduca al mes siguiente | — |
 | D.4 | ✅ RESUELTA: anulación (pendientes o lote); crédito a favor (efectivo=reembolso o crédito, link=solo crédito); solo antes de cierre de mes | — |
 | D.5 | Confirmar modelo **crédito = ledger del alumno** (recomendado) para evitar descuadre replicación↔recuperación | Dev/PO |
+| D.2 | ✅ RESUELTO (2026-07-13): R5 + concurrencia (RN-D24) + ambigüedad de match (RN-D25) + defaults silenciosos (RN-D26) corregidos e implementados en `feat/replicacion-incripciones`. **R1 (prorrateo de precio) queda manual a pedido del cliente** — no se automatiza. | Dev |
 | B.1 | ¿Agrupar pagos por lote (b) y/o mostrar motivo+subtotal de anulados (a)? | Tesorería |
 
 > **Secuencia recomendada (actualizada):** **A → C → D → B.** A fija el "dinero real"; C es independiente (paralelizable); **D** define el movimiento de crédito/recuperación/anulación; **B (reportes) se cierra al final** para cuadrar toda la información sin retrabajo.

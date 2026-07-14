@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\EnrollmentBatch;
 use App\Models\EnrollmentPayment;
-use App\Models\StudentCredit;
 use App\Models\StudentEnrollment;
 use App\Models\Ticket;
 use Illuminate\Support\Facades\Auth;
@@ -12,97 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 class EnrollmentPaymentService
 {
-    /**
-     * Aplica un crédito de recuperación (RN-D3: paga solo la diferencia) a una
-     * inscripción específica del mes siguiente. Si el crédito no cubre el total,
-     * el saldo restante se cobra con $remainingPaymentMethod en el mismo lote.
-     */
-    public function processPaymentWithCredit(
-        EnrollmentBatch $batch,
-        StudentEnrollment $enrollment,
-        StudentCredit $credit,
-        string $remainingPaymentMethod,
-        string $paymentDate,
-        ?string $notes = null
-    ): array {
-        return DB::transaction(function () use ($batch, $enrollment, $credit, $remainingPaymentMethod, $paymentDate, $notes) {
-            if ($enrollment->enrollment_batch_id !== $batch->id) {
-                throw new \Exception('La inscripción no pertenece a este lote.');
-            }
-
-            if ($enrollment->payment_status === 'completed') {
-                throw new \Exception("La inscripción {$enrollment->id} ya está pagada.");
-            }
-
-            if (! $credit->isApplicableTo($enrollment)) {
-                throw new \Exception('El crédito no es aplicable a esta inscripción (vencido, ya consumido, o taller distinto).');
-            }
-
-            if (! Auth::check()) {
-                throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
-            }
-
-            $creditApplied = min((float) $credit->amount, (float) $enrollment->total_amount);
-            $remaining = round((float) $enrollment->total_amount - $creditApplied, 2);
-
-            $creditPayment = EnrollmentPayment::create([
-                'enrollment_batch_id' => $batch->id,
-                'amount' => $creditApplied,
-                'payment_method' => 'credito',
-                'payment_date' => $paymentDate,
-                'status' => 'completed',
-                'notes' => "Crédito de recuperación #{$credit->id} aplicado.",
-            ]);
-            $creditPayment->paymentItems()->create([
-                'student_enrollment_id' => $enrollment->id,
-                'amount' => $creditApplied,
-            ]);
-
-            $credit->update([
-                'status' => 'consumed',
-                'consumed_at' => now(),
-                'consumed_student_enrollment_id' => $enrollment->id,
-            ]);
-
-            $remainingPayment = null;
-            if ($remaining > 0) {
-                $remainingPayment = EnrollmentPayment::create([
-                    'enrollment_batch_id' => $batch->id,
-                    'amount' => $remaining,
-                    'payment_method' => $remainingPaymentMethod,
-                    'payment_date' => $paymentDate,
-                    'status' => 'completed',
-                    'notes' => $notes,
-                ]);
-                $remainingPayment->paymentItems()->create([
-                    'student_enrollment_id' => $enrollment->id,
-                    'amount' => $remaining,
-                ]);
-            }
-
-            $enrollment->update([
-                'payment_status' => 'completed',
-                'payment_method' => $remaining > 0 ? $remainingPaymentMethod : 'credito',
-                'payment_date' => $paymentDate,
-            ]);
-
-            $ticketMethod = $remaining > 0 ? $remainingPaymentMethod : 'cash';
-            $ticketPayment = $remainingPayment ?? $creditPayment;
-            $ticket = $this->createTicketWithUniqueCode($batch, $ticketPayment, $ticketMethod, (float) $enrollment->total_amount);
-            $ticket->studentEnrollments()->attach($enrollment->id);
-
-            $this->updateBatchStatus($batch);
-
-            return [
-                'credit_payment' => $creditPayment,
-                'remaining_payment' => $remainingPayment,
-                'ticket' => $ticket,
-                'credit_applied' => $creditApplied,
-                'remaining' => $remaining,
-            ];
-        });
-    }
-
     public function processPayment(EnrollmentBatch $batch, array $studentEnrollmentIds, string $paymentMethod, string $paymentDate, ?string $notes = null): EnrollmentPayment
     {
         return DB::transaction(function () use ($batch, $studentEnrollmentIds, $paymentMethod, $paymentDate, $notes) {
@@ -160,7 +68,22 @@ class EnrollmentPaymentService
                 throw new \Exception('Debe haber un usuario autenticado para generar el ticket.');
             }
 
-            $ticket = $this->createTicketWithUniqueCode($batch, $payment, $paymentMethod, $totalAmount);
+            if ($paymentMethod === 'link') {
+                // Para pagos por link, agregar el prefijo del usuario al código ingresado manualmente
+                $ticketCode = $this->generateTicketCodeForLink(Auth::id(), $batch->batch_code);
+            } else {
+                $ticketCode = $this->generateTicketCode(Auth::id());
+            }
+
+            $ticket = \App\Models\Ticket::create([
+                'ticket_code' => $ticketCode,
+                'enrollment_batch_id' => $batch->id,
+                'enrollment_payment_id' => $payment->id,
+                'student_id' => $batch->student_id,
+                'total_amount' => $totalAmount,
+                'ticket_type' => 'enrollment',
+                'status' => 'active',
+            ]);
 
             // 7. Relacionar el ticket con las inscripciones pagadas
             $ticket->studentEnrollments()->attach($enrollments->pluck('id'));
@@ -227,62 +150,29 @@ class EnrollmentPaymentService
         return abs($totalAmount - $expectedAmount) < 0.01;
     }
 
-    /**
-     * Crea el ticket del pago con reintento ante colisión del índice único
-     * de ticket_code (red de seguridad del correlativo global).
-     */
-    private function createTicketWithUniqueCode(EnrollmentBatch $batch, EnrollmentPayment $payment, string $paymentMethod, float $totalAmount): \App\Models\Ticket
+    private function getNextSequential(\App\Models\User $user): int
     {
-        $attempts = 0;
+        $lastTicketNumber = \App\Models\Ticket::where('issued_by_user_id', $user->id)
+            ->where('ticket_code', 'LIKE', $user->enrollment_code.'-%')
+            ->get()
+            ->map(function ($ticket) {
+                $parts = explode('-', $ticket->ticket_code);
 
-        do {
-            if ($paymentMethod === 'link') {
-                // Para pagos por link, agregar el prefijo del usuario al código ingresado manualmente
-                $ticketCode = $this->generateTicketCodeForLink(Auth::id(), $batch->batch_code);
-            } else {
-                $ticketCode = $this->generateTicketCode(Auth::id());
-            }
-
-            try {
-                return \App\Models\Ticket::create([
-                    'ticket_code' => $ticketCode,
-                    'enrollment_batch_id' => $batch->id,
-                    'enrollment_payment_id' => $payment->id,
-                    'student_id' => $batch->student_id,
-                    'total_amount' => $totalAmount,
-                    'ticket_type' => 'enrollment',
-                    'status' => 'active',
-                ]);
-            } catch (\Illuminate\Database\QueryException $e) {
-                // 23000 = violación de unicidad (ticket_code duplicado): tomar el siguiente correlativo
-                if ($e->getCode() !== '23000' || ++$attempts >= 3) {
-                    throw $e;
+                // Solo confiar en parts[1] si calza EXACTO con el formato del generador
+                // (6 dígitos numéricos). Tickets link legacy de 2 partes
+                // ({enrollment_code}-{voucher}) pueden tener un voucher puramente
+                // numérico de otra longitud (ej. '01061705', 8 dígitos) que NO es un
+                // correlativo real — tratarlo como tal infla el máximo y corrompe la
+                // secuencia (ej. generó '006-1061706' en vez de continuar desde 497).
+                if (! isset($parts[1]) || strlen($parts[1]) !== 6 || ! ctype_digit($parts[1])) {
+                    return 0;
                 }
-            }
-        } while (true);
-    }
 
-    /**
-     * Correlativo atómico GLOBAL (RN-C3): un único contador compartido por
-     * TODOS los cajeros, no uno por usuario. Incrementa la fila
-     * `system_settings.key = 'global_ticket_seq'` bajo row lock
-     * (debe ejecutarse dentro de la transacción del pago), por lo que
-     * serializa la emisión de tickets de todo el sistema.
-     */
-    private function getNextSequential(): int
-    {
-        $current = DB::table('system_settings')
-            ->where('key', 'global_ticket_seq')
-            ->lockForUpdate()
-            ->value('value');
+                return intval($parts[1]);
+            })
+            ->max();
 
-        $next = ((int) $current) + 1;
-
-        DB::table('system_settings')
-            ->where('key', 'global_ticket_seq')
-            ->update(['value' => (string) $next]);
-
-        return $next;
+        return ($lastTicketNumber ?? 0) + 1;
     }
 
     private function generateTicketCode(int $userId): string
@@ -293,7 +183,7 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
-        $nextNumber = $this->getNextSequential();
+        $nextNumber = $this->getNextSequential($user);
 
         return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
@@ -306,7 +196,7 @@ class EnrollmentPaymentService
             throw new \Exception('El usuario no tiene código de inscripción configurado.');
         }
 
-        $nextNumber = $this->getNextSequential();
+        $nextNumber = $this->getNextSequential($user);
         $manualCode = trim($manualCode);
 
         return $user->enrollment_code.'-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT).'-'.$manualCode;
