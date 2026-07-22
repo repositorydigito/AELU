@@ -138,7 +138,7 @@ flowchart TD
 
 > **Corrección técnica requerida:** `InstructorPaymentService.php:118-123` hoy suma **todas** las inscripciones sin filtrar estado. Debe filtrar `payment_status = 'completed'` (nivel inscripción) para cumplir RN-A3/RN-A4.
 >
-> **⚠️ Aclaración verificada (2026-07):** `InstructorPaymentService` es **código muerto** (0 llamadores) — quedó **comentado**. El pago al profesor lo calcula **`app/Observers/StudentEnrollmentObserver.php`** (`calculateAndSaveInstructorPayment`), que **ya** filtra `payment_status='completed'` (RN-A3) y resta el crédito de recuperación (RN-D5). O sea RN-A3/A4 ya se cumplen en la ruta real.
+> **⚠️ Aclaración verificada (2026-07):** `InstructorPaymentService` era **código muerto** (0 llamadores) — fue **eliminado** del repo. El pago al profesor lo calcula **`app/Observers/StudentEnrollmentObserver.php`** (`calculateAndSaveInstructorPayment`), que **ya** filtra `payment_status='completed'` (RN-A3) y resta el crédito de recuperación (RN-D5). O sea RN-A3/A4 ya se cumplen en la ruta real.
 
 ## Criterios de aceptación
 
@@ -158,7 +158,7 @@ Los modelos **soportan las reglas casi en su totalidad**. `StudentEnrollment` ti
 |-------|---------|-----------|--------|
 | RN-A1/A2 (recaudación por lote) | `EnrollmentBatch.payment_status` + `total_amount` | ✅ Funciona | ⚠️ `EnrollmentBatch` **no** tiene `monthly_period_id` directo → scoping por periodo vía JOIN a `enrollments`. Opcional: denormalizar columna para eficiencia. |
 | RN-A3/A4 (pago profesor por inscripción pagada) | `StudentEnrollment` con todos los campos + relación 1:1 a `instructor_workshop` | ✅ Soportado | 🔴 **Fix crítico de código** (abajo). Sin cambio de tablas. |
-| RN-A5 (hourly / feriados) | `WorkshopClass.status`, `number_of_classes`, `InstructorWorkshop.duration_hours` | ✅ Correcto | Ninguna. `getTotalHoursForPeriod` ya excluye `cancelled`. |
+| RN-A5 (hourly / feriados) | `WorkshopClass.status`, `number_of_classes`, `InstructorWorkshop.duration_hours` | ✅ Correcto (2026-07) | Corregido en `StudentEnrollmentObserver::calculateAndSaveInstructorPayment()` — antes hardcodeaba 4 clases/mes, ahora cuenta `WorkshopClass` reales `scheduled`/`completed` del período (excluye `cancelled`, ej. feriados). Ver `docs/changelog/cambios-epica-a-c.md`. |
 | RN-A6 (alerta descuadre) | `EnrollmentPayment` / `enrollment_payment_items` **sin** `monthly_period_id`; sin lógica de conciliación | ❌ No existe | Feature nueva: servicio de conciliación + (opcional) denormalizar periodo para eficiencia. |
 
 **🔴 Fix crítico — RN-A3/A4:** `InstructorPaymentService.php:120-123` (`getWorkshopRevenueForPeriod`) hoy hace:

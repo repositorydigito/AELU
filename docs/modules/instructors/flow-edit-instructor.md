@@ -68,7 +68,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    TRIGGER([Sistema genera pagos mensuales\nInstructorPaymentService])
+    TRIGGER([StudentEnrollment pasa a completed\nStudentEnrollmentObserver])
 
     FETCH[Cargar InstructorWorkshop\nde período vigente]
 
@@ -179,5 +179,5 @@ erDiagram
 | `app/Models/InstructorWorkshop.php` | Junction; lógica `getEffectiveVolunteerPercentage()` |
 | `app/Models/Workshop.php` | Taller base con horario y precio |
 | `app/Models/InstructorPayment.php` | Pago mensual generado |
-| `app/Services/InstructorPaymentService.php` | Cálculo de pagos volunteer/hourly |
+| `app/Observers/StudentEnrollmentObserver.php` | Cálculo de pagos volunteer/hourly (`calculateAndSaveInstructorPayment`) — `InstructorPaymentService.php` era código muerto y se eliminó (2026-07) |
 | `app/Models/MonthlyInstructorRate.php` | Porcentaje mensual por defecto |

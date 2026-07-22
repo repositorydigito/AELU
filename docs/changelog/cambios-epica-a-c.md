@@ -2,7 +2,7 @@
 
 > **Fecha:** 2026-07-02 · **Alcance:** Épica A (motor de "dinero real") completa y Épica C.1 (tickets correlativos). **C.2 excluido** (plazo de retención pendiente de definición por Susana).
 >
-> Referencia de requerimientos: `docs/new-requirements.md`.
+> Referencia de requerimientos: `docs/specs/new-requirements.md`.
 >
 > **⚠️ Nota de branch:** todo lo descrito aquí fue implementado y commiteado en `feat/recuperaciones`. Si estás leyendo esto en `feat/replicacion-incripciones` (o `main`), **nada de esto está en el código todavía** — llegará cuando se mergee `feat/recuperaciones`. Esta branch (D.2, replicación de talleres/inscripciones) no depende de este trabajo.
 
@@ -14,7 +14,7 @@
 
 | Archivo | Cambio | Regla |
 |---------|--------|-------|
-| `app/Services/InstructorPaymentService.php` | ⚠️ **Corrección posterior (ver sección "Revisión revenue del profesor" abajo):** este Service resultó ser **código muerto** (0 llamadores). El fix de `getWorkshopRevenueForPeriod()` que se hizo aquí **no tenía efecto en runtime**; el cálculo real vive en `StudentEnrollmentObserver`. El Service quedó **comentado**. | RN-A3, RN-A4 |
+| `app/Services/InstructorPaymentService.php` | ⚠️ **Corrección posterior (ver sección "Revisión revenue del profesor" abajo):** este Service resultó ser **código muerto** (0 llamadores). El fix de `getWorkshopRevenueForPeriod()` que se hizo aquí **no tenía efecto en runtime**; el cálculo real vive en `StudentEnrollmentObserver`. El Service quedó comentado y **posteriormente fue eliminado del repo** (ver "Corrección adicional 2026-07-22" al final de este documento). | RN-A3, RN-A4 |
 | `app/Filament/Pages/ScheduleEnrollmentReport.php` | Recaudación por horario: la consulta ahora exige lote (`EnrollmentBatch`) con `payment_status = 'completed'`. Antes solo excluía `refunded` → pendientes y parciales sumaban al total. | RN-A1, RN-A2 |
 | `app/Filament/Pages/AllUsersEnrollmentReport.php` | Reporte general: los tickets listados ahora exigen lote `completed`. Tickets de lotes parciales (`to_pay`) ya no aparecen ni suman. | RN-A1, RN-A2 |
 | `app/Filament/Pages/CashiersEnrollmentReport.php` | Reporte por cajero (caja): mismo filtro de lote `completed`. | RN-A1, RN-A2 |
@@ -37,21 +37,21 @@
 
 - **CA-A1/A2/A3** — Los tres reportes de recaudación (general, horario, cajero) muestran y suman **solo lotes `completed`**; `pending`/`to_pay`/`refunded` desaparecen de la vista y del total. Los exports Excel/PDF heredan el filtro porque consumen el mismo dataset en memoria.
 - **CA-A4/A5** — El pago al profesor suma cada inscripción `completed` de su horario aunque el lote esté `to_pay`; las pendientes no suman.
-- **CA-A6** — Sin cambios: `getTotalHoursForPeriod()` ya excluía clases `cancelled` (feriados).
+- **CA-A6** — ⚠️ **Este punto estaba mal evaluado.** `getTotalHoursForPeriod()` (el método que sí excluía `cancelled`) pertenece al Service **muerto**, que nunca corría. La ruta real (`StudentEnrollmentObserver`) en ese momento **hardcodeaba `$classesPerMonth = 4`** y no contaba clases reales. Bug encontrado en producción el 2026-07-22 (reporte de pago mostraba 4hrs para un instructor con solo 3 clases por feriado). Ver "Corrección adicional 2026-07-22" al final de este documento.
 - **CA-A7** — Alerta visual de descuadre operativa en Tesorería → Pago de Profesores.
 
 ### Revisión revenue del profesor (post-Épica A) + fix crédito de recuperación
 
 Al validar la interacción con recuperaciones (Épica D) se verificó el flujo real y se corrigieron dos cosas:
 
-1. **`InstructorPaymentService` es código muerto.** No lo llama ningún comando, scheduler, página, resource ni test (confirmado por grep + exploración). El pago al instructor lo calcula **`app/Observers/StudentEnrollmentObserver.php`** (`calculateAndSaveInstructorPayment`, `updateOrCreate` en cada cambio a `completed`), que **ya** filtraba `payment_status='completed'` (RN-A3). Por eso el fix de Épica A al Service no cambiaba nada en runtime. **Acción:** el Service quedó **comentado** con un banner que explica que está muerto y en qué difiere del observer (hourly: cuenta clases reales vs 4 fijas; % voluntario: `getEffectiveVolunteerPercentage` vs `custom ?? 50`; crédito). No se borró, por decisión.
+1. **`InstructorPaymentService` es código muerto.** No lo llama ningún comando, scheduler, página, resource ni test (confirmado por grep + exploración). El pago al instructor lo calcula **`app/Observers/StudentEnrollmentObserver.php`** (`calculateAndSaveInstructorPayment`, `updateOrCreate` en cada cambio a `completed`), que **ya** filtraba `payment_status='completed'` (RN-A3). Por eso el fix de Épica A al Service no cambiaba nada en runtime. **Acción original:** el Service quedó **comentado** con un banner explicando que está muerto y en qué difiere del observer (hourly: cuenta clases reales vs 4 fijas; % voluntario: `getEffectiveVolunteerPercentage` vs `custom ?? 50`; crédito). **Actualización 2026-07-22: se eliminó el archivo por completo** — ver "Corrección adicional 2026-07-22" al final de este documento.
 
 2. 🔴 **Bug de sobre-resta de crédito (RN-D5 / RN-D23).** En 3 lugares se restaba el `StudentCredit.amount` **completo** (suma de clases del mes origen), cuando lo realmente aplicado a la inscripción destino es `min(credit.amount, total_amount)` (`EnrollmentPaymentService::processPaymentWithCredit`). Si el crédito excede el total del destino → se restaba de más: **subpagaba al profesor** y **descuadraba la recaudación** contra caja. **Fix:** nuevo helper `EnrollmentPaymentItem::creditAppliedForEnrollments()` que suma el crédito **realmente aplicado** (items de pago con `payment_method='credito'`, ya capado). Reemplaza el patrón erróneo en:
    - `app/Observers/StudentEnrollmentObserver.php` (revenue voluntario, RN-D5)
    - `app/Filament/Pages/AllUsersEnrollmentReport.php` (dinero nuevo, RN-D23)
    - `app/Filament/Pages/CashiersEnrollmentReport.php` (dinero nuevo, RN-D23)
 
-**Archivos nuevos/tocados en esta revisión:** `app/Models/EnrollmentPaymentItem.php` (helper), observer, los 2 reportes, `app/Services/InstructorPaymentService.php` (comentado).
+**Archivos nuevos/tocados en esta revisión:** `app/Models/EnrollmentPaymentItem.php` (helper), observer, los 2 reportes, `app/Services/InstructorPaymentService.php` (comentado, luego eliminado — ver abajo).
 
 3. **Regla de aplicabilidad del crédito ampliada (decisión 2026-07).** `StudentCredit::isApplicableTo` exigía que el taller destino coincidiera exactamente con el de origen (`matchesWorkshop`: nombre+instructor+día+hora+modalidad). Se descubrió que por eso un crédito de "YOGA Miércoles Presencial" no aplicaba a "YOGA Lunes Virtual" del mismo alumno. **Decisión del cliente:** el crédito es saldo aplicable a **cualquier taller/horario** al pagar. Se removió la restricción `matchesWorkshop`; ahora solo valida disponible + mismo alumno + mes de vigencia (RN-D17). Archivo: `app/Models/StudentCredit.php`. Limitación conocida: 1 crédito por inscripción (no apila varios en un pago).
 
@@ -94,3 +94,20 @@ Excluido de este alcance: el plazo de retención (3/6 meses) está **por definir
 - **Concurrencia (nota):** al pasar de contador por cajero a global, el `lockForUpdate` ahora serializa **todas** las emisiones de ticket del sistema (más contención que antes), lo cual es la contraparte esperada de tener una secuencia realmente global.
 - **Opcional (eficiencia):** denormalizar `monthly_period_id` en `enrollment_batches`/`enrollment_payments` — no implementado por ser opcional.
 - **Datos históricos:** lotes pagados antes del sistema de `EnrollmentPayment` (nov 2025) pueden no tener items de pago → la columna "Conciliación" los marcará con descuadre. Es esperado: la alerta es informativa y sirve justamente para detectar esos casos.
+
+---
+
+## Corrección adicional (2026-07-22) — horas hardcodeadas en pago hourly + eliminación definitiva del Service muerto
+
+**Origen:** reporte de pago de profesores mostraba 4hrs para un instructor con solo 3 clases dictadas ese mes (una cancelada por feriado). Esto invalida la afirmación de CA-A6 arriba ("sin cambios necesarios") — el bug **sí existía** en la ruta real, solo que nadie lo había verificado contra un caso con clase cancelada hasta ahora.
+
+**Causa raíz:** `StudentEnrollmentObserver::calculateAndSaveInstructorPayment()`, bloque `payment_type == 'hourly'`, tenía `$classesPerMonth = 4;` hardcodeado en vez de contar `WorkshopClass` reales del período. La lógica correcta (contar clases `scheduled`/`completed`, excluyendo `cancelled`) existía pero solo en el Service muerto (`getTotalHoursForPeriod()`), que nunca se ejecutaba — de ahí la confusión del CA-A6 original.
+
+**Cambios:**
+- `app/Observers/StudentEnrollmentObserver.php` — `$classesPerMonth` ahora cuenta `WorkshopClass::where('workshop_id', ...)->where('monthly_period_id', ...)->active()->count()` (scope `active()` = `whereIn('status', ['scheduled','completed'])`). Nota de `$notes` actualizada para reflejar el conteo real en vez de "4 clases" fijo.
+- `app/Filament/Resources/InstructorResource.php` — descomentado el campo `duration_hours` en el repeater de talleres del instructor (existía en BD pero no era editable desde el panel).
+- `app/Services/InstructorPaymentService.php` — **eliminado por completo** (ya no solo comentado). Confirmado sin referencias en `app/`, `tests/`, `routes/`, `config/`.
+- Nuevo comando `php artisan instructor-payments:recalculate-hourly-hours` (`app/Console/Commands/RecalculateHourlyInstructorHours.php`) — recalcula `InstructorPayment` tipo `hourly` del **mes actual** (`now()->year`/`now()->month`) usando el conteo real de clases. Corrió en local sobre el período 2026-7: 9 de 29 pagos hourly bajaron de 4 (o 6) horas a los valores reales (3, 4.5, etc.); el resto ya estaba correcto.
+- Se agregó `StudentEnrollmentObserver::recalculateForInstructorWorkshop(int $instructorWorkshopId, int $monthlyPeriodId)` — wrapper público que arma un `StudentEnrollment` transitorio (no persistido) para reusar `calculateAndSaveInstructorPayment()` sin necesitar una inscripción real; lo usa el comando de recálculo.
+
+**Pendiente por entorno:** correr `php artisan instructor-payments:recalculate-hourly-hours` en cada entorno (staging/prod) después de desplegar este fix, para corregir los pagos hourly ya calculados con el valor viejo del mes en curso al momento del deploy. El comando es idempotente (recalcula igual si se corre más de una vez).

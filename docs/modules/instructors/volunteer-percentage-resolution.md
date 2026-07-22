@@ -6,7 +6,7 @@
 
 ## Lógica de Resolución
 
-Cuando `InstructorPaymentService::calculateVolunteerPayment()` se ejecuta, resuelve el porcentaje en este orden:
+Cuando `StudentEnrollmentObserver::calculateAndSaveInstructorPayment()` se ejecuta (bloque `payment_type == 'volunteer'`), resuelve el porcentaje en este orden:
 
 ```
 InstructorWorkshop.custom_volunteer_percentage
@@ -66,18 +66,15 @@ El reporte multiplica por 100 para mostrar: `applied_volunteer_percentage * 100 
 
 ---
 
-## Bug Conocido — `getActiveInstructorRate()` no definido
+## Bug histórico (ya no aplica) — `getActiveInstructorRate()` no definido
 
-`InstructorPaymentService` llama `$monthlyPeriod->getActiveInstructorRate()` en línea 20, pero ese método **no existe** en `MonthlyPeriod`. El modelo no tiene relación ni método con ese nombre.
+Este bug existía en `app/Services/InstructorPaymentService.php` (llamaba a un método `MonthlyPeriod::getActiveInstructorRate()` que nunca existió). Ese archivo era **código muerto** (0 llamadores, confirmado 2026-07) y fue **eliminado**. La ruta real (`StudentEnrollmentObserver::calculateAndSaveInstructorPayment()`) nunca tuvo este bug — resuelve la tasa mensual con una query directa:
 
 ```php
-// InstructorPaymentService.php:20
-$monthlyRate = $monthlyPeriod->getActiveInstructorRate(); // ← BadMethodCallException
+$monthlyRate = MonthlyInstructorRate::where('monthly_period_id', $monthlyPeriodId)
+    ->where('is_active', true)
+    ->first();
 ```
-
-**Efecto:** si el servicio se ejecuta en un período sin `MonthlyInstructorRate` cargado de otro modo, lanzaría excepción. Los pagos actuales en DB posiblemente se crearon por otro flujo o el método existía antes y fue eliminado.
-
-**Pendiente:** definir `getActiveInstructorRate()` en `MonthlyPeriod` o corregir la llamada.
 
 ---
 
@@ -100,5 +97,5 @@ Si el reporte muestra un porcentaje distinto al configurado en el wizard:
 |---------|----------------|
 | `app/Models/InstructorWorkshop.php` | `getEffectiveVolunteerPercentage()` — resolución con normalización de escala |
 | `app/Models/MonthlyInstructorRate.php` | Tasa mensual por defecto (`volunteer_percentage` en decimal) |
-| `app/Services/InstructorPaymentService.php` | `calculateVolunteerPayment()` — usa el método anterior, guarda `applied_volunteer_percentage` |
+| `app/Observers/StudentEnrollmentObserver.php` | `calculateAndSaveInstructorPayment()` — usa el método anterior, guarda `applied_volunteer_percentage` |
 | `app/Models/InstructorPayment.php` | Almacena `applied_volunteer_percentage` como decimal histórico |

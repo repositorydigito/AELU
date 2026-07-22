@@ -31,7 +31,7 @@ EnrollmentBatch (lote)
 
 ## CRUD
 
-### HU-I01: Listar Inscripciones
+### HU-I01: Listar Inscripciones  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Ver registro de todas las inscripciones realizadas
@@ -53,7 +53,7 @@ EnrollmentBatch (lote)
 
 ---
 
-### HU-I06: Exportar Inscripciones
+### HU-I06: Exportar Inscripciones  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Exportar lista de inscripciones a Excel con los filtros activos
@@ -82,7 +82,7 @@ Paso 3: HU-I04 → Detalles + precios  →  HU-I05 → Pago → Ticket
 
 ---
 
-### HU-I02: Iniciar Proceso de Inscripción (Paso 1)
+### HU-I02: Iniciar Proceso de Inscripción (Paso 1)  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Seleccionar período mensual y estudiante antes de avanzar
@@ -111,7 +111,7 @@ Paso 3: HU-I04 → Detalles + precios  →  HU-I05 → Pago → Ticket
 
 ---
 
-### HU-I03: Seleccionar Talleres (Paso 2)
+### HU-I03: Seleccionar Talleres (Paso 2)  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Ver y seleccionar talleres disponibles para el estudiante en el período dado
@@ -149,7 +149,7 @@ Paso 3: HU-I04 → Detalles + precios  →  HU-I05 → Pago → Ticket
 
 ---
 
-### HU-I04: Configurar Detalles de Inscripción (Paso 3a)
+### HU-I04: Configurar Detalles de Inscripción (Paso 3a)  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Ajustar cantidad de clases, ver subtotales y total del batch
@@ -177,7 +177,7 @@ Paso 3: HU-I04 → Detalles + precios  →  HU-I05 → Pago → Ticket
 
 ---
 
-### HU-I05: Pago y Finalización (Paso 3b)
+### HU-I05: Pago y Finalización (Paso 3b)  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Registrar método de pago y finalizar la inscripción
@@ -270,7 +270,9 @@ Creación
 
 ## Casos especiales
 
-### HU-I08: Inscripción por Recuperación (Pago Cero)
+### HU-I08: Inscripción por Recuperación (Pago Cero)  ·  ❌ Descartado
+
+> ❌ **Descartado (2026-07).** El approach "pago cero" (`total_amount = 0` + `recovery_tag_id`) fue reemplazado por **recuperaciones con crédito** (`StudentCredit`), otra lógica que se desarrolla en la branch `feat/recuperaciones`. Se conserva esta HU como rastro de la decisión. Para el diseño vigente ver esa branch y su documentación de crédito.
 
 **Rol:** Administrador
 **Acción:** Crear inscripción tipo "recuperación" con `total_amount = 0` y motivo del catálogo
@@ -389,7 +391,7 @@ Wizard de inscripción
 | `app/Models/Tag.php` | Nuevo modelo con scopes por context |
 | `app/Services/EnrollmentBatchService.php` | Lógica precio cero para `recovery` |
 | `app/Services/EnrollmentReplicationService.php` | Filtrar por `tag.excludes_from_replication` |
-| `app/Services/InstructorPaymentService.php` | Filtrar por `tag.excludes_from_instructor_revenue` |
+| `app/Observers/StudentEnrollmentObserver.php` | Filtrar por `tag.excludes_from_instructor_revenue` (nota: `InstructorPaymentService.php` era código muerto y se eliminó 2026-07 — el cálculo real vive acá) |
 | `app/Filament/Resources/EnrollmentBatchResource.php` | Toggle recovery + selector tag en wizard |
 | `app/Filament/Resources/TagResource.php` | Nuevo recurso para gestión del catálogo |
 
@@ -397,7 +399,7 @@ Wizard de inscripción
 
 ## Automatizaciones
 
-### HU-I07: Replicación Automática al Siguiente Mes
+### HU-I07: Replicación Automática al Siguiente Mes  ·  ✅ Hecho
 
 **Rol:** Sistema (job manual/programado)
 **Acción:** Copiar inscripciones del mes actual al siguiente para estudiantes con batch `completed`
