@@ -439,14 +439,14 @@ class InstructorResource extends Resource
                                                                                 ->visible(fn (callable $get) => $get('payment_type') === 'hourly')
                                                                                 ->required(fn (callable $get) => $get('payment_type') === 'hourly'),
 
-                                                                            /* TextInput::make('duration_hours')
+                                                                            TextInput::make('duration_hours')
                                                                                 ->label('Duración (horas)')
                                                                                 ->numeric()
                                                                                 ->step(0.5)
                                                                                 ->minValue(0.5)
                                                                                 ->suffix('hrs')
                                                                                 ->visible(fn (callable $get) => $get('payment_type') === 'hourly')
-                                                                                ->required(fn (callable $get) => $get('payment_type') === 'hourly'), */
+                                                                                ->required(fn (callable $get) => $get('payment_type') === 'hourly'),
                                                                         ])
                                                                         ->visible(fn (callable $get) => $get('payment_type') === 'hourly'),
                                                                 ]),

@@ -317,6 +317,9 @@ php artisan enrollments:auto-generate --force
 # Auto-cancelar inscripciones pendientes
 php artisan enrollments:auto-cancel --force
 
+# Recalcular total_hours de pagos por horas del mes actual (usa conteo real de WorkshopClass en vez de 4 clases/mes hardcodeado)
+php artisan instructor-payments:recalculate-hourly-hours
+
 # Ver todas las tareas programadas
 php artisan schedule:list
 

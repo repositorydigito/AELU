@@ -1,10 +1,10 @@
 # Historias de Usuario — Módulo de Profesores
 
-> Historias específicas del módulo de profesores. Para el índice general ver `docs/user-stories.md`.
+> Historias específicas del módulo de profesores. Para el índice general ver `docs/specs/user-stories.md`.
 
 ---
 
-## HU-P01: Asignar Talleres a un Instructor
+## HU-P01: Asignar Talleres a un Instructor  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Asignar uno o más talleres a un instructor durante su creación o edición
@@ -57,7 +57,7 @@ Wizard Instructor
 
 ---
 
-## HU-P02: Configurar Modalidad Voluntario
+## HU-P02: Configurar Modalidad Voluntario  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Asignar porcentaje de pago voluntario personalizado a un taller de instructor
@@ -86,11 +86,11 @@ Como administrador, quiero poder configurar el porcentaje de pago voluntario par
 
 - Campo: `custom_volunteer_percentage` en `InstructorWorkshop`
 - Lógica de resolución: `InstructorWorkshop::getEffectiveVolunteerPercentage(?MonthlyInstructorRate)`
-- Consumido por: `InstructorPaymentService`
+- Consumido por: `app/Observers/StudentEnrollmentObserver.php` (`calculateAndSaveInstructorPayment`) — `App\Services\InstructorPaymentService` era código muerto (0 llamadores) y se eliminó (2026-07)
 
 ---
 
-## HU-P03: Configurar Modalidad Por Horas
+## HU-P03: Configurar Modalidad Por Horas  ·  ✅ Hecho
 
 **Rol:** Administrador
 **Acción:** Asignar tarifa por hora a un taller de instructor con pago horario
@@ -104,8 +104,8 @@ Como administrador, quiero configurar la tarifa por hora para instructores que c
 
 - `hourly_rate` almacenado en `instructor_workshops` como decimal en Soles (S/)
 - El campo se muestra **solo** cuando `payment_type = 'hourly'`
-- El cálculo final en `InstructorPaymentService`: `total_hours × applied_hourly_rate`
-- `total_hours` se registra en `InstructorPayment` al generar el pago mensual
+- El cálculo final en `StudentEnrollmentObserver::calculateAndSaveInstructorPayment()`: `total_hours × applied_hourly_rate`
+- `total_hours` se registra en `InstructorPayment` al generar el pago mensual — se calcula contando `WorkshopClass` reales (`scheduled`/`completed`) del taller en el período, no un número fijo de clases (fix 2026-07, ver `docs/changelog/cambios-epica-a-c.md`)
 
 ### Criterios de aceptación
 
@@ -119,7 +119,7 @@ Como administrador, quiero configurar la tarifa por hora para instructores que c
 
 - Campo: `hourly_rate` en `InstructorWorkshop`
 - Método: `InstructorWorkshop::getEstimatedPayPerClass()` → `hourly_rate × duration_hours`
-- Consumido por: `InstructorPaymentService`
+- Consumido por: `app/Observers/StudentEnrollmentObserver.php` (`calculateAndSaveInstructorPayment`)
 
 ---
 

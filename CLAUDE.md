@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 AELU is a workshop enrollment and management system for PAMA (Programa del Adulto Mayor Activo), an educational institution for adult learners. The system manages students, instructors, workshops, enrollments, payments, and attendance tracking with sophisticated pricing rules and automated monthly processes.
 
 **Tech Stack:**
-- Laravel 12.0 (PHP 8.2+)
+- Laravel 12.0 (PHP 8.4+)
 - Filament 3.3 (admin panel framework)
 - MySQL database
 - Vite + TailwindCSS 4.0
@@ -95,7 +95,7 @@ php artisan pail
   - Formato ticket link: `{enrollment_code}-{batch_code}`
   - Lógica auto-generación: `app/Models/User.php` → `boot()` → evento `created`
   - Consumido por: `app/Services/EnrollmentPaymentService.php` → `generateTicketCode()`, `generateTicketCodeForLink()`
-  - Docs detallados: `docs/user_model.md`
+  - Docs detallados: `docs/reference/user-model.md`
 
 **Student Management**
 - **Student** (`app/Models/Student.php`): Core student info with medical records
@@ -172,7 +172,7 @@ php artisan pail
 
 **Workshop.number_of_classes** refleja solo clases `scheduled` (feriados excluidos) — afecta pricing de inscripciones del siguiente período.
 
-**Known bug (fixed):** When run during Easter week, `EnrollmentClass` records were created pointing to Viernes/Sábado Santo. Root cause: `createDefaultEnrollmentClasses()` and `findEquivalentWorkshopClass()` did not filter `status = 'cancelled'` workshop classes. Fix applied: both methods now include `->where('status', '!=', 'cancelled')`. See `HU-I07` in `docs/user-stories.md` for full detail.
+**Known bug (fixed):** When run during Easter week, `EnrollmentClass` records were created pointing to Viernes/Sábado Santo. Root cause: `createDefaultEnrollmentClasses()` and `findEquivalentWorkshopClass()` did not filter `status = 'cancelled'` workshop classes. Fix applied: both methods now include `->where('status', '!=', 'cancelled')`. See `HU-I07` in `docs/specs/user-stories.md` for full detail.
 
 **3. Auto-Cancel Pending Enrollments** (`AutoCancelPendingEnrollments.php`)
 - Runs: Every minute (checks for configured day/time)
@@ -221,7 +221,6 @@ php artisan pail
 ### Services Layer
 
 Key business logic services (in `app/Services/`):
-- `InstructorPaymentService.php` - Calculate instructor payments
 - `WorkshopReplicationService.php` - Clone workshops and generate `WorkshopClass` records for next period
 - `EnrollmentReplicationService.php` - Replicate `completed` batches to next period as `pending`; depends on `WorkshopReplicationService` having run first and admin having cancelled holidays
 - `EnrollmentPaymentService.php` - Process payments (partial/full), update batch status, generate tickets
@@ -291,7 +290,7 @@ Code identifiers (variable names, method names, DB columns) stay in English.
 
 ### When Working with Payments
 
-1. **Instructor payment calculation**: Use `InstructorPaymentService`, don't calculate manually
+1. **Instructor payment calculation**: Handled automatically by `app/Observers/StudentEnrollmentObserver.php` (`calculateAndSaveInstructorPayment`), triggered on every `StudentEnrollment` create/update/delete affecting `payment_status='completed'`. Don't calculate manually. Hourly instructors' hours are computed by counting real `WorkshopClass` rows (`scheduled`/`completed`) for the period — not a fixed classes-per-month number. To recalculate current-month hourly payments after a class-count correction, run `php artisan instructor-payments:recalculate-hourly-hours`.
 2. **Partial payments**: Use `EnrollmentPayment` linked via `EnrollmentPaymentItem`
    - When a partial payment is registered, batch status automatically changes to `'to_pay'`
    - This protects the batch from auto-cancellation
@@ -390,9 +389,15 @@ Before implementing or modifying any feature, read the relevant module doc to un
 | | `docs/modules/instructors/volunteer-percentage-resolution.md` — lógica de resolución de porcentaje voluntario |
 | **Feriados** | `docs/modules/holidays/holidays-flow.md` — impacto de feriados en clases y precios |
 | **Reportes** | `docs/modules/reports/structure-reports.md` — mapeo Reporte ↔ Excel ↔ PDF |
-| **General** | `docs/user-stories.md` — historias de usuario globales del sistema |
-| | `docs/user_model.md` — modelo de usuario, enrollment_code, formatos de ticket |
-| | `docs/check-list-prod.md` — checklist pre-producción |
+| **Specs / Backlog** | `docs/specs/new-requirements.md` — roadmap transversal de épicas (A/B/C/D); reglas de negocio; criterios de aceptación |
+| | `docs/specs/user-stories.md` — historias de usuario globales del sistema |
+| **Referencia** | `docs/reference/user-model.md` — modelo de usuario, enrollment_code, formatos de ticket |
+| | `docs/reference/queries-tinker-help.md` — queries útiles de Tinker + comandos artisan |
+| | `docs/reference/user-stories-convention.md` — cómo se escriben/marcan/evolucionan las historias de usuario (flags ✅🔶⬜, dónde va cada cosa) |
+| **Changelog** | `docs/changelog/cambios-epica-a-c.md` — bitácora de cambios implementados (Épica A/C + correcciones) |
+| **Ops** | `docs/ops/prepare-prod.md` — preparación de producción |
+| | `docs/ops/check-list-prod.md` — checklist pre-producción |
+| **Incidencias** | `docs/incidents/security-incident-remediation.md` — remediación de incidente de seguridad |
 
 ## Additional Resources
 

@@ -2,7 +2,7 @@
 
 ---
 
-## HU-RPP-01: Registrar recibo único por instructor al fin de mes
+## HU-RPP-01: Registrar recibo único por instructor al fin de mes  ·  ⬜ Pendiente
 
 **Título:** Registrar un solo recibo para todos los talleres de un instructor
 
@@ -169,7 +169,7 @@ Si la migración falla en producción:
 
 - [ ] Migraciones corren sin error en local y en staging: `php artisan migrate`
 - [ ] Rollback funciona: `php artisan migrate:rollback`
-- [ ] `InstructorPaymentService::recalculatePaymentsForPeriod()` no resetea `payment_status` de filas con recibo ya registrado
+- [ ] `StudentEnrollmentObserver::calculateAndSaveInstructorPayment()` (`updateOrCreate` en `InstructorPayment`) no resetea `payment_status` de filas con recibo ya registrado
 - [ ] `InstructorPaymentResource` no lanza error al editar un registro (campos eliminados reemplazados)
 - [ ] `InstructorPaymentResource` acción `mark_as_paid` crea `InstructorPaymentReceipt` correctamente
 - [ ] Columna "Estado" eliminada de ambos tabs
@@ -220,7 +220,8 @@ Si la migración falla en producción:
 
 **Estos archivos fallarán con columnas inexistentes si no se corrigen:**
 
-5. **`app/Services/InstructorPaymentService.php`** — `calculateVolunteerPayment()` y `calculateHourlyPayment()`
+5. **`app/Observers/StudentEnrollmentObserver.php`** — `calculateAndSaveInstructorPayment()` (bloques `volunteer` y `hourly`)
+   - Nota (2026-07): `app/Services/InstructorPaymentService.php` era código muerto (0 llamadores) y fue **eliminado**; el cálculo real siempre vivió acá, en el observer — es este archivo el que hay que tocar, no el Service.
    - Problema: `updateOrCreate` siempre setea `payment_status = 'pending'` → borra estado si hay recibo
    - Fix: quitar `payment_status` del array de `updateOrCreate`; solo setearlo en `creating` (via model boot o condición `wasRecentlyCreated`)
 

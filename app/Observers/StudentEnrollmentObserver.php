@@ -7,6 +7,7 @@ use App\Models\InstructorWorkshop;
 use App\Models\EnrollmentPaymentItem;
 use App\Models\MonthlyInstructorRate;
 use App\Models\StudentEnrollment;
+use App\Models\WorkshopClass;
 use Illuminate\Support\Facades\DB;
 
 class StudentEnrollmentObserver
@@ -95,6 +96,18 @@ class StudentEnrollmentObserver
         }
     }
 
+    /**
+     * Permite recalcular un pago sin depender de un StudentEnrollment persistido
+     * (usado por comandos artisan de recálculo puntual).
+     */
+    public function recalculateForInstructorWorkshop(int $instructorWorkshopId, int $monthlyPeriodId): void
+    {
+        $this->calculateAndSaveInstructorPayment(new StudentEnrollment([
+            'instructor_workshop_id' => $instructorWorkshopId,
+            'monthly_period_id' => $monthlyPeriodId,
+        ]));
+    }
+
     protected function calculateAndSaveInstructorPayment(StudentEnrollment $studentEnrollment): void
     {
         $instructorWorkshopId = $studentEnrollment->instructor_workshop_id;
@@ -178,7 +191,14 @@ class StudentEnrollmentObserver
         if ($instructorWorkshop->payment_type == 'hourly') {
             // 🎯 LÓGICA PARA INSTRUCTORES NO VOLUNTARIOS (POR HORAS)
             $appliedHourlyRate = $instructorWorkshop->hourly_rate ?? 0;
-            $classesPerMonth = 4;
+
+            // Cuenta clases reales scheduled/completed del taller en el período;
+            // si aún no se generaron (0), el pago se autocorrige cuando el observer
+            // se re-dispare tras la generación de clases o un próximo cambio de enrollment.
+            $classesPerMonth = WorkshopClass::where('workshop_id', $instructorWorkshop->workshop_id)
+                ->where('monthly_period_id', $monthlyPeriodId)
+                ->active()
+                ->count();
 
             $durationHours = $instructorWorkshop->duration_hours;
             if (! $durationHours && $instructorWorkshop->workshop) {
@@ -204,7 +224,7 @@ class StudentEnrollmentObserver
         if ($instructorWorkshop->isVolunteer()) {
             $notes = "Pago voluntario: {$totalStudents} estudiantes. Ingresos totales: S/ ".number_format($monthlyRevenue, 2).' × '.number_format($appliedVolunteerPercentage, 2).'% = S/ '.number_format($calculatedAmount, 2);
         } elseif ($instructorWorkshop->isHourly()) {
-            $notes = "Pago por horas: {$totalHours} horas totales (4 clases × {$durationHours} hrs/clase) × S/ {$appliedHourlyRate}/hora = S/ ".number_format($calculatedAmount, 2);
+            $notes = "Pago por horas: {$totalHours} horas totales ({$classesPerMonth} clases × {$durationHours} hrs/clase) × S/ {$appliedHourlyRate}/hora = S/ ".number_format($calculatedAmount, 2);
         }
 
         // Crear o actualizar el registro de pago del instructor
